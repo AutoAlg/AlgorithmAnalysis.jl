@@ -3,6 +3,9 @@ uuid = "baa24b6d-515a-48bb-b1d2-0fdd27c035f8"
 authors = ["Bryan Van Scoy"]
 version = "1.0.0-DEV"
 
+[deps]
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+
 [compat]
 julia = "1"
 
