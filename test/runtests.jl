@@ -1,11 +1,7 @@
-using Dissipativity
+using BlackBoxOptimization
 using Test
 
-@testset "Dissipativity.jl" begin
+@testset "BlackBoxOptimization.jl" begin
     # Write your tests here.
-    @test Dissipativity.greet() == "Dissipativity!"
-
-    @test begin
-      
-    end
+    @test greet() == "BlackBoxOptimization!"
 end

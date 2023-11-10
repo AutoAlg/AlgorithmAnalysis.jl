@@ -1,4 +1,4 @@
-name = "Dissipativity"
+name = "BlackBoxOptimization"
 uuid = "baa24b6d-515a-48bb-b1d2-0fdd27c035f8"
 authors = ["Bryan Van Scoy"]
 version = "1.0.0-DEV"

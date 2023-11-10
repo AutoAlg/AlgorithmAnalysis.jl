@@ -1,14 +1,14 @@
-# cd("C:\\Users\\vanscob\\.julia\\dev\\Dissipativity\\")
+# cd("C:\\Users\\vanscob\\.julia\\dev\\BlackBoxOptimization\\")
 # ] activate .
 # using Revise
-# using Dissipativity
+# using BlackBoxOptimization
 
-# ] test Dissipativity
+# ] test BlackBoxOptimization
 
-module Dissipativity
+module BlackBoxOptimization
 
 function greet()
-  return "Dissipativity!"
+  return "BlackBoxOptimization!"
 end
 
 struct DynamicalSystem
