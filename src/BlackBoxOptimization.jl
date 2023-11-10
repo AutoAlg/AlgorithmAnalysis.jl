@@ -11,36 +11,44 @@ function greet()
   return "BlackBoxOptimization!"
 end
 
-struct DynamicalSystem
-  T          # time space
-  X          # state value space
-  U          # input value space
-  Y          # output value space
-  stateTransitionFunction::Function  # map from (T,T,X,𝒰) to X
-  outputFunction::Function           # map from (X,U) to Y
+include("Constraint.jl")
+include("DynamicalSystem.jl")
+include("Expression.jl")
+include("Functional.jl")
+include("FunctionClass.jl")
+include("Oracle.jl")
+include("Point.jl")
 
-  function DynamicalSystem(T,X,U,Y,stateTransitionFunction,outputFunction)
 
-    @assert T <: Real
-
-    new(T,X,U,Y,stateTransitionFunction,outputFunction)
-  end
+mutable struct Algorithm
+  oracles::Array{Oracle}
+  # points::Array{Point}
+  # constraints
+  performanceMeasure
+  # counter (number of algorithms defined)
+  
+  # function Algorithm()
+  #   new()
+  # end
 end
 
-function iterate(sys::DynamicalSystem, x, u, t)
-
-  @assert typeof(x) <: sys.X
-  @assert typeof(u) <: sys.U
-  @assert typeof(t) <: sys.T
-
-  sys.stateTransitionFunction(x,u,t)::sys.X
+function getState(alg::Algorithm; dim::Integer)
+  
 end
 
-output(sys::DynamicalSystem, x, u) = sys.outputFunction(x,u,t)
+function setState(alg::Algorithm, nextState)
+  
+end
+
+function setPerformanceMeasure(alg::Algorithm, measure)
+  alg.performanceMeasure = measure
+end
+
+function analyze(alg::Algorithm)
+  
+end
 
 
-# Algorithms
-gradientDescent(α::Real) = DynamicalSystem( Integer, Real, Real, Real, (t1,t2,x,u) -> x-α*u(t1), (x,u,t) -> x )
 
 export greet
 
