@@ -71,23 +71,4 @@ const FunctionValue = Scalar
 const Point = InnerProductSpace
 
 
-abstract type FunctionClass end
-abstract type Oracle{InputSpace, OutputSpace} end
-abstract type FunctionClassOracle{InputSpace, OutputSpace, F<:FunctionClass} <: Oracle{InputSpace, OutputSpace} end
 
-struct FirstOrderFunctionClassOracle{F<:FunctionClass} <: FunctionClassOracle{Point, Tuple{Scalar,Point}, F}
-  samples::Dict{Point, Tuple{Scalar, Point}}
-
-  FirstOrderFunctionClassOracle{F}() where {F<:FunctionClass} = new(Dict())
-end
-
-struct Convex <: FunctionClass end
-
-const FirstOrderConvexOracle = FirstOrderFunctionClassOracle{Convex}
-
-Tuple{X,Y}() where {X,Y} = (X(),Y())
-Tuple{X,Y,Z}() where {X,Y,Z} = (X(),Y(),Z())
-
-function sample(oracle::Oracle{X,Y}, x::X)::Y where {X<:Node,Y<:Node}
-  oracle.samples[x] = Y()
-end

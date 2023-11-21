@@ -1,28 +1,41 @@
-abstract type Point end
-
-struct LeafPoint <: LeafNode end
-
-mutable struct InnerPoint <: InnerNode
-  children::Dict{LeafPoint, Number}
-
-  InnerPoint(children::Dict{LeafPoint, Number}) = new(children)
-  InnerPoint(p::LeafPoint) = new(Dict(p => 1))
+struct Point <: Node{Point, Number}
+  is_leaf::Bool
+  children::Dict{Point, Number}
+  
+  Point(children::Dict{V,F}) where {V<:Point,F<:Number} = new(false,children)
+  
+  Point() = new(true,Dict())
 end
 
-"Convert Leaf to Inner."
-convert(::Type{InnerPoint}, children::Dict{LeafPoint, Number}) = InnerNode(children)
+children(p::Point) = (p.is_leaf ? Dict(p => 1) : p.children)
 
-children(n::InnerPoint) = n.children
-children(n::LeafPoint) = Dict(n => 1)
+"Inner product of two points."
+Base.:*(p1::Point, p2::Point)::Expression = Expression(p1,p2)
 
-# "Inner product of points."
-# Base.:*(p1::Point, p2::Point)::Expression = BranchExpression(p1,p2)
+"Squared norm of point."
+squared_norm(p::Point)::Expression = p*p
 
-# "Squared norm of point."
-# squared_norm(p::Point)::Expression = p*p
-
+# "Zero vector."
+# zero_vec = Point(Dict{Point, Number}())
 
 
+
+# abstract type Point end
+
+# struct LeafPoint <: LeafNode end
+
+# mutable struct InnerPoint <: InnerNode
+#   children::Dict{LeafPoint, Number}
+
+#   InnerPoint(children::Dict{LeafPoint, Number}) = new(children)
+#   InnerPoint(p::LeafPoint) = new(Dict(p => 1))
+# end
+
+# "Convert Leaf to Inner."
+# convert(::Type{InnerPoint}, children::Dict{LeafPoint, Number}) = InnerNode(children)
+
+# children(n::InnerPoint) = n.children
+# children(n::LeafPoint) = Dict(n => 1)
 
 
 # abstract type Point end

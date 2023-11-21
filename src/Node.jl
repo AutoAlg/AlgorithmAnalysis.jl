@@ -1,28 +1,32 @@
-const Node = DAG
+"A node in an abstract linear computational graph."
+abstract type Node{V,F} <: Vec{V,F} end
 
-abstract type InnerNode <: Node end
-abstract type LeafNode <: Node end
+###############################################################################
+# Each `Node` must provide a specialized method for the following functions.
 
-function children end
+"Get the children of a node, which is a dictionary that maps vectors to scalars."
+function children(n::Node) end
 
-NodeType(::Type{<:InnerNode}) = InnerNode()
-NodeType(::Type{<:LeafNode}) = LeafNode()
-children(n::InnerNode) = n.children
+"Construct a node from its children."
+function Node{V,F}(children::Dict{V,F}) where {V,F} end
 
-"Convert Leaf to Inner."
-convert(::Type{InnerNode}, n::LeafNode) = InnerNode(n)
+###############################################################################
+# Derived node functions.
 
 "Add nodes."
-Base.:+(n1::T1, n2::T2) where {T1<:Node,T2<:Node} = InnerNode(merge(children(n1),children(n2)))  # sum(n1,n2)
-
-"Subtract nodes."
-Base.:-(n1::Node, n2::Node)::Node = n1 + (-n2)
+sum(n1::Node{V1,F1}, n2::Node{V2,F2}) where {V,F,V1<:V,V2<:V,F1<:F,F2<:F} = V1(mergewith(+,children(n1),children(n2)))
 
 "Multiply node by scalar."
-Base.:*(a::Number, n::T) where {T<:Node} = T(Dict(keys(children(n)) .=> map(x->a*x, values(children(n)))))  # scale(a,n)
+scale(a::F1, n::Node{V,F2}) where {V,F,F1<:F,F2<:F} = V(Dict(keys(children(n)) .=> map(x->a*x, values(children(n)))))
 
-"Negate node."
-Base.:-(n::Node)::Node = -1*n
+
+
+# NodeType(::Type{<:InnerNode}) = InnerNode()
+# NodeType(::Type{<:LeafNode}) = LeafNode()
+# children(n::InnerNode) = n.children
+
+# "Convert Leaf to Inner."
+# convert(::Type{InnerNode}, n::LeafNode) = InnerNode(n)
 
 
 # abstract type Node

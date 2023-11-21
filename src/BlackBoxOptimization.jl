@@ -11,37 +11,20 @@ function greet()
   return "BlackBoxOptimization!"
 end
 
-"A node in the computational graph (either a variable or an operator)."
-abstract type Node end
+# "Construct a new variable."
+# function variable() end
 
-"Construct a new variable."
-function variable() end
-
-"Add nodes."
-Base.:+(n1::Node, n2::Node)::Node = Node(merge(children(n1),children(n2)))  # sum(n1,n2)
-
-"Subtract nodes."
-Base.:-(n1::Node, n2::Node)::Node = n1 + (-n2)
-
-"Multiply node by scalar."
-Base.:*(a::Number, n::Node)::Node = Node(Dict(keys(children(n)) .=> map(x->a*x, values(children(n)))))  # scale(a,n)
-
-"Negate node."
-Base.:-(n::Node)::Node = -1*n
-
-
-
+# include("Vec.jl")
 # include("Node.jl")
 # include("Point.jl")
 # include("Expression.jl")
-
+include("Tensor.jl")
+include("Oracle.jl")
 
 # include("Constraint.jl")
 # include("DynamicalSystem.jl")
 # include("Functional.jl")
 # include("FunctionClass.jl")
-# include("Oracle.jl")
-
 
 # mutable struct Algorithm
 #   oracles::Array{Oracle}
