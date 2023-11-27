@@ -1,38 +1,55 @@
-"An abstract vector space with vectors in V and scalars in F."
-abstract type Vec{V,F<:Number} end
+"An abstract vector space over the field `Number`."
+abstract type Vec end
 
 ###############################################################################
-# Each `Vec` must provide a specialized method for the following functions.
-# The functions should be type stable in that they return vectors in Vec{V,F}.
+# Each `Vec` must specialize the following methods.
 
-function sum(v1::Vec{V1,F1}, v2::Vec{V2,F2}) where {V,F,V1<:V,V2<:V,F1<:F,F2<:F} end
-function scale(a::F1, v::Vec{V,F2}) where {V,F,F1<:F,F2<:F} end
+function sum(v1::Vec, v2::Vec)::Vec end
+function scale(a::Number, t::Vec)::Vec end
 
 ###############################################################################
-# Derived vector functions.
+# Derived methods.
 
-"Add vectors."
-Base.:+(v1::Vec{V1,F1}, v2::Vec{V2,F2}) where {V,F,V1<:V,V2<:V,F1<:F,F2<:F} = sum(v1,v2)
+"Add two vectors."
+Base.:+(v1::Vec, v2::Vec) = sum(v1,v2)
 
-"Subtract vectors."
-Base.:-(v1::Vec{V1,F1}, v2::Vec{V2,F2}) where {V,F,V1<:V,V2<:V,F1<:F,F2<:F} = v1 + (-v2)
+"Subtract two vectors."
+Base.:-(v1::Vec, v2::Vec) = v1 + (-v2)
 
-"Multiply vector by scalar."
-Base.:*(a::F1, v::Vec{V,F2}) where {V,F,F1<:F,F2<:F} = scale(a,v)
+"Scale a vector."
+Base.:*(a::Number, v::Vec) = scale(a,v)
+Base.:*(v::Vec, a::Number) = a*v
+Base.:/(v::Vec, a::Number) = (1/a)*v
 
-"Negate vector."
+"Negate a vector."
 Base.:-(v::Vec) = -1*v
 
+"Zero vector."
+struct ZeroVector <: Vec end
+zeroVec = ZeroVector()
 
-# struct ZeroScalar <: Number end
-# struct OneScalar <: Number end
-# struct ZeroVector <: Vec{Any,Number} end
+"Add vector with the zero vector."
+sum(v::Vec, ::ZeroVector) = v
+sum(::ZeroVector, v::Vec) = v
 
-# "Multiply vector by zero."
-# scale(::Type{ZeroScalar}, v::Vec) = ZeroVector
 
-# "Multiply vector by one."
-# scale(::OneScalar, v::Vec) = v
 
-# "Add vector with the zero vector."
-# sum(::ZeroVector, v::Vec) = v
+# "An abstract scalar field compatible with the field `Number`."
+# abstract type Scalar <: Vec end
+
+# ###############################################################################
+# # Each `Field` must specialize the methods required
+# # by `Vec` along with the following methods.
+
+# function sum(a::Number, s::Scalar)::Scalar end
+
+# ###############################################################################
+# # Derived methods.
+
+# "Add a scalar and a number."
+# Base.:+(a::Number, s::Scalar) = sum(a,s)
+# Base.:+(s::Scalar, a::Number) = sum(a,s)
+
+# "Subtract a scalar and a number."
+# Base.:-(a::Number, s::Scalar) = sum(a,-s)
+# Base.:-(s::Scalar, a::Number) = sum(-a,s)
