@@ -1,3 +1,0 @@
-mutable struct Operator
-  
-end

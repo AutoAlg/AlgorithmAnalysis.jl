@@ -1,188 +1,276 @@
-export AbstractVec, Point, Scalar, Points, Scalars, Variable, Constant, Value, ValueOrNothing, ExpressionOrValue, Expression, promote_rule, convert, Zero, Id
+export AbstractVec, Point, Scalar, Points, Scalars, Variable, Constant, Value, ValueOrNothing, ExpressionOrValue, Expression, promote_rule, convert, Zero, Id, children, evaluate, hasvalue, getvalue, zero, squared_norm, label, label!
 
-import Base.promote_rule, Base.convert
-
-"An abstract expression in a linear computational graph."
-abstract type Expression end
-
-const Value = Union{Number,AbstractArray}
-const ValueOrNothing = Union{Value,Nothing}
-const ExpressionOrValue = Union{Expression,Value}
-
-function isleaf end
-function type end
-function evaluate end
+import Base.promote_rule, Base.convert, Base.==, Base.zero, Base.isequal, Base.:^
 
 
-struct Variable{T<:Value} <: Expression end
+###############################################################################
+# Basis vector
 
-struct Constant{T<:Value} <: Expression
-  value::T
+"The `i`th basis vector of dimension `n`."
+function basis_vector(i::Int, n::Int)
+  if i ≤ 0 || i > n
+    error("Basis vector must have 1 ≤ i ≤ n.")
+  end
+  e = zeros(n)
+  e[i] = 1
+  e
 end
 
-"Zero expression (additive identity)."
+
+###############################################################################
+# Abstract types
+
+
+
 struct Zero <: Expression end
 
-"Identity expression (multiplicative identity)."
-struct Id <: Expression end
-
-"Promote a subtype of `Value` to a subtype of `Expression`."
-promote_rule(::Type{T}, ::Type{<:Value}) where {T<:Expression} = T
-
-"Convert a subtype of `Value` to a subtype of `Expression`."
-convert(::Type{T1}, x::T2) where {T1<:Expression,T2<:Value} = T1(x)
-# convert(::Type{Constant{T}}, x::T) where {T} = Constant{T}(x)
-# convert(::Type{Expression}, x::T) where {T<:Value} = Constant{T}(x)
-
-
-# leaf or non-leaf
-# variable or constant
-# type of value
-# algebraic properties
-
 ###############################################################################
-# Each `Expression` must specialize the following methods.
+# Each `Expression` must either have the fields `label` and `children` and `parents` or it must
+# specialize the following methods.
 
-"Construct a leaf node expression."
+"Construct a variable expression."
 function Expression()::Expression end
 
-"Construct a non-leaf node expression from its children."
-function Expression(children::Dict)::Expression end
-
-"Get the children of an expression."
-function children(e::Expression)::Dict end
-
-"Check whether or not an expression is a leaf node."
-function isleaf(e::Expression)::Bool end
-
-###############################################################################
-# Derived methods.
-
-"Add two expressions."
-function sum(e1::T1, e2::T2) where {T1<:Expression,T2<:Expression}
-  E1,E2 = promote(e1,e2)
-  T = typeof(E1)
-  T(mergewith(+,children(E1),children(E2)))
+"Set the label of an expression."
+function label!(x::Expression, label::String)::Nothing
+  x.label = label
+  nothing
 end
-sum(e::Expression, ::Zero) = e
-sum(::Zero, e::Expression) = e
 
-"Scale an expression."
-scale(a::Number, e::T) where {T<:Expression} = T(Dict(keys(children(e)) .=> map(x->a*x, values(children(e)))))
+"Get the label of an expression."
+function label(x::Expression)::String
+  x.label
+end
 
+"Check whether or not an expression is a leaf."
+isleaf(x::Expression) = isempty(x.children)
+
+"Children of an expression, which is a set/tuple/vector of expressions on which the atom is operated to produce the expression."
+function children(x::Expression)
+  isleaf(x) ? Dict(x => 1) : x.children
+end
+
+"Parents of an expression, which is the set of expressions for which this expression is a child."
+function parents(x::Expression)::Set{Expression}
+  x.parents
+end
+
+"Custom display of an expression."
+function Base.show(io::IO, x::T) where {T<:Expression}
+  println(io, "$T($(label(x)),$(length(children(x))))")
+end
+
+"Variables in an expression."
+variables(x::Expression) = keys(children(x))
+
+# "Data type for the values of an expression."
+# type(::Expression{T}) where {T} = T
+
+"Check whether or not the value of an expression is known."
+hasvalue(x::Expression) = !isnothing(x.value)
+getvalue(x::Expression) = x.value
+
+"Evaluate an expression."
+function evaluate(x::Expression)
+  if hasvalue(x)
+    getvalue(x)
+  elseif isleaf(x) && !hasvalue(x)
+    error("Cannot evaluate expression $x.")
+  else
+    val = zero(typeof(x))
+    for (key, value) ∈ children(x)
+      if isleaf(key) && !hasvalue(key)
+        error("Cannot evaluate expression $key.")
+      end
+      val += value * evaluate(key)
+    end
+    val
+  end
+end
+
+"Check if two expressions are equal."
+function isequal(x1::Expression, x2::Expression)
+  if isleaf(x1)
+    if isleaf(x2)
+      isequal(getvalue(x1), getvalue(x2))
+    else
+      false
+    end
+  else
+    isequal(children(x1), children(x2))
+  end
+end
 
 ###############################################################################
-# AbstractVec
+# Each `VectorSpace` must specialize the following methods.
 
-"An abstract vector space over the field `Number`."
-const AbstractVec = Expression
+# sum(v1::VectorSpace, v2::VectorSpace) = error("Sum not implemented for type $(typeof(v1)) or $(typeof(v2)).")
+# scale(a::Number, v::VectorSpace) = error("Scale not implemented for type $(typeof(v)).")
 
-
-
-###############################################################################
-# Each `AbstractVec` must specialize the following methods.
-
-# "Construct a leaf node expression."
-# function AbstractVec()::AbstractVec end
-
-# "Construct a non-leaf node expression from its children."
-# function AbstractVec(children::Dict)::AbstractVec end
-
-# "Get the children of an expression."
-# function children(e::AbstractVec)::Dict end
-
-# "Check whether or not an expression is a leaf node."
-# function isleaf(e::AbstractVec)::Bool end
-
-# sum(v1::AbstractVec, v2::AbstractVec) = error("Sum not implemented for type $(typeof(v1)) or $(typeof(v2)).")
-# scale(a::Number, v::AbstractVec) = error("Scale not implemented for type $(typeof(v)).")
+# const VectorSpace = Vec
 
 ###############################################################################
 # Derived methods.
 
-# "Add two expressions."
-# sum(e1::T, e2::T) where {T<:Expression{<:Value}} = T(mergewith(+,children(e1),children(e2)))
-# sum(e::Expression, ::Zero) = e
-# sum(::Zero, e::Expression) = e
+# "Add two vectors."
+# function sum(x1::T, x2::T) where {T<:VectorSpace}
+#   x = T(mergewith(+,children(x1),children(x2)))
+#   mergewith!(+,parents(x1),Dict(x => 1))
+#   mergewith!(+,parents(x2),Dict(x => 1))
+#   x
+# end
 
-# "Scale an expression."
-# scale(a::Number, e::T) where {T<:Expression} = T(Dict(keys(children(e)) .=> map(x->a*x, values(children(e)))))
+# "Scale a vector."
+# scale(a::Number, v::T) where {T<:VectorSpace} = T(Dict(keys(children(v)) .=> map(x->a*x, values(children(v)))))
 
-"Add two vectors."
-Base.:+(v1::T1, v2::T2) where {T1<:Union{AbstractVec,Value},T2<:Union{AbstractVec,Value}} = sum(promote(v1,v2)...)
+# ###############################################################################
+# # InnerProductSpace
 
-"Subtract two vectors."
-Base.:-(v1::T1, v2::T2) where {T1<:AbstractVec,T2<:AbstractVec} = v1 + (-v2)
+# "An abstract inner product space."
+# abstract type InnerProductSpace <: VectorSpace end
 
-"Scale a vector."
-Base.:*(a::Number, v::T) where {T<:AbstractVec} = scale(a,v)
-Base.:*(v::AbstractVec, a::Number) = a*v
-Base.:/(v::AbstractVec, a::Number) = (1/a)*v
+# # Each `InnerProductSpace` must specialize the following methods.
+# function Base.:*(v1::InnerProductSpace, v2::InnerProductSpace) end
 
-"Negate a vector."
-Base.:-(v::AbstractVec) = -1*v
+# # Derived methods
+# Base.:^(v::InnerProductSpace, n::Int) = (n == 2 ? v*v : error("Only squaring a vector is allowed."))
 
-# "Add vector with the zero vector."
-# sum(v::AbstractVec, ::Zero) = v
-# sum(::Zero, v::AbstractVec) = v
+# ###############################################################################
+# # ScalarField
+
+# "An abstract scalar."
+# abstract type ScalarField <: InnerProductSpace end
+
+# ###############################################################################
+# # Each `ScalarField` must specialize the following methods.
+
+# "Construct a scalar field from a number."
+# function ScalarField(a::Number)::ScalarField end
 
 
 ###############################################################################
 # Point
 
-struct Point <: AbstractVec
-  is_leaf::Bool
+"Point"
+mutable struct Point <: Expression
   children::Dict
+  value::Union{Vector,Nothing}
+  label::String
+  oracles::Vector{Oracle}
+  constraints::Vector{Constraint}
+  
+  "Construct a point variable."
+  Point() = new(Dict(),nothing,"",Oracle[],Constraint[])
+
+  "Construct a point from its children."
+  Point(children::Dict) = new(children,nothing,"",Oracle[],Constraint[])
 end
 
-# required methods
+zero(::Type{Point}) = (p=Point(); p.value=[0]; p.label="0"; p)
 
-Point() = Point(true,Dict())
-Point(children::Dict) = Point(false,children)
-children(p::Point) = ( p.is_leaf ? Dict(p => 1) : p.children )
-isleaf(p::Point) = p.is_leaf
-zero(::Type{Point}) = Point(true,Dict())
-
-# additional methods
-
-Base.:*(p1::Point, p2::Point) = Scalar(true,Dict( (p1,p2) => 1 ),0)
-
-"Custom display of a point."
-function Base.show(io::IO, p::Point)
-  @show p.is_leaf
-  @show p.children
+function Base.:*(p1::Point, p2::Point)
+  d = Dict()
+  for (key1, value1) ∈ children(p1)
+    for (key2, value2) ∈ children(p2)
+      mergewith!(+,d,Dict( (key1,key2) => value1*value2 ))
+    end
+  end
+  Scalar(d)
 end
+
+Base.:^(v::Point, n::Int) = (n == 2 ? v*v : error("Only squaring a vector is allowed."))
+
+"Add two vectors."
+sum(x1::Point, x2::Point) = Point(mergewith(+,children(x1),children(x2)))
+
+"Add vector with the zero vector."
+sum(v::Point, ::Zero) = v
+sum(::Zero, v::Point) = v
+
+"Scale a vector."
+scale(a::Number, v::Point) = Point(Dict(keys(children(v)) .=> map(x->a*x, values(children(v)))))
+
+"Add two vectors."
+Base.:+(v1::Point, v2::Point) = sum(v1,v2)
+
+"Subtract two vectors."
+Base.:-(v1::Point, v2::Point) = v1 + (-v2)
+
+"Scale a vector."
+Base.:*(a::Number, v::Point) = scale(a,v)
+Base.:*(v::Point, a::Number) = a*v
+Base.:/(v::Point, a::Number) = (1/a)*v
+
+"Negate a vector."
+Base.:-(v::Point) = -1*v
+
+# "Multiply a vector with the identity matrix."
+# Base.:*(::Identity, v::Point) = v
 
 ###############################################################################
 # Scalar
 
-struct Scalar <: AbstractVec
-  is_leaf::Bool
+mutable struct Scalar <: Expression
   children::Dict
-  constant::Number
+  value::Union{Number,Nothing}
+  label::String
+  oracles::Vector{Oracle}
+  constraints::Vector{Constraint}
+  
+  "Construct a scalar variable."
+  Scalar(label::String = "") = new(Dict(),nothing,label,Oracle[],Constraint[])
+
+  "Construct a scalar from its children."
+  Scalar(children::Dict, label::String = "") = new(children,nothing,label,Oracle[],Constraint[])
+
+  "Construct a constant scalar from a number."
+  Scalar(a::Number, label::String = "") = new(Dict(),a,label,Oracle[],Constraint[])
 end
 
-# required methods
+zero(::Type{Scalar}) = Scalar(0,"0")
 
-Scalar() = Scalar(true,Dict(),0)
-Scalar(children::Dict) = Scalar(false,children,0)
-Scalar(v::Number) = Scalar(true,Dict(),v)
-children(s::Scalar) = ( s.is_leaf ? Dict(s => 1) : s.children )
-isleaf(s::Scalar) = s.is_leaf
-zero(::Type{Scalar}) = Scalar(true,Dict(),0)
+"Add two scalars."
+sum(x1::Scalar, x2::Scalar) = Scalar(mergewith(+, children(x1), children(x2)))
+sum(x1::Number, x2::Scalar) = Scalar(mergewith(+, children(x2), Dict(1 => x1)))
+sum(x1::Scalar, x2::Number) = Scalar(mergewith(+, children(x1), Dict(1 => x2)))
 
-# additional methods
+"Add vector with the zero vector."
+sum(v::Scalar, ::Zero) = v
+sum(::Zero, v::Scalar) = v
 
-"Add a scalar and a number."
-Base.:+(a::Number, s::Scalar) = Scalar(false,s.children,s.constant+a)
-Base.:+(s::Scalar, a::Number) = a+s
+"Scale a vector."
+scale(a::Number, v::Scalar) = Scalar(Dict(keys(children(v)) .=> map(x->a*x, values(children(v)))))
 
-"Subtract a scalar and a number."
-Base.:-(a::Number, s::Scalar) = a+(-s)
-Base.:-(s::Scalar, a::Number) = s+(-a)
+"Add two vectors."
+Base.:+(v1::Scalar, v2::Scalar) = sum(v1,v2)
+Base.:+(v1::Scalar, v2::Number) = v1 + Scalar(v2)
+Base.:+(v1::Number, v2::Scalar) = v2 + Scalar(v1)
 
-"Multiply a number and a scalar."
-scale(a::Number, s::Scalar) = Scalar(false,Dict(keys(children(s)) .=> map(x->a*x, values(children(s)))),a*s.constant)
+"Subtract two vectors."
+Base.:-(v1::Scalar, v2::Scalar) = v1 + (-v2)
+Base.:-(v1::Scalar, v2::Number) = v1 + (-v2)
+Base.:-(v1::Number, v2::Scalar) = v1 + (-v2)
+
+"Scale a vector."
+Base.:*(a::Number, v::Scalar) = scale(a,v)
+Base.:*(v::Scalar, a::Number) = a*v
+Base.:/(v::Scalar, a::Number) = (1/a)*v
+
+"Negate a vector."
+Base.:-(v::Scalar) = -1*v
+
+###############################################################################
+# Conversion and promotion
+
+# "Promote a subtype of `Value` to a subtype of `Expression`."
+# promote_rule(::Type{T}, ::Type{<:Value}) where {T<:Expression} = T
+
+# "Convert a subtype of `Value` to a subtype of `Expression`."
+# convert(::Type{T1}, x::T2) where {T1<:Expression,T2<:Value} = T1(x)
+
+
+convert(::Type{Scalar}, x::Number) = Scalar(x)
+
 
 ###############################################################################
 # Vectors
@@ -196,3 +284,6 @@ const Points = Vector{Point}
 
 Tuple{X,Y}() where {X,Y} = (X(),Y())
 Tuple{X,Y,Z}() where {X,Y,Z} = (X(),Y(),Z())
+
+
+

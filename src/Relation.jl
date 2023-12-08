@@ -1,4 +1,5 @@
 export Relation, length, domain, codomain, preimage, image, push!, inv, ∘, +, ∈, zeros
+
 import Base.push!, Base.length, Base.inv, Base.zeros
 
 ###############################################################################
@@ -62,7 +63,6 @@ preimage(r::Relation) = Set(r.inputs)
 image(r::Relation) = Set(r.outputs)
 
 "Add an input-output pair to a relation."
-# push!(r::Relation{X, Y}, x::X, y::Y) where {X, Y} = (push!(r.inputs,x); push!(r.outputs,y);)
 function push!(r::Relation, x, y)
   if !isa(x,domain(r))
     error("The point $x must be in the domain $(domain(r)) of the relation $r.")
@@ -126,47 +126,5 @@ function Base.show(io::IO, r::Relation)
 end
 
 ###############################################################################
-"A relation class is a (possibly infinite) set of relations."
+"An abstract class of relations. Each `AbstractRelationClass` must provide a method ∈(r,R) to test whether or not a relation `r` is in a relation class `R`. For a relation class that consists of a finite number of relations, this function could simply check whether or not the relation is an element of the class. For relation classes that consist of an infinite number of relations, these are the interpolation conditions for the relation class."
 abstract type AbstractRelationClass end
-
-###############################################################################
-# Each `RelationClass` must specialize the following methods.
-
-"Determine whether or not a relation is in a relation class. For a relation class that consists of a finite number of relations, this function could simply check whether or not the relation is an element of the class. For relation classes that consist of an infinite number of relations, these are the interpolation conditions for the relation class."
-function Base.:∈(r::AbstractRelation, R::AbstractRelationClass)::Bool end
-
-###############################################################################
-# Derived methods.
-
-# "Input space of a relation class."
-# inputspace(::AbstractRelationClass) where {T} = inputspace(T)
-
-# "Output space of a relation class."
-# outputspace(::AbstractRelationClass) where {T} = outputspace(T)
-
-
-###############################################################################
-# "A multiplier is a linear function on a set of relations."
-# abstract type Multiplier{X, Y} end
-
-# ℳ   = {M : M(r)    ≥ 0 for all r ∈ R} = R*
-# ℳ_φ = {M : M(φ(r)) ≥ 0 for all r ∈ R}
-
-
-###############################################################################
-# Each `Multiplier` must specialize the following methods.
-
-
-
-###############################################################################
-# Derived methods.
-
-# "Input space of a multiplier."
-# inputspace(::Multiplier{X, Y}) where {X, Y} = X
-
-# "Output space of a multiplier."
-# outputspace(::Multiplier{X, Y}) where {X, Y} = Y
-
-
-
-

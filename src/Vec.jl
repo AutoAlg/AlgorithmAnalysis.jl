@@ -4,14 +4,17 @@ abstract type Vec end
 ###############################################################################
 # Each `Vec` must specialize the following methods.
 
-function sum(v1::Vec, v2::Vec)::Vec end
-function scale(a::Number, t::Vec)::Vec end
+"Sum to vectors to product another vector."
+function sum end
+
+"Scale a vector by a scalar (`Number`)"
+function scale end
 
 ###############################################################################
 # Derived methods.
 
 "Add two vectors."
-Base.:+(v1::Vec, v2::Vec) = sum(v1,v2)
+Base.:+(v1::Vec, v2::Vec) = sum(promote(v1,v2)...)
 
 "Subtract two vectors."
 Base.:-(v1::Vec, v2::Vec) = v1 + (-v2)

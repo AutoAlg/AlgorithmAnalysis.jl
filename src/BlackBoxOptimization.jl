@@ -5,101 +5,92 @@
 
 # ] test BlackBoxOptimization
 
-module BlackBoxOptimization
+module BlackBoxOptimizationP
 
 const m = BlackBoxOptimization
 
-export BlackBoxOptimization, m, Problem, oracle!, point!, constraint!, performance!, solve!, Constraint, Constraints, FirstOrderConvexOracle
+export BlackBoxOptimization, m, maximize
+
+import Convex, SCS
+import Base.zero
+
+"An abstract expression that evaluates to a value of type `T`."
+abstract type Expression end
+
+"An abstract constraint on expressions that evaluates to a value of type `T`."
+abstract type Constraint end
+
+include("relation.jl")    # no dependencies
+
+# include("ast.jl")         # requires Oracle and Constraint
+include("oracle.jl")      # requires relation.jl and Expression
+include("expression.jl")  
+
+include("constraint.jl")  # requires Expression
+include("solve.jl")
+
+include("interpolation.jl")
+
+###############################################################################
+# Conversion and promotion
+
+# import Base.promote_rule, Base.convert
+
+# "Promote a subtype of `Value` to a subtype of `Expression`."
+# promote_rule(::Type{T}, ::Type{<:Value}) where {T<:Expression} = T
+
+# "Promote `Number` and `Scalar` to `Scalar`."
+# promote_rule(::Type{T}, ::Type{<:Number}) where {T<:Expression{Scalar}} = T
+
+# "Promote `AbstractArray` and `Point` to `Point`."
+# promote_rule(::Type{T}, ::Type{<:AbstractArray}) where {T<:Expression{Point}} = T
+
+# "Convert a subtype of `Value` to a subtype of `Expression`."
+# convert(::Type{T1}, x::T2) where {T1<:Expression,T2<:Value} = T1(x)
+
+# "Convert `Number` to `Constant{Scalar}`."
+# convert(::Type{<:Expression{Scalar}}, x::T) where {T<:Number} = Constant(Scalar(x))
+
+# "Convert `AbstractArray` to `Constant{Point}`."
+# convert(::Type{<:Constant{Point}}, x::T) where {T<:AbstractArray} = Constant(Point(x))
 
 
-# include("Vec.jl")
-include("Expression.jl")
-include("Constraint.jl")
-include("Relation.jl")
-include("Oracle.jl")
+###############################################################################
+# Default tuple constructors
 
-mutable struct Problem
-  oracles::Oracles
-  points::Points
-  constraints::Constraints
-  performance::Scalar
+# Tuple{X,Y}() where {X,Y} = (X(),Y())
+# Tuple{X,Y,Z}() where {X,Y,Z} = (X(),Y(),Z())
+# Tuple{Expression{Scalar}, Expression{Point}}() = ( Variable{Scalar}(), Variable{Point}() )
+Tuple{Scalar, Point}() = ( Scalar(), Point() )
 
-  Problem() = new(Oracles(), Points(), Constraints(), Scalar())
+
+###############################################################################
+# Hash
+
+# Override hash function because of
+# https://github.com/JuliaLang/julia/issues/10267
+import Base.hash
+
+const hash_seed = UInt === UInt64 ? 0x7f53e68ceb575e76 : 0xeb575e7
+
+function hash(a::Array{Expression}, h::UInt)
+    h += hash_seed
+    h += hash(size(a))
+    for x in a
+        h = hash(x, h)
+    end
+    return h
 end
 
-"Custom display of a problem."
-function Base.show(io::IO, prob::Problem)
-  print(io, "\n>> Oracles\n\t")
-  [ println(io, x) for x in prob.oracles ]
-  print(io, ">> Points\n\t")
-  [ println(io, x) for x in prob.points ]
-  print(io, ">> Constraints\n\t")
-  [ println(io, x) for x in prob.constraints ]
-  isempty(prob.constraints) && println()
-  print(io, ">> Performance\n\t")
-  println(io, prob.performance)
+"Recursively compute the hash of an expression based on the hashes of its leaf nodes (variables and constants)."
+function hash(x::Expression, h::UInt)
+  if isleaf(x)
+    objectid(x)
+  else
+    hash(x.children, h)
+  end
 end
 
-oracle!(prob::Problem, oracle::Oracle) = (push!(prob.oracles, oracle); oracle)
-point!(prob::Problem, point::Point) = (push!(prob.points, point); point)
-point!(prob::Problem) = (point=Point(); point!(prob,point))
-constraint!(prob::Problem, constraint::Constraint) = (push!(prob.constraints, constraint); constraint)
-performance!(prob::Problem, s::Scalar) = (prob.performance = s)
-
-# function solve!(prob::Problem, verbose::Int, return_full_cvxpy_problem=false, dimension_reduction_heuristic=nothing, eig_regularization=1e-3, tol_dimension_reduction=1e-5; kwargs...) end
-
-# # only used internally to solve
-# function expression2convex(prob::Problem, e::Expression, f::Vector{Scalar}, G::Matrix{Scalar}) end
-# function send_constraint_to_cvxpy(prob::Problem, e::Expression, f::Vector{Scalar}, G::Matrix{Scalar}) end
-# function _eval_points_and_function_values(prob::Problem, F_value, G_value, verbose) end
-
-# function analysis_begin()
-#   global __prob = Problem()
-# end
-
-# function analysis_end()
-#   global __prob
-
-#   @show __prob
-# end
-
-
-
-
-
-# include("Point.jl")
-# include("Expression.jl")
-# include("Constraint.jl")
-# include("DynamicalSystem.jl")
-# include("Functional.jl")
-# include("FunctionClass.jl")
-
-# mutable struct Algorithm
-#   oracles::Array{Oracle}
-#   # points::Array{Point}
-#   # constraints
-#   performanceMeasure
-#   # counter (number of algorithms defined)
-  
-#   # function Algorithm()
-#   #   new()
-#   # end
-# end
-
-# function getState(alg::Algorithm; dim::Integer)
-  
-# end
-
-# function setState(alg::Algorithm, nextState)
-  
-# end
-
-# function setPerformanceMeasure(alg::Algorithm, measure)
-#   alg.performanceMeasure = measure
-# end
-
-# function analyze(alg::Algorithm)
-  
-# end
+hash(c::Constraint, h::UInt) = hash(c.x, h)
 
 end
