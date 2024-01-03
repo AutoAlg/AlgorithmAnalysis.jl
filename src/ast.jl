@@ -1,135 +1,4 @@
-export Expression, Constraint, evaluate, head, id_hash, type, label!, label, children, parents, constraints, Scalar, Point, Value, zero, lift
-
-"Data type for the values of an expression."
-abstract type Value end
-
-struct Scalar <: Value
-  value::Number
-end
-
-struct Point <: Value
-  value::AbstractArray
-end
-
-zero(::Type{Scalar}) = Scalar(0)
-zero(::Type{Point}) = Point([0])
-
-"Lift a vector of scalars."
-function lift(X::Vector{Scalar})
-  [ x.value for x ∈ X ]
-end
-
-"Lift a vector of points."
-function lift(X::Vector{Point})
-  P = reduce(hcat, x.value for x ∈ X)
-  P'*P
-end
-
-"Value or nothing (if value is unknown)."
-const ValueOrNothing = Union{Value,Nothing}
-
-"An abstract expression that evaluates to a value of type `T`."
-abstract type Expression{T<:Value} end
-
-"An abstract constraint on expressions that evaluates to a value of type `T`."
-abstract type Constraint{T<:Value} end
-
-const Expressions{T} = Set{Expression{T}}
-const Parents = Set{Expression}
-const Label = String
-const Functional = Expression{Scalar}
-
-
-"The `i`th basis vector of dimension `n`."
-function basis_vector(i::Int, n::Int)
-  if i ≤ 0 || i > n
-    error("Basis vector must have 1 ≤ i ≤ n.")
-  end
-  e = zeros(n)
-  e[i] = 1
-  e
-end
-
-###############################################################################
-# Each `Expression` must specialize the following methods.
-
-"Evaluate an expression. Returns a value of type `type(e)` if the value of all children expressions are known, and `nothing` otherwise."
-function evaluate(e::Expression)::ValueOrNothing end
-
-###############################################################################
-# Each `Expression` must either have the fields `head`, `id_hash`, `label`,
-# `children`, `parents`, and `constraints`, or it must specialize the following
-# methods.
-
-"Custom display of an expression."
-function Base.show(io::IO, x::T) where {T<:Expression}
-  println(io, "$T($(x.label))")
-end
-
-"Set the label of an expression."
-function label!(x::Expression, label::String)::Nothing
-  x.label = label
-  nothing
-end
-
-"Get the label of an expression."
-function label(x::Expression)::String
-  x.label
-end
-
-"Children of an expression, which is a set/tuple/vector of expressions on which the atom is operated to produce the expression."
-function children(x::Expression)
-  x.children
-end
-
-"Parents of an expression, which is the set of expressions for which this expression is a child."
-function parents(x::Expression)::Set{Expression}
-  x.parents
-end
-
-"Data type for the values of an expression."
-type(::Expression{T}) where {T<:Value} = T
-
-
-###############################################################################
-# IsEqual
-
-import Base.isequal
-
-"Test if two expressions are equal (they are of the same type and have the same children)."
-function isequal(x::Expression, y::Expression)::Bool
-  if typeof(x) ≠ typeof(y)
-    return false
-  end
-  if isa(x, Variable)
-    if objectid(x) == objectid(y)
-      return true
-    else
-      return false
-    end
-  end
-  if isa(x, Constant)
-    if x.value == y.value
-      return true
-    else
-      return false
-    end
-  end
-  n = length(children(x))
-  if n ≠ length(children(y))
-    return false
-  end
-  for i = 1:n
-    if !isequal(x.children[i],y.children[i])
-      return false
-    end
-  end
-  true
-end
-
-
-
-
+export Expression, Constraint, evaluate, head, id_hash, type, label!, label, children, parents, constraints, AbstractScalar, AbstractPoint, Scalar, Point, zero, lift
 
 
 export Constant, Variable, evaluate, zero, constraints, lift
@@ -137,103 +6,184 @@ export Constant, Variable, evaluate, zero, constraints, lift
 import Base.+, Base.-, Base.*, Base.^, Base.isequal
 
 
+# "Data type for the value of an expression."
+# abstract type Value end
+
+# struct Scalar <: Value
+#   value::Number
+# end
+
+# struct Point <: Value
+#   value::AbstractArray
+# end
+
+# zero(::Type{Scalar}) = Scalar(0)
+# zero(::Type{Point}) = Point([0])
+
+# "Lift a vector of scalars."
+# function lift(X::Vector{Scalar})
+#   [ x.value for x ∈ X ]
+# end
+
+# "Lift a vector of points."
+# function lift(X::Vector{Point})
+#   P = reduce(hcat, x.value for x ∈ X)
+#   P'*P
+# end
+
+# "Value or nothing (if value is unknown)."
+# const ValueOrNothing = Union{Value,Nothing}
+
+abstract type AbstractPoint end
+abstract type AbstractScalar end
+
+struct Point <: AbstractPoint end
+struct Scalar <: AbstractScalar end
+
+const Parents = Tuple{Expression}
+const Children = Set{Expression}
+const Label = String
+const Constraints = Set{Constraint}
+const Functional = Expression{AbstractScalar}
+
+###############################################################################
+# Each `Expression` must specialize the following methods.
+
+"Evaluate an expression. Returns a value of type `type(e)` if the value of all children expressions are known, and `nothing` otherwise."
+function evaluate(e::Expression) end
+
+###############################################################################
+# Each `Expression` must either have the fields `head`, `id_hash`, `label`,
+# `children`, `parents`, and `constraints`, or it must specialize the following
+# methods.
+
+"Custom display of an expression."
+Base.show(io::IO, x::Expression) = println(io, "$(typeof(x))($(x.label))")
+
+"Set the label of an expression."
+label!(x::Expression, label::String) = (x.label = label; nothing)
+
+"Get the label of an expression."
+label(x::Expression) = x.label
+
+"Children of an expression, which is the set of expressions for which this expression is a parent."
+children(x::Expression)::Expressions = x.children
+
+"Parents of an expression, which is a set/tuple/vector of expressions on which the atom is operated to produce the expression."
+parents(x::Expression)::Expressions = x.parents
+
+"Data type for the values of an expression."
+type(::Expression{T}) where {T} = T
+
+"Test if two expressions are equal."
+function isequal(x::Expression, y::Expression)::Bool
+  if typeof(x) == typeof(y) && parents(x) == parents(y)
+    true
+  else
+    false
+  end
+end
+
 ###############################################################################
 # Constant expression
 
-mutable struct Constant{T<:Value} <: Expression{T}
-  label::Label
-  parents::Parents
+mutable struct Constant{T} <: Expression{T}
   value::T
-  lift::Vector
+  label::Label
   
-  Constant(value::T, label::Label = "") where {T<:Value} = new{T}(label, Parents(), value)
+  Constant(value::T, label::Label = "") where {T} = new{T}(value, label)
 end
 
 evaluate(x::Constant) = x.value
 
-zero(::Type{Expression{T}}) where {T<:Value} = Constant(zero(T))
+"Test if two constants are equal."
+isequal(x::Constant{T}, y::Constant{T}) where {T} = x.value == y.value
 
-lift(x::Constant) = x.lift
+###############################################################################
+# Zero expression
 
+struct Zero{T} <: Expression{T} end
+
+evaluate(x::Zero) = zero(T)
+
+zero(::Type{Expression{T}}) where {T} = Zero{T}()
+
+"Test if two zero expressions are equal."
+isequal(x::Zero{T}, y::Zero{T}) where {T} = true
 
 ###############################################################################
 # Variable expression
 
-mutable struct Variable{T<:Value} <: Expression{T}
-  label::Label
-  parents::Parents
+mutable struct Variable{T} <: Expression{T}
   value::Union{T,Nothing}
-  constraints::Set{Constraint}
-  oracles::Set{Oracle}
-  lift::Vector
+  label::Label
+  children::Children
+  constraints::Constraints
+  oracles::Oracles
   
-  function Variable{T}(label::Label = "") where {T<:Value}
-    new(label, Parents(), nothing, Set{Constraint}(), Set{Oracle}(), Vector())
-  end
+  Variable{T}(label::Label = "") where {T} = new{T}(nothing, label, Children(), Constraints(), Oracles())
 end
 
+"Evaluate a variable. Returns `nothing` if the value is unknown."
 evaluate(x::Variable) = x.value
 
-"Construct an expression (without arguments) as a variable."
-Expression{T}() where {T<:Value} = Variable{T}()
+"Construct an expression as a variable."
+Expression{T}(label::Label = "") where {T} = Variable{T}(label)
 
 "The set of constraints that depend on a variable."
-constraints(x::Variable) = x.constraints
+function constraints(x::Variable)
+  cons = x.constraints
+  for o ∈ x.oracles
+    cons = cons ∪ interpolation_conditions(o)
+  end
+  cons
+end
 
-lift(x::Variable) = x.lift
+"Test if two variables are equal."
+function isequal(x::Variable{T}, y::Variable{T}) where {T}
+  x.value == y.value && x.children == y.children && x.constraints == y.constraints && x.oracles == y.oracles
+end
 
 ###############################################################################
 # Unary negation
 
-mutable struct NegateAtom{T<:Value} <: Expression{T}
+mutable struct NegateAtom{T} <: Expression{T}
   label::Label
-  children::Tuple{Expression}
   parents::Parents
-  value::Union{T,Nothing}
+  children::Children
   
-  function NegateAtom(x::Expression{T}, label::Label = "") where {T<:Value}
-    children = (x,)
-    this = new{T}(label, children, Parents(), nothing)
-    push!(x.parents,this)
+  function NegateAtom(x::Expression{T}, label::Label = "") where {T}
+    parents = (x,)
+    this = new{T}(label, parents, Children())
+    push!(x.children,this)
     return this
   end
 end
 
-evaluate(x::NegateAtom) = -evaluate(x.children[1])
+evaluate(x::NegateAtom) = -evaluate(x.parents[1])
 
 -(x::Expression) = NegateAtom(x)
-
-lift(x::NegateAtom) = -lift(x.children[1])
 
 ###############################################################################
 # Addition
 
-mutable struct AdditionAtom{T<:Value} <: Expression{T}
+mutable struct AdditionAtom{T} <: Expression{T}
   label::Label
-  children::Vector{Expression}
   parents::Parents
-  value::Union{T,Nothing}
+  children::Children
   
-  function AdditionAtom(x::Expression{T}, y::Expression{T}, label::Label = "") where {T<:Value}
-    children = Vector{Expression{T}}()
-    if isa(x, AdditionAtom)
-      append!(children, x.children)
-    else
-      push!(children, x)
-    end
-    if isa(y, AdditionAtom)
-      append!(children, y.children)
-    else
-      push!(children, y)
-    end
-    this = new{T}(label, children, Parents(), nothing)
-    push!(x.parents,this)
-    push!(y.parents,this)
+  function AdditionAtom(x::Expression{T}, y::Expression{T}, label::Label = "") where {T}
+    parents = Parents()
+    isa(x, AdditionAtom) ? append!(parents, x.parents) : push!(parents, x)
+    isa(y, AdditionAtom) ? append!(parents, y.parents) : push!(parents, y)
+    this = new{T}(label, parents, Children())
+    push!(x.children,this)
+    push!(y.children,this)
     return this
   end
 end
 
-evaluate(x::AdditionAtom) = mapreduce(evaluate, (a, b) -> a .+ b, x.children)
+evaluate(x::AdditionAtom) = mapreduce(evaluate, (a, b) -> a .+ b, x.parents)
 
 +(x::Expression, y::Expression) = AdditionAtom(x, y)
 +(x::Expression, y) = AdditionAtom(promote(x, y)...)
@@ -243,60 +193,93 @@ evaluate(x::AdditionAtom) = mapreduce(evaluate, (a, b) -> a .+ b, x.children)
 -(x::Expression, y) = x + (-y)
 -(x, y::Expression) = x + (-y)
 
-function lift(x::AdditionAtom)
-  if type(x.children[1]) == type(x.children[2])
-    mapreduce(lift, (a, b) -> a + b, x.children)
-  else
-    
+###############################################################################
+# Scaling
+
+mutable struct ScaleAtom{T} <: Expression{T}
+  label::Label
+  parents::Parents
+  children::Children
+  
+  function ScaleAtom(x::Expression{T1}, y::Expression{T2}, label::Label = "") where {T1<:Number,T2}
+    parents = (x,y)
+    this = new{T2}(label, parents, Children())
+    push!(x.children,this)
+    push!(y.children,this)
+    return this
   end
 end
+
+evaluate(x::ScaleAtom) = evaluate(x.parents[1])*evaluate(x.parents[2])
+
+*(x::Number, y::Expression) = ScaleAtom(Constant(x), y)
 
 ###############################################################################
 # Inner product
 
-mutable struct InnerProductAtom <: Functional
+mutable struct InnerProductAtom <: Expression{AbstractScalar}
   label::Label
-  children::Tuple{Expression, Expression}
   parents::Parents
-  value::Union{Scalar,Nothing}
+  children::Children
   
-  function InnerProductAtom(x::Expression{Point}, y::Expression{Point}, label::Label = "")
-    children = (x,y)
-    this = new(label, children, Parents(), nothing)
-    push!(x.parents,this)
-    push!(y.parents,this)
+  function InnerProductAtom(x::Expression{T}, y::Expression{T}, label::Label = "") where {T<:AbstractPoint}
+    parents = (x,y)
+    this = new(label, parents, Children())
+    push!(x.children,this)
+    push!(y.children,this)
     return this
   end
 end
 
-evaluate(x::InnerProductAtom) = evaluate(x.children[1])'*evaluate(x.children[2])
-
-*(x::Expression{Point}, y::Expression{Point}) = (isequal(x,y) ? SquaredNormAtom(x) : InnerProductAtom(x, y))
-
-lift(x::InnerProductAtom) = lift(x.children[1])*lift(x.children[2])'
+evaluate(x::InnerProductAtom) = evaluate(x.parents[1])'*evaluate(x.parents[2])
 
 ###############################################################################
 # Squared norm
 
-mutable struct SquaredNormAtom <: Functional
+mutable struct SquaredNormAtom <: Expression{AbstractScalar}
   label::Label
-  children::Tuple{Expression}
   parents::Parents
-  value::Union{Scalar,Nothing}
+  children::Tuple{Expression}
   
-  function SquaredNormAtom(x::Expression{Point}, label::Label = "")
-    children = (x,)
-    this = new(label, children, Parents(), nothing)
-    push!(x.parents,this)
+  function SquaredNormAtom(x::Expression{T}, label::Label = "") where {T<:AbstractPoint}
+    parents = (x,)
+    this = new(label, parents, Children())
+    push!(x.children,this)
     return this
   end
 end
 
-evaluate(x::SquaredNormAtom) = evaluate(x.children[1])'*evaluate(x.children[1])
+evaluate(x::SquaredNormAtom) = evaluate(x.parents[1])'*evaluate(x.parents[1])
 
-^(x::Expression{Point}, n::Int) = (n == 2 ? SquaredNormAtom(x) : error("Power not implemented for n ≠ 2."))
+*(x::Expression{T}, y::Expression{T}) where {T<:AbstractPoint} = (isequal(x,y) ? SquaredNormAtom(x) : InnerProductAtom(x, y))
 
-lift(x::SquaredNormAtom) = lift(x.children[1])*lift(x.children[1])'
+^(x::Expression{T}, n::Int) where {T<:AbstractPoint} = (n == 2 ? SquaredNormAtom(x) : error("Power not implemented for n ≠ 2."))
+
+InnerProductAtom(x::SquaredNormAtom) = InnerProductAtom(x.parents[1],x.parents[1])
+
+
+
+###############################################################################
+# Decomposition
+
+"Decomposition of an expression into a dictionary whose keys are leaf expressions (variables or constants) and whose values are the corresponding weights."
+decomposition(x::Zero) = Dict()
+decomposition(x::Constant) = Dict(x => 1)
+decomposition(x::Variable) = Dict(x => 1)
+decomposition(x::AdditionAtom) = mergewith(+, decomposition(x.parents[1]), decomposition(x.parents[2]))
+decomposition(x::ScaleAtom) = Dict(keys(decomposition(x.parents[2])) .=> map(v -> x.parents[1]*v, values(decomposition(x.parents[2]))))
+decomposition(x::NegateAtom) = Dict(keys(decomposition(x.parents[2])) .=> map(v -> -v, values(decomposition(x.parents[2]))))
+
+function decomposition(x::InnerProductAtom)
+  ancestors = Dict()
+  for (key1, value1) ∈ decomposition(x.parents[1])
+    for (key2, value2) ∈ decomposition(x.parents[2])
+      mergewith!(+, ancestors, Dict( (key1,key2) => value1*value2 ))
+    end
+  end
+end
+
+decomposition(x::SquaredNormAtom) = decomposition(InnerProductAtom(x))
 
 
 
@@ -308,7 +291,7 @@ lift(x::SquaredNormAtom) = lift(x.children[1])*lift(x.children[1])'
 
 export decompose, variables, constraints, lift, lifted_expression, lifted_constraint, lifted_constraints, variables_constraints_constants, basis_vector
 
-function maximize(P::Scalar)
+function maximize(P::AbstractScalar)
   println("Maximizing the performance measure $P.")
   
 end
@@ -397,11 +380,11 @@ end
 "Lift a set of variables to the lifted space in which all `Functional` expressions are affine."
 function lift(vars::Set{Variable}, consts::Set{Constant})
   
-  var_points  = filter(x -> typeof(x) <: Variable{Point},  vars)
-  var_scalars = filter(x -> typeof(x) <: Variable{Scalar}, vars)
+  var_points  = filter(x -> typeof(x) <: Variable{AbstractPoint},  vars)
+  var_scalars = filter(x -> typeof(x) <: Variable{AbstractScalar}, vars)
   
-  const_points  = filter(x -> typeof(x) <: Constant{Point},  consts)
-  const_scalars = filter(x -> typeof(x) <: Constant{Scalar}, consts)
+  const_points  = filter(x -> typeof(x) <: Constant{AbstractPoint},  consts)
+  const_scalars = filter(x -> typeof(x) <: Constant{AbstractScalar}, consts)
   
   if vars ≠ var_points ∪ var_scalars
     error("Unknown variable types in $vars.")
@@ -461,12 +444,12 @@ function lifted_constraint(c::EqualityConstraint, 𝒳)
 end
 
 "Represent an LP constraint in the lifted space."
-function lifted_constraint(c::ConeConstraint{T,PositiveOrthant}, 𝒳) where {T<:Value}
+function lifted_constraint(c::ConeConstraint{PositiveOrthant}, 𝒳)
   Convex.GtConstraint(lifted_expression(c.x, 𝒳), Convex.Constant(0))
 end
 
 "Represent a semidefinite constraint in the lifted space."
-function lifted_constraint(c::ConeConstraint{T,PositiveSemidefinite}, 𝒳) where {T<:Value}
+function lifted_constraint(c::ConeConstraint{PositiveSemidefinite}, 𝒳)
   Convex.SDPConstraint(lifted_expression(c.x, 𝒳))
 end
 

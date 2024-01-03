@@ -1,255 +1,144 @@
+export maximize, lift, project, variables, constraints, variables_constraints
 
-# export decompose, variables, constraints, lift, lifted_expression, lifted_constraint, lifted_constraints, variables_constraints_constants, basis_vector
+function maximize(P::AbstractAffine{Scalar}; optimizer=SCS.Optimizer)
 
-export original_variables, lift
+  # variables and constraints associated with the objective
+  vars, cons = variables_constraints(P)
 
-function maximize(P::Scalar)
-  println("Maximizing the performance measure $P.")
+  # construct the lifted transformation
+  t = lifted_transformation(vars, cons)
+
+  # lifted objective
+  𝒫 = lift(P, t)
+
+  # lifted constraints
+  𝒞 = collect(lift(cons, t))
+
+  # solve the optimization problem in the lifted space
+  problem = cvx.maximize( 𝒫, 𝒞 )
+  cvx.solve!(problem, optimizer; silent_solver=true)
   
+  # project the solution onto the original variables
+  project(t)
+
+  # return the optimal value
+  problem.optval
 end
 
-"Variables in an expression."
-function original_variables(x::Expression)
-  
-  vars = keys(children(x))
+function lifted_transformation(vars, cons)
 
-  # split the variables into scalars and inner products of points
-  F = filter(x -> isa(x, Scalar), vars)
-  G = filter(x -> isa(x, Tuple{Point,Point}), vars)
+  scalars = collect(filter(x -> isequal(type(x), Scalar), vars))
+  points  = collect(filter(x -> isequal(type(x), Point), vars))
 
-  # find all points that appear in the inner products
-  X = Set([(G...)...])
-  
-  # remove anything scalars that have a value
-  for f ∈ collect(F)
-    if hasvalue(f)
-      delete!(F, f)
-    end
-  end
-  
-  X, F
-end
+  X = (points, scalars)
 
-
-function lift(x::Expression, X, 𝒳)
-  points, scalars = X
   n = length(points)
   m = length(scalars)
-  A = zeros(n,n)
-  b = zeros(m)
-  c = 0.0
-  for (i,f) ∈ enumerate(scalars)
-    if f ∈ keys(x.children)
-      b[i] = x.children[f]
+
+  # lifted variables
+  G = cvx.Semidefinite(n)
+  F = cvx.Variable(m)
+  𝒳 = (G,F)
+
+  X, 𝒳
+end
+
+function project(t)
+
+  X, 𝒳 = t
+  points, scalars = X
+  G, F = 𝒳
+
+  # populate the values of the variables with the solution
+  E = LinearAlgebra.eigen(G.value)
+  Λ = E.values
+  if any(Λ .≤ 0)
+    @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
+    Λ = abs.(Λ)
+  end
+  for i = 1:length(points)
+    points[i].value = Point(sqrt.(Λ) .* E.vectors[i,:])
+  end
+  for i = 1:length(scalars)
+    scalars[i].value = Scalar(F.value[i])
+  end
+  nothing
+end
+
+"Recursively find all variables and constraints associated with an expression."
+function variables_constraints(x::Expression)
+
+  vars = variables(x)
+  cons = constraints(vars)
+
+  count = 0
+
+  while true
+
+    # get the variables associated with those constraints
+    vars_new = variables(cons)
+
+    # get the constraints associated with those variables
+    cons_new = constraints(vars_new)
+
+    # if no new variables or constraints are found, then exit
+    if vars_new ⊆ vars && cons_new ⊆ cons
+      break
+
+    # otherwise, append the new variables and constraints and repeat
+    else
+      vars = vars ∪ vars_new
+      cons = cons ∪ cons_new
+    end
+
+    if count > 10
+      @warn "Limit reached before all variables and constraints were found."
+      break
+    else
+      count += 1
     end
   end
-  for (i,x1) ∈ enumerate(points)
-    for (j,x2) ∈ enumerate(points)
-      if (x1,x2) ∈ keys(x.children)
-        A[i,j] = x.children[(x1,x2)]
-      end
-    end
-  end
-  # if 1 ∈ keys(x.children)
-  #   c = x.children[1]
-  # end
+  vars, cons
+end
+
+"Set of constraints that depend on a variable or set of variables."
+constraints(x::Variable) = x.constraints ∪ mapreduce(interpolation_conditions, ∪, x.oracles; init=Constraints())
+constraints(vars::Set{<:Variable}) = mapreduce(constraints, ∪, vars; init=Constraints())
+
+"Set of variables in a constraint or set of constraints."
+variables(c::ConeConstraint) = variables(c.x)
+variables(cons::Set{<:Constraint}) = mapreduce(variables, ∪, cons; init=Variables())
+variables(A::AbstractArray{<:Expression}) = mapreduce(x->variables(x), ∪, A)
+
+"Lift an affine expression or constraint."
+function lift(x::AbstractAffine{Scalar}, t)
+
+  X, 𝒳 = t
+
+  points, scalars = X
+
+  n = length(points)
+  m = length(scalars)
+  
+  A = Float64[ get(weights(x), InnerProduct(points[i],points[j]), 0.0) for i = 1:n, j = 1:n ]
+  b = Float64[ get(weights(x), scalars[i], 0.0) for i = 1:m ]
+  c = iszero(constant(x)) ? 0.0 : evaluate(constant(x)).value
+
+  # the off-diagonal of A gets double-counted since the inner product is symmetric (x*y == y*x)
+  D = LinearAlgebra.diagm(LinearAlgebra.diag(A))
+  A = D + 0.5*(A-D)
+  b = reshape(b, m, 1)
   
   G, F = 𝒳
   
-  Convex.tr(G * A) + (m>0 ? Convex.inner_product(F, b) : 0)
+  cvx.tr(G * A) + (m>1 ? F'*b : 0.0) + c
 end
 
+# equivalent to just [ lift(x,X,𝒳) for x ∈ a ], but Convex.jl only overloads hvcat
+lift(a::AbstractArray{<:Expression{Scalar}}, t) = hvcat( size(a), [ lift(x,t) for x ∈ a ]...)
 
-"Each type of constraint must specialize this method."
-function lift(c::Constraint, X, 𝒳)
-  error("Lifted constraint not implemented for constraint of type $(typeof(c)).")
-end
-
-"Represent an equality constraint in the lifted space."
-function lift(c::EqualityConstraint, X, 𝒳)
-  Convex.EqConstraint(lift(c.x, X, 𝒳), 0)
-end
-
-"Represent an LP constraint in the lifted space."
-function lift(c::ConeConstraint{PositiveOrthant}, X, 𝒳)
-  Convex.GtConstraint(lift(c.x, X, 𝒳), Convex.Constant(0))
-end
-
-"Represent a semidefinite constraint in the lifted space."
-function lift(c::ConeConstraint{PositiveSemidefinite}, X, 𝒳)
-  Convex.SDPConstraint(lift(c.x, X, 𝒳))
-end
-
-"Represent a set of constraints in the lifted space."
-function lift(cons::Set{Constraint}, X, 𝒳)
-  𝒞 = Set{Convex.Constraint}()
-  for c ∈ cons
-    push!(𝒞, lift(c, X, 𝒳))
-  end
-  𝒞
-end
-
-# function variables(x::Expression)::Set{Variable}
-#   if isa(x, Constant)
-#     Set()
-#   elseif isa(x, Variable)
-#     Set([x])
-#   else
-#     vars = Set{Variable}()
-#     for y ∈ x.children
-#       if isa(y, Variable)
-#         push!(vars,y)
-#       else
-#         vars = vars ∪ variables(y)
-#       end
-#     end
-#     vars
-#   end
-# end
-
-# "Constants in an expression."
-# function constants(x::Expression)::Set{Constant}
-#   if isa(x, Constant)
-#     Set([x])
-#   elseif isa(x, Variable)
-#     Set()
-#   else
-#     consts = Set{Constant}()
-#     for y ∈ x.children
-#       if isa(y, Constant)
-#         push!(consts,y)
-#       else
-#         consts = consts ∪ constants(y)
-#       end
-#     end
-#     consts
-#   end
-# end
-
-# "Set of constraints that depend on a set of variables."
-# function constraints(vars::Set{Variable})::Set{Constraint}
-#   cons = Set{Constraint}()
-#   for v ∈ vars
-#     for o ∈ v.oracles
-#       interpolation_conditions(o)
-#     end
-#     cons = cons ∪ v.constraints
-#   end
-#   cons
-# end
-
-# "Set of variables and constraints associated with an expression. The variables include those that directly affect the expression, as well as those that affect any constraint on those variables."
-# function variables_constraints_constants(x::Expression)
-#   vars = variables(x)
-#   consts = constants(x)
-#   cons = constraints(vars)
-#   for c ∈ cons
-#     vars = vars ∪ variables(c.x)
-#     consts = consts ∪ constants(c.x)
-#   end
-#   vars, cons, consts
-# end
-
-# "Expression and its corresponding constraints in the lifted space."
-# function lift(x::Expression)
-  
-#   # Get the variables and constraints associated with the performance measure
-#   vars, cons, consts = variables_constraints_constants(x)
-
-#   # Lift the set of variables
-#   𝒳 = lift(vars, consts)
-
-#   # Represent the performance measure in the lifted space
-#   𝒫 = lifted_expression(P, 𝒳)
-
-#   # Represent the constraints in the lifted space
-#   𝒞 = lifted_constraints(cons, 𝒳)
-  
-#   # Return the expression and its associated constraints in the lifted space
-#   𝒫, 𝒞
-# end
-
-# "Lift a set of variables to the lifted space in which all `Functional` expressions are affine."
-# function lift(vars::Set{Variable}, consts::Set{Constant})
-  
-#   var_points  = filter(x -> typeof(x) <: Variable{Point},  vars)
-#   var_scalars = filter(x -> typeof(x) <: Variable{Scalar}, vars)
-  
-#   const_points  = filter(x -> typeof(x) <: Constant{Point},  consts)
-#   const_scalars = filter(x -> typeof(x) <: Constant{Scalar}, consts)
-  
-#   if vars ≠ var_points ∪ var_scalars
-#     error("Unknown variable types in $vars.")
-#   end
-  
-#   # number of variables of each type
-#   n = length(var_points)
-#   m = length(var_scalars)
-  
-#   # lifted variables
-#   G = Convex.Semidefinite(n)
-#   F = Convex.Variable(m)
-  
-#   # assign a unique element in a basis to each variable
-#   for (i, x) ∈ enumerate(var_points)
-#     lift!(x, i, n)
-#   end
-#   for (i, x) ∈ enumerate(var_scalars)
-#     lift!(x, i, m)
-#   end
-#   for x ∈ const_points
-#     if x.value.value == [0]
-#       x.lift = zeros(m)
-#     else
-#       error("Cannot lift nonzero constant points.")
-#     end
-#   end
-#   for x ∈ const_scalars
-#     x.lift = [x.value.value]
-#   end
-  
-#   (G, F)
-# end
-
-# "Represent a scalar-valued expression as an affine function in the lifted space. The functional must be affine in `Expression{Scalar}` objects and inner products of two `Expression{Point}` objects."
-# function lifted_expression(x::Functional, 𝒳)
-#   G, F = 𝒳
-#   𝒜, 𝒷 = lift(x)
-#   𝒜*𝒳 + 𝒷  # affine function Ax+b in the lifted space
-#   Convex.tr(G * A) + Convex.inner_product(F, b) + c
-# end
-
-# function evaluate_lifted(𝒜, 𝒷, 𝒳)
-#   A, b, c = 𝒜, 𝒷
-#   G, F = 𝒳
-#   Convex.tr(G * A) + Convex.inner_product(F, b) + c
-# end
-
-# "Each type of constraint must specialize this method."
-# function lifted_constraint(c::Constraint)
-#   error("Lifted constraint not implemented for constraint of type $(typeof(c)).")
-# end
-
-# "Represent an equality constraint in the lifted space."
-# function lifted_constraint(c::EqualityConstraint, 𝒳)
-#   Convex.EqConstraint(lifted_expression(c.x, 𝒳), 0)
-# end
-
-# "Represent an LP constraint in the lifted space."
-# function lifted_constraint(c::ConeConstraint{T,PositiveOrthant}, 𝒳) where {T<:Value}
-#   Convex.GtConstraint(lifted_expression(c.x, 𝒳), Convex.Constant(0))
-# end
-
-# "Represent a semidefinite constraint in the lifted space."
-# function lifted_constraint(c::ConeConstraint{T,PositiveSemidefinite}, 𝒳) where {T<:Value}
-#   Convex.SDPConstraint(lifted_expression(c.x, 𝒳))
-# end
-
-# "Represent a set of constraints in the lifted space."
-# function lifted_constraints(cons::Set{Constraint}, 𝒳)
-#   𝒞 = Set{Convex.Constraint}()
-#   for c ∈ collect(cons)
-#     push!(𝒞, lifted_constraint(c, 𝒳))
-#   end
-#   𝒞
-# end
+lift(cons::Constraints, t) = mapreduce(c->lift(c,t), push!, cons; init=Set{cvx.Constraint}())
+lift(c::Constraint, t) = error("Lifted constraint not implemented for constraint of type $(typeof(c)).")
+lift(c::Equality, t) = cvx.EqConstraint(lift(c.x,t), cvx.Constant(0.0))
+lift(c::Positive, t) = cvx.GtConstraint(lift(c.x,t), cvx.Constant(0.0))
+lift(c::Semidefinite, t) = cvx.SDPConstraint(lift(c.x,t))

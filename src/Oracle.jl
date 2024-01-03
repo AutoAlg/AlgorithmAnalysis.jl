@@ -1,104 +1,146 @@
-export Oracle, Oracles, domain, codomain, FunctionClass, ConvexFunction, SmoothStronglyConvexFunction, FirstOrder, ConvexOracle, MonotoneOperator, SmoothStronglyConvexOracle, sample_input, sample_output, stationary_point, samples, interpolation_conditions, zero
+export Oracle, FunctionOracle, OperatorOracle
+export ConvexFunction, DifferentiableFunction
+export Operator, ContinuousOperator, LinearOperator
+export ∂, ∇
 
-"A oracle consists of a field `samples` of type `r<:Relation` and a field `interpolation_class` of type `R<:RelationClass`, both of which must have the same domain and codomain. The oracle samples points in the domain and returns information in the codomain."
-mutable struct Oracle{r,R}
-  samples::r
-  interpolation_class::R
-  singlevalued::Bool
+import Base.adjoint, Base.∈
 
-  "Construct an oracle from its input and output spaces."
-  Oracle{r,R}(singlevalued=true) where {r<:AbstractRelation,R<:AbstractRelationClass} = new(r(),R(),singlevalued)
-end
+# ConvexFunction
+#  - MultiRelation{X,Y,X}
+#    - f  : 1 -> 2 (unique)
+#    - ∂f : 1 -> 3
+# 
+# DifferentiableFunction
+#  - MultiRelation{X,Y,X}
+#    - f  : 1 -> 2 (unique)
+#    - ∇f : 1 -> 3 (unique)
+# 
+# Operator
+#  - MultiRelation{X,Y}
+#    - f : 1 -> 2
+# 
+# ContinuousOperator
+#  - MultiRelation{X,Y}
+#    - f : 1 -> 2 (unique)
+# 
+# LinearOperator
+#  - MultiRelation{X,Y,Y,X}
+#    - A  : 1 -> 2 (unique)
+#    - Aᵀ : 3 -> 4 (unique)
 
-const Oracles = Vector{Oracle}
-
-samples(o::Oracle) = o.samples
-interpolation_class(o::Oracle) = o.interpolation_class
-singlevalued(o::Oracle) = o.singlevalued
-
-# zero(::Type{X}) where {X} = zero(X)
-zero(::Type{Tuple{X,Y}}) where {X, Y} = (zero(X),zero(Y))
-
-"Custom display of an oracle."
-function Base.show(io::IO, o::Oracle)
-  println(io, "\nOracle on $(domain(o)) x $(codomain(o))")
-  for (x,y) ∈ o.samples
-    print(io, "\n($x, $y)")
-  end
-  println()
-  @show o.interpolation_class
-  println()
-  @show o.singlevalued
-end
 
 ###############################################################################
-# Derived methods.
+# Oracle
 
-"Domain of an oracle."
-domain(o::Oracle) = domain(samples(o))
+"An oracle is a set of relations whose interpolation conditions are connected."
+abstract type Oracle end
 
-"Codomain of an oracle."
-codomain(o::Oracle) = codomain(samples(o))
+"Adjoint of an oracle. The semantics of the adjoint depend on the specific oracle. For instance, the adjoint of a linear operator is the standard adjoint (transpose), while the adjoint of a convex function is its subdifferential."
+struct Adjoint{T<:Oracle}
+  parent::T
 
-"Interpolation conditions for an oracle's interpolation class and samples."
-interpolation_conditions(o::Oracle) = samples(o) ∈ interpolation_class(o)
-
-"Zeros of an oracle."
-zeros(o::Oracle) = zeros(samples(o))
-
-"Add an oracle to all variables in an expression."
-function add_oracle!(x::Expression, o::Oracle)
-  vars = variables(x)
-  for v ∈ collect(vars)
-    push!(v.oracles, o)
-  end
-  nothing
+  Adjoint(parent::T) where {T} = new{T}(parent)
 end
 
-"Add an oracle to all variables in a tuple of expressions."
-function add_oracle!(X::NTuple{N,Expression}, o::Oracle) where {N}
-  for x ∈ X
-    add_oracle!(x, o)
-  end
-end
+adjoint(o::Oracle) = Adjoint(o)
 
 "Stationary point of an oracle."
-function stationary_point(o::Oracle)
-  x = domain(o)()
-  y = zero(codomain(o))
+function stationary_point end
+
+
+
+###############################################################################
+# Function oracle
+
+"An abstract function oracle with domain `X` and codomain `Y`."
+abstract type FunctionOracle{X,Y} <: Oracle end
+
+"Sample a function at a point in its domain."
+(f::FunctionOracle)(x) = f.value(x)
+
+mutable struct ConvexFunction{X,Y} <: FunctionOracle{X,Y}
+  value::SingleValued{X,Y}
+  subdifferential::MultiValued{X,X}
+
+  ConvexFunction{X,Y}() where {X,Y} = new(SingleValued{X,Y}(), MultiValued{X,X}())
+end
+
+(f::ConvexFunction{X,Y})(x::X) where {X,Y} = f.value(x)
+(f::Adjoint{ConvexFunction{X,Y}})(x::X) where {X,Y} = f.parent.subdifferential(x)
+
+
+
+mutable struct DifferentiableFunction{X,Y} <: FunctionOracle{X,Y}
+  value::SingleValued{X,Y}
+  gradient::SingleValued{X,X}
+
+  DifferentiableFunction{X,Y}() where {X,Y} = new(SingleValued{X,Y}(), SingleValued{X,X}())
+end
+
+(f::DifferentiableFunction{X,Y})(x::X) where {X,Y} = f.value(x)
+(f::Adjoint{DifferentiableFunction{X,Y}})(x::X) where {X,Y} = f.parent.gradient(x)
+
+
+###############################################################################
+# Operator oracle
+
+"An abstract operator oracle with domain `X` and codomain `Y`."
+abstract type OperatorOracle{X,Y} <: Oracle end
+
+"Sample an operator at a point in its domain."
+(f::OperatorOracle)(x) = f.op(x)
+
+mutable struct Operator{X,Y} <: OperatorOracle{X,Y}
+  op::MultiValued{X,Y}
+
+  Operator{X,Y}() where {X,Y} = new(MultiValued{X,Y}())
+end
+
+mutable struct ContinuousOperator{X,Y} <: OperatorOracle{X,Y}
+  op::SingleValued{X,Y}
+
+  ContinuousOperator{X,Y}() where {X,Y} = new(SingleValued{X,Y}())
+end
+
+mutable struct LinearOperator{X,Y} <: OperatorOracle{X,Y}
+  op::SingleValued{X,Y}
+  adj::SingleValued{Y,X}
+
+  LinearOperator{X,Y}() where {X,Y} = new(SingleValued{X,Y}(), SingleValued{Y,X}())
+end
+
+adjoint(A::LinearOperator) = A.adj
+
+
+###############################################################################
+# Stationary points
+
+function stationary_point(o::ConvexFunction{X,Y}) where {X,Y}
+  x = X()
+  f = Y()
+  g = zero(X) # Zero{Point}()
+  push!(samples(o.value), x => f)
+  push!(samples(o.subdifferential), x => g)
+  x, f, g
+end
+
+function stationary_point(o::OperatorOracle)
+  x = Variable{Point}()
+  y = Zero{Point}()
   push!(samples(o), x, y)
   x, y
 end
 
-"Sample an oracle at a point in its domain."
-function sample_input(o::Oracle,x)
-  if !isa(x,domain(o))
-    error("The point $x must be in the domain $(domain(o)) of the oracle $o.")
-  end
-  if singlevalued(o) && x ∈ preimage(samples(o))
-    y = samples(o)(x)[1]
-  else
-    y = codomain(samples(o))()
-    push!(samples(o), x, y)
-  end
-  add_oracle!(x, o)
-  add_oracle!(y, o)
-  y
-end
-(o::Oracle)(x) = sample_input(o,x)
 
-"Sample an oracle at a point in its codomain."
-function sample_output(o::Oracle,y)
-  if !isa(y,codomain(o))
-    error("The point $y must be in the codomain $(codomain(o)) of the oracle $o.")
-  end
-  if y ∈ image(samples(o))
-    x = inv(samples(o))(y)[1]
-  else
-    x = domain(samples(o))()
-    push!(samples(o), x, y)
-  end
-  add_oracle!(x, o)
-  add_oracle!(y, o)
-  x
-end
+###############################################################################
+# Relation classes
+
+"Specify that an oracle (or its adjoint) belongs to a relation class."
+∈(o::FunctionOracle, c::RelationClass) = o.value ∈ c
+∈(o::FunctionOracle, c::RelationClasses) = o.value ∈ c
+∈(o::OperatorOracle, c::RelationClass) = o.op ∈ c
+∈(o::OperatorOracle, c::RelationClasses) = o.value ∈ c
+∈(a::Adjoint{<:ConvexFunction}, c::RelationClass) = a.parent.subdifferential ∈ c
+∈(a::Adjoint{<:ConvexFunction}, c::RelationClasses) = a.parent.subdifferential ∈ c
+∈(a::Adjoint{<:DifferentiableFunction}, c::RelationClass) = a.parent.gradient ∈ c
+∈(a::Adjoint{<:DifferentiableFunction}, c::RelationClasses) = a.parent.gradient ∈ c
