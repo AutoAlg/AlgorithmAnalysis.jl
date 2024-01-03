@@ -5,7 +5,7 @@
 # using BlackBoxOptimization
 # using SCS
 # using LinearAlgebra
-# import Convex
+# import Convex as cvx
 
 # ] test BlackBoxOptimization
 
@@ -35,5 +35,21 @@ include("expression.jl")
 include("solve.jl")
 include("interpolation.jl")
 include("oracle.jl")      # requires interpolation.jl
+
+export @autolabel
+
+"Automatic labeling of assignment expressions."
+macro autolabel(expr::Expr)
+  (expr.head == :(=) && expr.args[1] isa Symbol) || throw(ArgumentError("@autolabel: `$(expr)` is not an assigment expression."))
+  local sym = expr.args[1]
+  quote
+    # local sym = $(esc(expr.args[1]))
+    local var = $(esc(expr.args[2]))
+    # label!(var, $(esc(expr.args[1])))
+    label!(var, $sym)
+    # label!(var, $(esc(expr.args[1])))
+    $(esc(expr.args[1])) = var
+  end
+end
 
 end

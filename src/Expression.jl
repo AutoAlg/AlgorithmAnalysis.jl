@@ -25,6 +25,8 @@ import Base.+, Base.-, Base.*, Base./, Base.^
 import Base.promote_rule, Base.convert
 import Base.adjoint, Base.zero, Base.iszero
 
+const Label = Union{String, Symbol}
+
 
 ###############################################################################
 # Value types
@@ -53,7 +55,8 @@ end
 
 adjoint(x::Expression) = x
 
-zero(::E) where {T,E<:Expression{T}} = Zero{T}()
+zero(::E, label::Label = "") where {T,E<:Expression{T}} = Zero{T}(label)
+zero(::Type{E}, label::Label = "") where {T,E<:Expression{T}} = Zero{T}(label)
 
 ⊗(x1::Vector{<:Expression{Point}}, x2::Vector{<:Expression{Point}}) = Expression{Scalar}[ x1[i]*x2[j] for i ∈ 1:length(x1), j ∈ 1:length(x2) ]
 
@@ -67,7 +70,7 @@ zero(::E) where {T,E<:Expression{T}} = Zero{T}()
 type(::Expression{T}) where {T} = T
 
 "Set the label of an expression."
-label!(x::Expression, label::String) = (x.label = label; missing)
+label!(x::Expression, label::Label) = (x.label = label; missing)
 
 "Get the label of an expression."
 label(x::Expression) = x.label
@@ -108,11 +111,11 @@ function isequal end
 "A variable expression."
 mutable struct Variable{T} <: Expression{T}
   value::Union{T, Missing}
-  label::String
+  label::Label
   constraints::Constraints
   relations::Relations
   
-  Variable{T}(label::String = "") where {T<:Value} = new(missing, label, Constraints(), Relations())
+  Variable{T}(label::Label = "") where {T<:Value} = new(missing, label, Constraints(), Relations())
   # Variable(value::T) where {T<:Value} = new{T}(value, string(value), Constraints(), Relations())
 end
 
@@ -120,7 +123,7 @@ end
 const Variables = Set{Variable}
 
 "Initialize an expression as a variable (used when sampling an oracle)."
-Expression{T}() where {T} = Variable{T}()
+Expression{T}(label::Label = "") where {T} = Variable{T}(label)
 
 
 ###############################################################################
@@ -132,17 +135,17 @@ abstract type AbstractConstant{T} <: AbstractAffine{T} end
 
 "The zero expression."
 mutable struct Zero{T} <: AbstractConstant{T}
-  label::String
+  label::Label
 
-  Zero{T}(label::String = "") where {T} = new(label)
+  Zero{T}(label::Label = "") where {T} = new(label)
 end
 
 "A nonzero constant expression."
 mutable struct Constant{T} <: AbstractConstant{T}
   value::T
-  label::String
+  label::Label
   
-  Constant(value::T, label::String = "") where {T<:Value} = new{T}(value, label)
+  Constant(value::T, label::Label = "") where {T<:Value} = new{T}(value, label)
 end
 
 "Check whether or not a constant expression is zero."
@@ -152,10 +155,10 @@ iszero(x::AbstractConstant) = isa(x, Zero)
 "A linear expression."
 mutable struct Linear{T} <: AbstractLinear{T}
   weights::Dict{Expression{T}, Number}
-  label::String
+  label::Label
 
-  Linear{T}(weights::Dict, label::String = "") where {T} = new(weights, label)
-  Linear{T}(label::String = "") where {T} = new(Dict(), label)
+  Linear{T}(weights::Dict, label::Label = "") where {T} = new(weights, label)
+  Linear{T}(label::Label = "") where {T} = new(Dict(), label)
   Linear(x::Expression{T}) where {T} = new{T}(Dict(x => 1), x.label)
 end
 
@@ -163,11 +166,11 @@ end
 mutable struct Affine{T} <: AbstractAffine{T}
   linear::AbstractLinear{T}
   constant::AbstractConstant{T}
-  label::String
+  label::Label
 
-  Affine(linear::AbstractLinear{T}, constant::AbstractConstant{T} = Zero{T}(), label::String = "") where {T} = new{T}(linear, constant, label)
+  Affine(linear::AbstractLinear{T}, constant::AbstractConstant{T} = Zero{T}(), label::Label = "") where {T} = new{T}(linear, constant, label)
   Affine(constant::AbstractConstant{T}) where {T} = new{T}(Linear{T}(), constant, "")
-  Affine{T}(label::String = "") where {T} = new(Dict(), Zero{T}(), label)
+  Affine{T}(label::Label = "") where {T} = new(Dict(), Zero{T}(), label)
 end
 
 "Constant of an affine expression."
@@ -191,9 +194,9 @@ weights(x::AbstractAffine) = linear(x).weights
 struct InnerProduct <: Expression{Scalar}
   left::Expression{Point}
   right::Expression{Point}
-  label::String
+  label::Label
 
-  InnerProduct(left::Expression{Point}, right::Expression{Point}, label::String = "") = hash(left) < hash(right) ? new(left, right, label) : new(right, left, label)
+  InnerProduct(left::Expression{Point}, right::Expression{Point}, label::Label = "") = hash(left) < hash(right) ? new(left, right, label) : new(right, left, label)
 end
 
 "Inner product of two points."
@@ -368,7 +371,7 @@ function show(io::IO, x::Variable)
   end
 end
 
-show(io::IO, ::Zero{T}) where {T} = print(io, "Zero{$T}")
+show(io::IO, x::Zero{T}) where {T} = isempty(x.label) ? print(io, "Zero{$T}") : print(io, x.label)
 
 function show(io::IO, x::Linear)
   if hasvalue(x)
@@ -411,6 +414,7 @@ show(io::IO, x::InnerProduct) = hasvalue(x) ? print(io, evaluate(x)) : print(io,
 
 show(io::IO, x::Value) = print(io, x.value)
 
+show(io::IO, p::Pair{<:Expression, <:Expression}) = print(io, p.first, " => ", p.second)
 
 ###############################################################################
 # Default tuple constructors

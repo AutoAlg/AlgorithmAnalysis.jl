@@ -95,44 +95,59 @@ evaluate(r::Relation{X, Y}, s::Set{X}) where {X, Y} = union([r(x) for x ∈ s]..
 evaluate(r::Relation{X, Y}, v::Vector{X}) where {X, Y} = r(Set(v))
 
 "Sample a relation at a point in its domain."
-(r::Relation)(x) = sample(r,x)
+(r::Relation)(x, label::String = "") = sample(r,x,label)
 
+label(r::Relation) = r.label
+label!(r::Relation, label::String) = (r.label = label)
+
+"Custom display of a relation."
+function show(io::IO, r::Relation)
+  print("\n\n")
+  isempty(r.label) ? nothing : print(io, r.label, ": ")
+  s = isa(r, SingleValued) ? "Single" : "Multi"
+  println(io, "\n$s-valued relation on $(domain(r)) x $(codomain(r))")
+  println(io, "\nClasses: ", classes(r))
+  println(io, "\nSamples:")
+  map(p -> println(io, p), collect(samples(r)))
+end
+
+function show(io::IO, c::RelationClasses)
+  first = true
+  for c ∈ collect(c)
+    first ? (print(io, c); first = false) : print(io, ", ", c)
+  end
+end
 
 ###############################################################################
 # Multi-valued relation
 
 "A multi-valued relation is a relation in which there is a subset of the image associated with each element in the preimage."
-mutable struct MultiValued{X, Y} <: Relation{X, Y}
+mutable struct MultiValued{X,Y} <: Relation{X,Y}
   samples::Set{Pair{X,Y}}
   classes::RelationClasses
+  label::String
 
   "Construct an empty relation."
-  MultiValued{X,Y}() where {X, Y} = new(Set{Pair{X,Y}}(), RelationClasses())
+  MultiValued{X,Y}(label::String = "") where {X,Y} = new(Set{Pair{X,Y}}(), RelationClasses(), label)
 
   "Construct a relation from a set of input-output pairs."
-  MultiValued(s::Set{Pair{X,Y}}) where {X, Y} = new{X,Y}(s, RelationClasses())
-  MultiValued{X,Y}(s::Set{<:Pair}) where {X, Y} = new(s, RelationClasses())
+  MultiValued(s::Set{Pair{X,Y}}) where {X, Y} = new{X,Y}(s, RelationClasses(), "")
+  MultiValued{X,Y}(s::Set{<:Pair}) where {X, Y} = new(s, RelationClasses(), "")
 end
 
 "Construct a relation from a generator of pairs of points."
 MultiValued(g::Generator) = MultiValued(Set(p for p ∈ g))
-
-"Custom display of a relation."
-function show(io::IO, r::MultiValued)
-  println(io, "\nMulti-valued relation on $(domain(r)) x $(codomain(r))")
-  map(p -> println(io, p), collect(samples(r)))
-end
 
 "Invert a relation. Returns a multi-valued relation (even if the input is single valued)."
 inv(r::Relation) = MultiValued(reverse(p) for p ∈ samples(r))
 
 classes(r::MultiValued) = r.classes
 
-evaluate(r::MultiValued{X, Y}, x::X) where {X, Y} = Set([p.second for p ∈ samples(r) if isequal(p.first,x)])
+evaluate(r::MultiValued{X,Y}, x::X) where {X, Y} = Set([p.second for p ∈ samples(r) if isequal(p.first,x)])
 
 "Sample a relation at a point in its domain."
-function sample(r::MultiValued{X, Y}, x::X) where {X, Y}
-  y = codomain(r)()
+function sample(r::MultiValued{X,Y}, x::X, label::String = "") where {X,Y}
+  y = codomain(r)(label)
   push!(samples(r), x => y)
   add_relation!(x, r)
   add_relation!(y, r)
@@ -157,43 +172,32 @@ end
 # Single-valued relation
 
 "A single-valued relation (also known as a function) is a relation in which there is a unique element of the image associated with each element of the preimage."
-mutable struct SingleValued{X, Y} <: Relation{X, Y}
+mutable struct SingleValued{X,Y} <: Relation{X,Y}
   samples::Dict{X,Y}
   classes::RelationClasses
+  label::String
 
   "Construct an empty relation."
-  SingleValued{X,Y}() where {X, Y} = new(Dict{X,Y}(), RelationClasses())
+  SingleValued{X,Y}(label::String = "") where {X,Y} = new(Dict{X,Y}(), RelationClasses(), label)
 
   "Construct a relation from a set of input-output pairs."
-  SingleValued(d::Dict{X,Y}) where {X, Y} = new{X,Y}(d, RelationClasses())
-  SingleValued{X,Y}(d::Dict{X,Y}) where {X, Y} = new(d, RelationClasses())
+  SingleValued(d::Dict{X,Y}) where {X,Y} = new{X,Y}(d, RelationClasses(), "")
+  SingleValued{X,Y}(d::Dict{X,Y}) where {X,Y} = new(d, RelationClasses(), "")
 end
 
 "Construct a relation from a generator of pairs of points."
 SingleValued(g::Generator) = SingleValued(Dict(p for p ∈ g))
-
-"Custom display of a relation."
-function show(io::IO, r::SingleValued)
-  println(io, "\nSingle-valued relation on $(domain(r)) x $(codomain(r))")
-  print(io, "\nClasses: ")
-  first = true
-  for c ∈ collect(classes(r))
-    first ? (print(io, c); first = false) : print(io, ", ", c)
-  end
-  println(io, "\nSamples:")
-  map(p -> println(io, p), collect(samples(r)))
-end
 
 classes(r::SingleValued) = r.classes
 
 evaluate(r::SingleValued{X, Y}, x::X) where {X, Y} = samples(r)[x]
 
 "Sample a relation at a point in its domain."
-function sample(r::SingleValued{X, Y}, x::X) where {X, Y}
+function sample(r::SingleValued{X, Y}, x::X, label::String = "") where {X, Y}
   if x ∈ keys(samples(r))
     samples(r)[x]
   else
-    y = codomain(r)()
+    y = codomain(r)(label)
     push!(samples(r), x => y)
     add_relation!(x, r)
     add_relation!(y, r)
