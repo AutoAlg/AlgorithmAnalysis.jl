@@ -4,7 +4,7 @@ export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semid
 export ConeConstraint, Satisfied, Unsatisfied, prune, check
 export ⪯, ⪰
 
-import Base.∈, Base.isequal, Base.==, Base.:≤, Base.:≥
+import Base.show, Base.∈, Base.isequal, Base.==, Base.:≤, Base.:≥
 
 "Add a constraint to all variables in an expression or an array of expressions."
 add_constraint!(x::Expression, c::Constraint) = map(v -> push!(v.constraints, c), collect(variables(x)))

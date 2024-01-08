@@ -113,6 +113,7 @@ inv(r::Relation) = Relation(reverse(p) for p ∈ samples(r))
 "An abstract class of relations. Each `RelationClass` must provide a method ∈(r,R) to test whether or not a relation `r` is in a relation class `R`. For a relation class that consists of a finite number of relations, this function could simply check whether or not the relation is an element of the class. For relation classes that consist of an infinite number of relations, these are the interpolation conditions for the relation class."
 abstract type RelationClass end
 
+"A set of relation classes."
 const RelationClasses = Set{RelationClass}
 
 "Intersection of relation classes (which is the union of the sets)."

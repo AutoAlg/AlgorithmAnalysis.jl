@@ -171,7 +171,7 @@ mutable struct Variable{T} <: Expression{T}
   constraints::Constraints
   oracles::Oracles
   
-  Variable{T}(label::Label = "") where {T<:Value} = new(T(), label, Constraints(), Relations())
+  Variable{T}(label::Label = "") where {T<:Value} = new(T(), label, Constraints(), Oracles())
 end
 
 "A set of variables."
