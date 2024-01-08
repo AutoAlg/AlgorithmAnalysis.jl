@@ -1,6 +1,6 @@
 export maximize, lift, project, variables, constraints, variables_constraints
 
-function maximize(P::AbstractAffine{Scalar}; optimizer=SCS.Optimizer)
+function maximize(P::AbstractAffine{<:Field}; optimizer=SCS.Optimizer)
 
   # variables and constraints associated with the objective
   vars, cons = variables_constraints(P)
@@ -27,8 +27,8 @@ end
 
 function lifted_transformation(vars, cons)
 
-  scalars = collect(filter(x -> isequal(type(x), Scalar), vars))
-  points  = collect(filter(x -> isequal(type(x), Point), vars))
+  scalars = collect(filter(x -> isequal(type(x), 𝐑), vars))
+  points  = collect(filter(x -> isequal(type(x), 𝐑ⁿ), vars))
 
   X = (points, scalars)
 
@@ -57,10 +57,10 @@ function project(t)
     Λ = abs.(Λ)
   end
   for i = 1:length(points)
-    points[i].value = Point(sqrt.(Λ) .* E.vectors[i,:])
+    points[i].value = 𝐑ⁿ(sqrt.(Λ) .* E.vectors[i,:])
   end
   for i = 1:length(scalars)
-    scalars[i].value = Scalar(F.value[i])
+    scalars[i].value = 𝐑(F.value[i])
   end
   nothing
 end
@@ -111,7 +111,7 @@ variables(cons::Set{<:Constraint}) = mapreduce(variables, ∪, cons; init=Variab
 variables(A::AbstractArray{<:Expression}) = mapreduce(x->variables(x), ∪, A)
 
 "Lift an affine expression or constraint."
-function lift(x::AbstractAffine{Scalar}, t)
+function lift(x::AbstractAffine{<:Field}, t)
 
   X, 𝒳 = t
 
@@ -135,7 +135,7 @@ function lift(x::AbstractAffine{Scalar}, t)
 end
 
 # equivalent to just [ lift(x,X,𝒳) for x ∈ a ], but Convex.jl only overloads hvcat
-lift(a::AbstractArray{<:Expression{Scalar}}, t) = hvcat( size(a), [ lift(x,t) for x ∈ a ]...)
+lift(a::AbstractArray{<:Expression{<:Field}}, t) = hvcat( size(a), [ lift(x,t) for x ∈ a ]...)
 
 lift(cons::Constraints, t) = mapreduce(c->lift(c,t), push!, cons; init=Set{cvx.Constraint}())
 lift(c::Constraint, t) = error("Lifted constraint not implemented for constraint of type $(typeof(c)).")

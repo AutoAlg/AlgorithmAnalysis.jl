@@ -1,7 +1,7 @@
 export Constraint, Constraints
 export expression, set
-export Cone, PositiveSemidefiniteCone, PositiveOrthant, Positive, Semidefinite, Equality
-export ConeConstraint
+export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
+export ConeConstraint, Satisfied, Unsatisfied, prune, check
 export ⪯, ⪰
 
 import Base.∈, Base.isequal, Base.==, Base.:≤, Base.:≥
@@ -21,6 +21,9 @@ expression(c::Constraint) = error("expression not implemented for constraint $(t
 set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
 isequal(lhs::Constraint, rhs::Constraint) = false
 
+struct Satisfied <: Constraint end
+struct Unsatisfied <: Constraint end
+
 
 ###############################################################################
 # ConeConstraint
@@ -34,15 +37,22 @@ struct ConeConstraint{K<:Cone} <: Constraint
   x::Union{Expression, AbstractArray{<:Expression}}
   
   function ConeConstraint{K}(x) where {K<:Cone}
-    this = new(x)
-    add_constraint!(x, this)
-    return this
+    value = evaluate(x)
+    if ismissing(value)
+      this = new(x)
+      add_constraint!(x, this)
+      this
+    else
+      check(x,K) ? Satisfied() : Unsatisfied()
+    end
   end
 end
 
 const Positive = ConeConstraint{PositiveOrthant}
 const Semidefinite = ConeConstraint{PositiveSemidefiniteCone}
 const Equality = ConeConstraint{ZeroSet}
+
+Equality(x::Union{Number, AbstractArray}) = 
 
 ∈(x::Expression, ::K) where {K<:Cone} = ConeConstraint{K}(x)
 
@@ -92,3 +102,28 @@ function ==(lhs::AbstractArray{<:Expression}, rhs::AbstractArray{<:Expression})
   end
   cons
 end
+
+
+###############################################################################
+# Show
+
+show(io::IO, c::Equality) = print(io, "0 = $(c.x)")
+show(io::IO, c::Positive) = print(io, "0 ≤ $(c.x)")
+show(io::IO, c::Semidefinite) = print(io, "0 ⪯ $(c.x)")
+
+
+###############################################################################
+# Check
+
+check(c::Constraint) = check(expression(c), set(c))
+
+check(x, K::Type{ZeroSet}) = evaluate(x) == 0
+check(x, K::Type{PositiveOrthant}) = evaluate(x) ≥ 0
+check(x, K::Type{PositiveSemidefiniteCone}) = evaluate(x) ⪰ 0
+
+
+###############################################################################
+# Prune
+
+"Prune a set of constraints by removing any constraints that are satisfied."
+prune(s::Constraints) = setdiff!(s, Set([Satisfied()]))

@@ -13,35 +13,84 @@
 #  - Variable{T}
 #  - InnerProduct{Scalar}
 
-export Value, Point, Scalar
-export Expression, Variable, Variables
+export Value, Expression, Variable, Variables
+export Field, VectorSpace, InnerProductSpace
 export AbstractConstant, Constant, Zero
 export AbstractLinear, Linear, AbstractAffine, Affine, InnerProduct
 export type, label, label!, evaluate, variables, constraints, weights, hasvalue
-export ⊗, linear, constant
+export ⊗, linear, constant, ⪯, ⪰, ⋅
+export @field, @innerproductspace, @autolabel
 
 import Base.show, Base.isequal
 import Base.+, Base.-, Base.*, Base./, Base.^
 import Base.promote_rule, Base.convert
-import Base.adjoint, Base.zero, Base.iszero
+import Base.zero, Base.iszero
 
 const Label = Union{String, Symbol}
+
+
+abstract type Field <: Value{Number} end
+abstract type VectorSpace{F<:Field} <: Value{AbstractVector} end
+abstract type InnerProductSpace{F<:Field} <: VectorSpace{F} end
+
+
+###############################################################################
+# Macro definitions of value types
+
+"Define a field."
+macro field(s::Symbol)
+  quote
+    mutable struct $(esc(s)) <: Field
+      value::Union{Number, Missing}
+    end
+  end
+end
+
+"Define an inner product space."
+macro innerproductspace(ex::Expr)
+  if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+    throw(ArgumentError("@innerproductspace: `$(ex)` must be of the form: V, F where V is the inner product space and F is a field."))
+  end
+  quote
+    mutable struct $(esc(ex.args[1])) <: InnerProductSpace{$(esc(ex.args[2]))}
+      value::Union{Vector, Missing}
+    end
+  end
+end
+
+
+###############################################################################
+# Automatic labeling
+
+"Automatic labeling of assignment expressions."
+macro autolabel(ex::Expr)
+  if ex.head ≠ :(=)
+    throw(ArgumentError("@autolabel: `$ex` is not an assigment expression."))
+  end
+  if ex.args[1] isa Symbol
+    quote
+      local var = $(esc(ex.args[2]))
+      label!(var, $(string(ex.args[1])))
+      $(esc(ex.args[1])) = var
+    end
+  elseif ex.args[1] isa Expr && ex.args[1].head == :tuple
+    quote
+      local var = $(esc(ex.args[2]))
+      label!.(var, $([string(x) for x ∈ ex.args[1].args]))
+      $(esc(ex.args[1])) = var
+    end
+  else
+    throw(ArgumentError("@autolabel: `$ex` does not have the correct left-hand side."))
+  end
+end
 
 
 ###############################################################################
 # Value types
 
-mutable struct Scalar <: Value{Number}
-  value::Union{Number, Missing}
-end
++(x1::V, x2::V) where {V<:Value} = V(x1.value + x2.value)
 
-mutable struct Point <: Value{Vector}
-  value::Union{Vector, Missing}
-end
-
-+(x1::V, x2::V) where {T,V<:Value{T}} = V(x1.value + x2.value)
-
-*(a::Number, x::V) where {T,V<:Value{T}} = V(a*x.value)
+*(a::Number, x::V) where {V<:Value} = V(a*x.value)
 
 "Default constructor for any subtype of `Value`."
 (::Type{V})() where {V<:Value} = V(missing)
@@ -51,15 +100,22 @@ end
 
 
 ###############################################################################
-# Arrays of expressions
+# Outer product (Gram matrix)
 
-adjoint(x::Expression) = x
+function ⊗(x1::Vector{<:Expression{V}}, x2::Vector{<:Expression{V}}) where {F<:Field, V<:VectorSpace{F}}
+  Expression{F}[ x*y for x ∈ x1, y ∈ x2 ]
+end
 
-zero(::E, label::Label = "") where {T,E<:Expression{T}} = Zero{T}(label)
-zero(::Type{E}, label::Label = "") where {T,E<:Expression{T}} = Zero{T}(label)
 
-⊗(x1::Vector{<:Expression{Point}}, x2::Vector{<:Expression{Point}}) = Expression{Scalar}[ x1[i]*x2[j] for i ∈ 1:length(x1), j ∈ 1:length(x2) ]
+###############################################################################
+# Positive semidefinite
 
+⪰(a::Matrix, b::Matrix) = all(LinearAlgebra.eigvals(a-b) .≥ 0)
+⪰(a::Matrix, b::Number) = all(LinearAlgebra.eigvals(a-b*LinearAlgebra.I) .≥ 0)
+⪰(a::Number, b::Matrix) = all(LinearAlgebra.eigvals(a*LinearAlgebra.I-b) .≥ 0)
+⪯(a::Matrix, b::Matrix) = all(LinearAlgebra.eigvals(a-b) .≤ 0)
+⪯(a::Matrix, b::Number) = all(LinearAlgebra.eigvals(a-b*LinearAlgebra.I) .≤ 0)
+⪯(a::Number, b::Matrix) = all(LinearAlgebra.eigvals(a*LinearAlgebra.I-b) .≤ 0)
 
 ###############################################################################
 # Expression
@@ -110,13 +166,12 @@ function isequal end
 
 "A variable expression."
 mutable struct Variable{T} <: Expression{T}
-  value::Union{T, Missing}
+  value::T
   label::Label
   constraints::Constraints
-  relations::Relations
+  oracles::Oracles
   
-  Variable{T}(label::Label = "") where {T<:Value} = new(missing, label, Constraints(), Relations())
-  # Variable(value::T) where {T<:Value} = new{T}(value, string(value), Constraints(), Relations())
+  Variable{T}(label::Label = "") where {T<:Value} = new(T(), label, Constraints(), Relations())
 end
 
 "A set of variables."
@@ -124,6 +179,10 @@ const Variables = Set{Variable}
 
 "Initialize an expression as a variable (used when sampling an oracle)."
 Expression{T}(label::Label = "") where {T} = Variable{T}(label)
+
+"Add an oracle to all variables in an expression or tuple of expressions."
+add_oracle!(x::Expression, o::Oracle) = map(v -> push!(v.oracles, o), collect(variables(x)))
+add_oracle!(X::NTuple{N,Expression}, o::Oracle) where {N} = map(x -> add_oracle!(x, o), X)
 
 
 ###############################################################################
@@ -186,55 +245,61 @@ linear(x::Affine) = linear(x.linear)
 "Dictionary whose keys are expressions and whose values are the corresponding weights in an affine expression."
 weights(x::AbstractAffine) = linear(x).weights
 
+"Construct the zero expression of a given type."
+zero(::E, label::Label = "") where {T,E<:Expression{T}} = Zero{T}(label)
+zero(::Type{E}, label::Label = "") where {T,E<:Expression{T}} = Zero{T}(label)
+
 
 ###############################################################################
 # InnerProduct
 
 "An inner product of two points."
-struct InnerProduct <: Expression{Scalar}
-  left::Expression{Point}
-  right::Expression{Point}
+struct InnerProduct{F<:Field, V<:InnerProductSpace{F}} <: Expression{F}
+  left::Expression{V}
+  right::Expression{V}
   label::Label
 
-  InnerProduct(left::Expression{Point}, right::Expression{Point}, label::Label = "") = hash(left) < hash(right) ? new(left, right, label) : new(right, left, label)
+  InnerProduct(left::Expression{V}, right::Expression{V}, label::Label = "") where {F<:Field, V<:InnerProductSpace{F}} = hash(left) < hash(right) ? new{F,V}(left, right, label) : new{F,V}(right, left, label)
 end
 
 "Inner product of two points."
-function *(x1::AbstractLinear{Point}, x2::AbstractLinear{Point})
+function *(x1::AbstractLinear{V}, x2::AbstractLinear{V}) where {F<:Field, V<:InnerProductSpace{F}}
   w = Dict{InnerProduct, Number}()
   for (key1, value1) ∈ weights(x1)
     for (key2, value2) ∈ weights(x2)
       mergewith!(+, w, Dict( InnerProduct(key1,key2) => value1*value2 ))
     end
   end
-  Linear{Scalar}(w)
+  Linear{F}(w)
 end
 
 # convert variables to linear expressions to compute inner products
-*(x1::Variable{Point}, x2::Variable{Point}) = Linear(x1)*Linear(x2)
-*(x1::Variable{Point}, x2::AbstractLinear{Point}) = Linear(x1)*x2
-*(x1::AbstractLinear{Point}, x2::Variable{Point}) = x1*Linear(x2)
+⋅(x1::Variable{V}, x2::Variable{V}) where {V<:InnerProductSpace} = Linear(x1)*Linear(x2)
+⋅(x1::Variable{V}, x2::AbstractLinear{V}) where {V<:InnerProductSpace} = Linear(x1)*x2
+⋅(x1::AbstractLinear{V}, x2::Variable{V}) where {V<:InnerProductSpace} = x1*Linear(x2)
 
-# inner product with zero
-*(x1::Zero{Point}, x2::Zero{Point}) = Zero{Scalar}()
-*(x1::Zero{Point}, x2::Expression{Point}) = Zero{Scalar}()
-*(x1::Expression{Point}, x2::Zero{Point}) = Zero{Scalar}()
+# inner product with the zero vector
+⋅(x1::Zero{V}, x2::Zero{V}) where {F<:Field, V<:InnerProductSpace{F}} = Zero{F}()
+⋅(x1::Zero{V}, x2::Expression{V}) where {F<:Field, V<:InnerProductSpace{F}} = Zero{F}()
+⋅(x1::Expression{V}, x2::Zero{V}) where {F<:Field, V<:InnerProductSpace{F}} = Zero{F}()
 
-# inner product of points
-*(x1::Point, x2::Point) = x1.value'*x2.value
+# inner product of vectors
+⋅(x1::V, x2::V) where {V<:InnerProductSpace}= x1.value'*x2.value
 
-^(x::AbstractLinear{Point}, n::Int) = (n == 2 ? x*x : error("Can only square point weights."))
-^(x::Variable{Point}, n::Int) = (n == 2 ? x*x : error("Can only square point variables."))
-^(x::Zero{Point}, n::Int) = (n == 2 ? Zero{Scalar}() : error("Can only square zero points."))
+^(x::AbstractLinear{<:InnerProductSpace}, n::Int) = (n == 2 ? x*x : error("Can only square point weights."))
+^(x::Variable{<:InnerProductSpace}, n::Int) = (n == 2 ? x*x : error("Can only square point variables."))
+^(x::Zero{V}, n::Int) where {F<:Field, V<:InnerProductSpace{F}} = (n == 2 ? Zero{F}() : error("Can only square zero points."))
+
 
 ###############################################################################
 # Evaluate
 
 evaluate(x::Expression) = error("Evaluate not implemented for $(typeof(x)).")
-evaluate(x::Constant) = x.value
+evaluate(x::Constant) = evaluate(x.value)
 evaluate(x::Zero) = x
+evaluate(x::Zero{<:Field}) = 0
 evaluate(x::Linear{T}) where {T} = mapreduce( pair -> pair.second * evaluate(pair.first), +, weights(x); init=Zero{T}() )
-evaluate(x::Variable) = x.value
+evaluate(x::Variable) = evaluate(x.value)
 evaluate(x::Affine) = evaluate(constant(x)) + evaluate(linear(x))
 evaluate(x::InnerProduct) = evaluate(x.left)*evaluate(x.right)
 evaluate(x::Value) = x.value
@@ -291,16 +356,16 @@ isequal(x1::V, x2::V) where {V<:Value} = isequal(x1.value, x2.value)
 +(x1::Variable{T}, x2::Constant{T}) where {T} = Affine(Linear(x1), x2)
 +(x1::Constant{T}, x2::Variable{T}) where {T} = Affine(Linear(x2), x1)
 +(x1::AbstractAffine{T}, x2::AbstractAffine{T}) where {T} = Affine(linear(x1)+linear(x2), constant(x1)+constant(x2))
-+(x1::InnerProduct, x2::Constant{Scalar}) = Linear(x1) + x2
-+(x1::Constant{Scalar}, x2::InnerProduct) = Linear(x2) + x1
++(x1::InnerProduct{F,V}, x2::Constant{F}) where {F<:Field, V<:VectorSpace{F}} = Linear(x1) + x2
++(x1::Constant{F}, x2::InnerProduct{F,V}) where {F<:Field, V<:VectorSpace{F}} = Linear(x2) + x1
 
 +(x1::Variable{T}, x2::Variable{T}) where {T} = Linear(x1) + Linear(x2)
 +(x1::Variable{T}, x2::Linear{T}) where {T} = Linear(x1) + x2
 +(x1::Linear{T}, x2::Variable{T}) where {T} = x1 + Linear(x2)
 +(x1::Variable{T}, x2::Affine{T}) where {T} = Linear(x1) + x2
 +(x1::Affine{T}, x2::Variable{T}) where {T} = x1 + Linear(x2)
-+(x1::Variable{Scalar}, x2::InnerProduct) = Linear(x1) + Linear(x2)
-+(x1::InnerProduct, x2::Variable{Scalar}) = Linear(x1) + Linear(x2)
++(x1::Variable{F}, x2::InnerProduct{F,V}) where {F<:Field, V<:VectorSpace{F}} = Linear(x1) + Linear(x2)
++(x1::InnerProduct{F,V}, x2::Variable{F}) where {F<:Field, V<:VectorSpace{F}} = Linear(x1) + Linear(x2)
 
 function +(x1::AbstractLinear{T}, x2::AbstractLinear{T}) where {T}
   x = Linear{T}(mergewith(+, weights(x1), weights(x2)))
@@ -315,26 +380,24 @@ function +(x1::AbstractLinear{T}, x2::AbstractLinear{T}) where {T}
     x
   end
 end
-+(x1::Linear{Scalar}, x2::InnerProduct) = x1 + Linear(x2)
-+(x1::InnerProduct, x2::Linear{Scalar}) = x2 + Linear(x1)
++(x1::Linear{F}, x2::InnerProduct{F,V}) where {F<:Field, V<:VectorSpace{F}} = x1 + Linear(x2)
++(x1::InnerProduct{F,V}, x2::Linear{F}) where {F<:Field, V<:VectorSpace{F}} = x2 + Linear(x1)
 
-+(x1::Affine{Scalar}, x2::InnerProduct) = x1 + Linear(x2)
-+(x1::InnerProduct, x2::Affine{Scalar}) = x2 + Linear(x1)
++(x1::Affine{F}, x2::InnerProduct{F,V}) where {F<:Field, V<:VectorSpace{F}} = x1 + Linear(x2)
++(x1::InnerProduct{F,V}, x2::Affine{F}) where {F<:Field, V<:VectorSpace{F}} = x2 + Linear(x1)
 
-+(x1::InnerProduct, x2::InnerProduct) = Linear(x1) + Linear(x2)
++(x1::InnerProduct{F,V}, x2::InnerProduct{F,V}) where {F<:Field, V<:VectorSpace{F}} = Linear(x1) + Linear(x2)
 
 +(x1::Expression{T}, x2::T) where {T} = x1 + Constant(x2)
 +(x1::T, x2::Expression{T}) where {T} = Constant(x1) + x2
 
-+(x1::Expression{Scalar}, x2::Number) = x1 + Constant(Scalar(x2))
-+(x1::Number, x2::Expression{Scalar}) = Constant(Scalar(x1)) + x2
-
-+(x1::Expression{Point}, x2::Vector) = x1 + Constant(Point(x2))
-+(x1::Vector, x2::Expression{Point}) = Constant(Point(x1)) + x2
++(x1::Expression{F}, x2::Number) where {F<:Field} = x1 + Constant(F(x2))
++(x1::Number, x2::Expression{F}) where {F<:Field} = Constant(F(x1)) + x2
 
 +(::Expression, ::Missing) = missing
 +(::Missing, ::Expression) = missing
-
++(::Value, ::Missing) = missing
++(::Missing, ::Value) = missing
 
 ###############################################################################
 # Scaling
@@ -344,7 +407,7 @@ end
 *(a::Number, x::Variable{T}) where {T} = Linear{T}(Dict(x => a))
 *(a::Number, x::Linear{T}) where {T} = Linear{T}(Dict(keys(x.weights) .=> map(v->a*v, values(x.weights))))
 *(a::Number, x::Affine{T}) where {T} = Affine{T}(a*x.linear, a*x.constant)
-*(a::Number, x::InnerProduct) = Linear{Scalar}(Dict(x => a))
+*(a::Number, x::InnerProduct{F,V}) where {F<:Field, V<:VectorSpace{F}} = Linear{F}(Dict(x => a))
 
 *(x1::T, x2::Zero{T}) where {T} = Zero{T}()
 *(x1::Zero{T}, x2::T) where {T} = Zero{T}()
@@ -358,7 +421,6 @@ end
 # show(io::IO, ::MIME"text/plain", x::Expression) = print(io, x.label)
 
 show(io::IO, x::AbstractConstant) = print(io, x.value)
-
 
 function show(io::IO, x::Variable)
   value = evaluate(x)
@@ -392,6 +454,8 @@ function show(io::IO, x::Linear)
     else
       if value == 1
         print(io, " + ", key)
+      elseif value == -1
+        print(io, " - ", key)
       elseif value ≥ 0
         print(io, " + ", value, " ", key)
       else
@@ -410,11 +474,22 @@ function show(io::IO, x::Affine)
   end
 end
 
-show(io::IO, x::InnerProduct) = hasvalue(x) ? print(io, evaluate(x)) : print(io, "⟨$(x.left),$(x.right)⟩")
+function show(io::IO, x::InnerProduct)
+  if hasvalue(x)
+    print(io, evaluate(x))
+  else
+    if isequal(x.left,x.right)
+      print(io, "$(x.left)²")
+    else
+      print(io, "⟨$(x.left),$(x.right)⟩")
+    end
+  end
+end
 
 show(io::IO, x::Value) = print(io, x.value)
 
 show(io::IO, p::Pair{<:Expression, <:Expression}) = print(io, p.first, " => ", p.second)
+
 
 ###############################################################################
 # Default tuple constructors
@@ -437,7 +512,9 @@ hash(x::Linear, h::UInt) = hash(weights(x), h)
 hash(x::Variable, h::UInt) = objectid(x)
 hash(x::Affine, h::UInt) = hash(linear(x), hash(constant(x), h))
 hash(x::InnerProduct, h::UInt) = hash(x.left, hash(x.right, h))
-hash(c::Constraint, h::UInt) = hash(set(c), hash(expression(c), h))
+hash(c::ConeConstraint, h::UInt) = hash(set(c), hash(expression(c), h))
+hash(c::Satisfied, h::UInt) = objectid(c)
+hash(c::Unsatisfied, h::UInt) = objectid(c)
 hash(x::Value, h::UInt) = hash(x.value, h)
 
 function hash(a::AbstractArray{<:Expression}, h::UInt)

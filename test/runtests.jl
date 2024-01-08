@@ -10,8 +10,8 @@ using Test
 
   @test domain(r1) == Int64
   @test codomain(r1) == Float64
-  @test preimage(r1) == Set{Int64}([1,2,3])
-  @test image(r1) == Set{Float64}([1.0,2.0,4.0])
+  @test inputs(r1) == Set{Int64}([1,2,3])
+  @test outputs(r1) == Set{Float64}([1.0,2.0,4.0])
   @test r1(1) == Set{Float64}([1.0,2.0])
   @test r1(Set{Int64}([2,3])) == Set{Float64}([4.0])
   @test inv(r1) == Relation( Set([ 1.0 => 1, 2.0 => 1, 4.0 => 2, 4.0 => 3 ]) )
