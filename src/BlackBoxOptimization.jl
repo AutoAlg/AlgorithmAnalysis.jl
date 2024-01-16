@@ -13,9 +13,12 @@
 # TODO
 # - constraints with ±Inf
 # - clean up show methods
-# - linear combination of oracles
-# - decomposition of scalars is affine in scalars (no inner products)
-
+# - more interpolation conditions
+# - interpolation conditions inherent to function classes (e.g., linear, quadratic)
+# - PEP
+# - algorithms
+# - Lyapunov analysis
+# - benchmarking
 
 module BlackBoxOptimization
 
@@ -24,13 +27,6 @@ export BlackBoxOptimization
 # import Convex as cvx
 # import SCS
 import LinearAlgebra
-
-# "The types of values for an expression."
-# abstract type Value{T} end
-
-# "An abstract expression that evaluates to a value of type `T`."
-# # abstract type Expression{T} <: Value{T where {T, V<:Value{T}}} end
-# abstract type Expression{T<:Value} end
 
 "An abstract constraint that consists of an expression belonging to a set."
 abstract type Constraint end
@@ -52,28 +48,6 @@ include("interpolation.jl")
 # include("solve.jl")
 # include("primitives.jl")
 # include("algorithms.jl")
-
-###############################################################################
-# Hash
-
-# Override hash function because of
-# https://github.com/JuliaLang/julia/issues/10267
-import Base.hash
-
-"Hash of an expression."
-hash(e::Expression, h::UInt) = isvariable(e) ? objectid(e) : hash(value(e), hash(decomposition(e), h))
-hash(x::LinearDecomposition, h::UInt) = hash(weights(x), h)
-hash(x::AffineDecomposition, h::UInt) = hash(linear(x), hash(constant(x), h))
-hash(c::Constraint, h::UInt) = hash(set(c), hash(expression(c), h))
-hash(c::Satisfied, h::UInt) = objectid(c)
-hash(c::Unsatisfied, h::UInt) = objectid(c)
-
-function hash(a::AbstractArray{<:Expression}, h::UInt)
-  h = hash(size(a), h)
-  for x ∈ a
-    h = hash(x, h)
-  end
-  h
-end
+include("hash.jl")
 
 end

@@ -1,5 +1,5 @@
 export Expression, Field, VectorSpace, NormedVectorSpace, InnerProductSpace, GramMatrix
-export Decomposition, LinearDecomposition, AffineDecomposition, Scalars, InnerProduct, VectorDecomposition, ScalarDecomposition
+export Decomposition, LinearDecomposition, AffineDecomposition, Scalars, InnerProduct
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
 export label, label!, value, decomposition, selfdecomp, hasvalue, isvariable
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @autolabel
@@ -119,7 +119,6 @@ function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
   dict = mergewith(+, weights(x1), weights(x2))
   for (key,value) ∈ dict
     if iszero(key) || iszero(value)
-      # @show key, value, iszero(key), iszero(value)
       delete!(dict, key)
     end
   end
@@ -146,57 +145,6 @@ variables(x::Decomposition) = Set(keys(weights(x)))
 
 
 ###############################################################################
-# Scalar and vector decompositions
-
-mutable struct ScalarDecomposition{F<:Field} <: Decomposition
-  scalars::AffineDecomposition{F}
-  innerproducts::LinearDecomposition{InnerProduct{F}}
-end
-
-mutable struct VectorDecomposition{V<:VectorSpace} <: Decomposition
-  vectors::LinearDecomposition{V}
-end
-
-"Default constructors."
-ScalarDecomposition{F}(a::Number = 0) where {F<:Field} = ScalarDecomposition{F}( AffineDecomposition{F}(a), LinearDecomposition{InnerProduct{F}}() )
-VectorDecomposition{V}() where {V<:VectorSpace} = VectorDecomposition{V}( LinearDecomposition{V}() )
-VectorDecomposition{V}(weights::Dict{<:V,<:Number}) where {V<:VectorSpace} = VectorDecomposition{V}( LinearDecomposition{V}(weights) )
-
-"LinearDecomposition part of a decomposition."
-# linear(x::LinearDecomposition) = x
-# linear(x::AffineDecomposition) = x.linear
-
-"Constant part of a decomposition."
-constant(x::VectorDecomposition) = error("A vector decomposition does not have a constant term.")
-constant(x::ScalarDecomposition) = constant(x.scalars)
-
-"Check if a decomposition is empty."
-isempty(x::VectorDecomposition) = isempty(x.vectors)
-isempty(x::ScalarDecomposition) = isempty(x.scalars) && isempty(x.innerproducts)
-
-"Weights of the linear part of a decomposition."
-weights(x::VectorDecomposition) = weights(x.vectors)
-
-"Sum two decompositions."
-+(x1::T, x2::T) where {T<:VectorDecomposition} = T( x1.vectors + x2.vectors )
-+(x1::T, x2::T) where {T<:ScalarDecomposition} = T( x1.scalars + x2.scalars, x1.innerproducts + x2.innerproducts )
-+(x1::T, x2::Number) where {T<:ScalarDecomposition} = T( x1.scalars + x2, x1.innerproducts )
-+(x1::Number, x2::T) where {T<:ScalarDecomposition} = x2 + x1
-
-"Subtract two decompositions."
--(x1::T, x2::Number) where {T<:ScalarDecomposition} = x1 + (-x2)
--(x1::Number, x2::T) where {T<:ScalarDecomposition} = x1 + (-x2)
-
-"Scale a decomposition."
-*(a::Number, x::T) where {T<:VectorDecomposition} = T( a*x.vectors )
-*(a::Number, x::T) where {T<:ScalarDecomposition} = T( a*x.scalars, a*x.innerproducts )
-
-"Variables in a decomposition."
-variables(x::VectorDecomposition) = variables(x.vectors)
-variables(x::ScalarDecomposition) = variables(x.scalars) ∪ variables(x.innerproducts)
-
-
-###############################################################################
 # Macro definitions of concrete expression types
 
 "Define a field."
@@ -205,7 +153,7 @@ macro field(s::Symbol)
     mutable struct $(esc(s)) <: Field
       label::String
       value::Union{Number,Missing}
-      decomposition::ScalarDecomposition{$(esc(s))}
+      decomposition::AffineDecomposition{$(esc(s))}
       constraints::Constraints
     end
   end
@@ -220,7 +168,7 @@ macro vectorspace(ex::Expr)
     mutable struct $(esc(ex.args[1])) <: VectorSpace{$(esc(ex.args[2]))}
       label::String
       value::Union{Vector,Missing,Zero}
-      decomposition::VectorDecomposition{$(esc(ex.args[1]))}
+      decomposition::LinearDecomposition{$(esc(ex.args[1]))}
       constraints::Constraints
     end
   end
@@ -235,7 +183,7 @@ macro normedvectorspace(ex::Expr)
     mutable struct $(esc(ex.args[1])) <: NormedVectorSpace{$(esc(ex.args[2]))}
       label::String
       value::Union{Vector,Missing,Zero}
-      decomposition::VectorDecomposition{$(esc(ex.args[1]))}
+      decomposition::LinearDecomposition{$(esc(ex.args[1]))}
       constraints::Constraints
     end
   end
@@ -250,11 +198,11 @@ macro innerproductspace(ex::Expr)
     mutable struct $(esc(ex.args[1])) <: InnerProductSpace{$(esc(ex.args[2]))}
       label::String
       value::Union{Vector,Missing,Zero}
-      decomposition::VectorDecomposition{$(esc(ex.args[1]))}
+      decomposition::LinearDecomposition{$(esc(ex.args[1]))}
       constraints::Constraints
       dual::LinearFunctional{$(esc(ex.args[1]))}
 
-      function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::VectorDecomposition{$(esc(ex.args[1]))}, constraints::Constraints)
+      function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{$(esc(ex.args[1]))}, constraints::Constraints)
         x = new(label, value, decomposition, constraints, LinearFunctional{$(esc(ex.args[1]))}())
         x.dual.dual = x
         x
@@ -269,6 +217,14 @@ end
 
 "Automatic labeling of values."
 macro autolabel(ex::Expr)
+  if ex.head == :block
+    Expr(:block, [ _autolabel(arg) for arg ∈ ex.args if !(arg isa LineNumberNode) ]...)
+  else
+    _autolabel(ex)
+  end
+end
+
+function _autolabel(ex::Expr)
   if ex.head ≠ :(=)
     throw(ArgumentError("@autolabel: `$ex` is not an assigment expression."))
   end
@@ -303,8 +259,8 @@ variables(e::Expression) = variables(decomposition(e))
 variables(m::Matrix{F}) where {F<:Field} = mapreduce(variables, ∪, m)
 
 # decomposition that defaults to self => 1 if empty
-selfdecomp(a::F) where {F<:Field} = isempty(decomposition(a)) ? ScalarDecomposition{F}( AffineDecomposition{F}(Dict(a => 1)), LinearDecomposition{InnerProduct{F}}() ) : decomposition(a)
-selfdecomp(v::V) where {V<:VectorSpace} = isempty(decomposition(v)) ? VectorDecomposition{V}(Dict(v => 1)) : decomposition(v)
+selfdecomp(a::F) where {F<:Field} = isempty(decomposition(a)) ? AffineDecomposition{F}(Dict(a => 1)) : decomposition(a)
+selfdecomp(v::V) where {V<:VectorSpace} = isempty(decomposition(v)) ? LinearDecomposition{V}(Dict(v => 1)) : decomposition(v)
 
 # types of expressions
 iszero(e::Expression) = hasvalue(e) && iszero(value(e))
@@ -316,20 +272,20 @@ isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 # Constructors
 
 # variable
-(::Type{F})(label::String = "") where {F<:Field} = F(label, missing, ScalarDecomposition{F}(), Constraints())
-(::Type{V})(label::String = "") where {V<:VectorSpace} = V(label, missing, VectorDecomposition{V}(), Constraints())
+(::Type{F})(label::String = "") where {F<:Field} = F(label, missing, AffineDecomposition{F}(), Constraints())
+(::Type{V})(label::String = "") where {V<:VectorSpace} = V(label, missing, LinearDecomposition{V}(), Constraints())
 
 # constant
-(::Type{F})(value::Number) where {F<:Field} = F("", value, ScalarDecomposition{F}(), Constraints())
-(::Type{V})(value::Union{Vector,Zero}) where {V<:VectorSpace} = V("", value, VectorDecomposition{V}(), Constraints())
+(::Type{F})(value::Number) where {F<:Field} = F("", value, AffineDecomposition{F}(), Constraints())
+(::Type{V})(value::Union{Vector,Zero}) where {V<:VectorSpace} = V("", value, LinearDecomposition{V}(), Constraints())
 
 # decomposition (if the decomposition is empty, set the value to zero)
-(::Type{F})(decomposition::ScalarDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", missing, decomposition, Constraints())
-(::Type{V})(decomposition::VectorDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", missing, decomposition, Constraints())
+(::Type{F})(decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", missing, decomposition, Constraints())
+(::Type{V})(decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", missing, decomposition, Constraints())
 
 # value and decomposition (if the decomposition is empty, set the value to zero)
-(::Type{F})(value::Union{Number,Missing}, decomposition::ScalarDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", value, decomposition, Constraints())
-(::Type{V})(value::Union{Vector,Missing,Zero}, decomposition::VectorDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", value, decomposition, Constraints())
+(::Type{F})(value::Union{Number,Missing}, decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", value, decomposition, Constraints())
+(::Type{V})(value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", value, decomposition, Constraints())
 
 
 ###############################################################################
@@ -362,7 +318,7 @@ function *(v1::V, v2::V) where {F<:Field, V<:InnerProductSpace{F}}
       mergewith!(+, w, Dict( (key1,key2) => value1*value2 ))
     end
   end
-  F( ScalarDecomposition{F}( AffineDecomposition{F}(), LinearDecomposition{InnerProduct{F}}(w) ) )
+  F( AffineDecomposition{F}(w) )
 end
 
 *(v1::InnerProductSpace, v2::InnerProductSpace) = *(promote(v1,v2)...)
@@ -416,62 +372,47 @@ evaluate(t::Tuple{LinearDecomposition{F},AffineDecomposition{InnerProduct{F}}}) 
 ###############################################################################
 # Show
 
-show(io::IO, x::VectorDecomposition{V}) where {V<:VectorSpace} = print(io, x.vectors)
-show(io::IO, mime::MIME"text/plain", x::VectorDecomposition{V}) where {V<:VectorSpace} = show(io, mime, x.vectors)
-
-function show(io::IO, x::ScalarDecomposition{F}) where {F<:Field}
-  print(io, x.scalars)
-  isempty(x.scalars) ? nothing : print(io, " + ")
-  print(io, x.innerproducts)
-end
-
-function show(io::IO, mime::MIME"text/plain", x::ScalarDecomposition{F}) where {F<:Field}
-  show(io, mime, linear(x.scalars))
-  show(io, mime, x.innerproducts)
-  !iszero(constant(x)) && print(io, "  "^get(io, :indent, 0), constant(x))
-end
-
 function show(io::IO, x::LinearDecomposition)
+  isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
   first = true
   for (key, value) ∈ weights(x)
-    k = (key isa Tuple ? "⟨$(key[1]),$(key[2])⟩" : key)
     if first
       first = false
       if value == 1
-        print(io, k)
+        print(io, key)
       elseif value == -1
-        print(io, "-", k)
+        print(io, "-", key)
       else
-        print(io, value, " ", k)
+        print(io, value, " ", key)
       end
     else
       if value == 1
-        print(io, " + ", k)
+        print(io, " + ", key)
       elseif value == -1
-        print(io, " - ", k)
+        print(io, " - ", key)
       elseif value ≥ 0
-        print(io, " + ", value, " ", k)
+        print(io, " + ", value, " ", key)
       else
-        print(io, " - ", -value, " ", k)
+        print(io, " - ", -value, " ", key)
       end
     end
   end
 end
 
-function show(io::IO, mime::MIME"text/plain", x::LinearDecomposition)
-  isempty(x) && return println(io, "  "^get(io, :indent, 0), "(empty)")
-  map( p -> println(io, "  "^get(io, :indent, 0), p.first, " => ", p.second), collect(x.weights))
-end
+# function show(io::IO, mime::MIME"text/plain", x::LinearDecomposition)
+#   isempty(x) && return println(io, "  "^get(io, :indent, 0), "(empty)")
+#   map( p -> println(io, "  "^get(io, :indent, 0), p.first, " ↦  ", p.second), collect(x.weights))
+# end
 
 function show(io::IO, x::AffineDecomposition)
   print(io, linear(x))
   !iszero(constant(x)) && print(io, " + ", constant(x))
 end
 
-function show(io::IO, mime::MIME"text/plain", x::AffineDecomposition)
-  show(io, mime, linear(x))
-  !iszero(constant(x)) && print(io, "  "^get(io, :indent, 0), constant(x))
-end
+# function show(io::IO, mime::MIME"text/plain", x::AffineDecomposition)
+#   show(io, mime, linear(x))
+#   !iszero(constant(x)) && print(io, "  "^get(io, :indent, 0), constant(x))
+# end
 
 function show(io::IO, e::Expression)
   if hasvalue(e)
@@ -489,21 +430,29 @@ function show(io::IO, e::Expression)
   end
 end
 
-show(io::IO, G::GramMatrix) = print(io, decomposition(G))
-
 function show(io::IO, mime::MIME"text/plain", v::VectorSpace)
-  println(io, "\nVector in $(typeof(v))")
-  println(io, "  Value: ", iszero(v) ? "zero" : value(v))
-  println(io, "  Decomposition:")
-  show(IOContext(io, :indent => get(io,:indent,0)+2), mime, decomposition(v))
+  print(io, "\nVector in $(typeof(v))")
+  print(io, "\n  Value: ", iszero(v) ? "zero" : value(v))
+  print(io, "\n  Decomposition: ", decomposition(v))
+  # show(IOContext(io, :indent => get(io,:indent,0)+2), mime, decomposition(v))
+end
+
+function show(io::IO, mime::MIME"text/plain", v::InnerProductSpace)
+  print(io, "\nVector in $(typeof(v))")
+  print(io, "\n  Value: ", iszero(v) ? "zero" : value(v))
+  print(io, "\n  Decomposition: ", decomposition(v))
+  print(io, "\n  Dual: ")
+  show(IOContext(io, :indent => get(io,:indent,0)+2), mime, v')
 end
 
 function show(io::IO, mime::MIME"text/plain", a::Field)
-  println(io, "\nScalar in $(typeof(a))")
-  println(io, "  Value: ", value(a))
-  println(io, "  Decomposition:")
-  show(IOContext(io, :indent => get(io,:indent,0)+2), mime, decomposition(a))
+  print(io, "\nScalar in $(typeof(a))")
+  print(io, "\n  Value: ", value(a))
+  print(io, "\n  Decomposition: ", decomposition(a))
+  # show(IOContext(io, :indent => get(io,:indent,0)+2), mime, decomposition(a))
 end
+
+show(io::IO, G::GramMatrix) = print(io, decomposition(G))
 
 function show(io::IO, mime::MIME"text/plain", G::GramMatrix{V}) where {V<:InnerProductSpace}
   # println("Gram matrix in $(typeof(G))")

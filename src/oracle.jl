@@ -51,7 +51,7 @@ hierarchy(d::DataType) = AbstractTrees.print_tree(d; maxdepth=10)
 # Associations
 
 export Transpose, AbstractDifferential, AbstractSubdifferential
-export Subdifferential, Gradient, Hessian, LinearFunctionOfOracles
+export Subdifferential, Gradient, Hessian
 
 abstract type Association end
 
@@ -78,17 +78,17 @@ struct Hessian{T<:AbstractTwiceDifferentiableFunctional} <: AbstractDifferential
   parent::T
 end
 
-"Generic wrapper for a linear combination of oracles."
-struct LinearFunctionOfOracles{T<:Oracle} <: Association
-  dict::Dict{T,Number}
-end
+# "Generic wrapper for a linear combination of oracles."
+# struct LinearFunctionOfOracles{T<:Oracle} <: Association
+#   dict::Dict{T,Number}
+# end
 
-*(a::Number, o::T) where {T<:Oracle} = LinearFunctionOfOracles{T}(Dict(o => a))
-*(a::Number, o::LinearFunctionOfOracles{T}) where {T<:Oracle} = LinearFunctionOfOracles{T}(Dict(p.first => a*p.second for p ∈ o.dict))
-+(o1::T, o2::T) where {T<:Oracle} = LinearFunctionOfOracles{T}(Dict(o1=>1, o2=>1))
-+(o1::T, o2::T) where {T<:LinearFunctionOfOracles} = T(mergewith(+, o1.dict, o2.dict))
-+(o1::T, o2::LinearFunctionOfOracles{T}) where {T<:Oracle} = LinearFunctionOfOracles{T}(Dict(o1=>1)) + o2
-+(o1::LinearFunctionOfOracles{T}, o2::T) where {T<:Oracle} = o1 + LinearFunctionOfOracles{T}(Dict(o2=>1))
+*(a::Number, o::T) where {T<:Oracle} = LinearDecomposition{T}(Dict(o => a))
+*(a::Number, o::LinearDecomposition{T}) where {T<:Oracle} = LinearDecomposition{T}(Dict(first(p) => a*last(p) for p ∈ weights(o)))
++(o1::T, o2::T) where {T<:Oracle} = LinearDecomposition{T}(Dict(o1=>1, o2=>1))
++(o1::T, o2::T) where {T<:LinearDecomposition{<:Oracle}} = T(mergewith(+, weights(o1), weights(o2)))
++(o1::T, o2::LinearDecomposition{T}) where {T<:Oracle} = LinearDecomposition{T}(Dict(o1=>1)) + o2
++(o1::LinearDecomposition{T}, o2::T) where {T<:Oracle} = o1 + LinearDecomposition{T}(Dict(o2=>1))
 
 import Base.adjoint
 
@@ -102,7 +102,7 @@ adjoint(o::AbstractSkewSymmetricLinearMap) = -o
 adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
 adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
 adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional}) = Hessian{typeof(o.parent)}(o.parent)
-adjoint(o::LinearFunctionOfOracles) = mapreduce( p -> p.second * p.first', +, o.dict )
+adjoint(o::LinearDecomposition{<:Oracle}) = mapreduce( p -> last(p) * first(p)', +, weights(o) )
 
 
 ###############################################################################
@@ -294,17 +294,19 @@ import Base.*
 "Sample an oracle at a point in its domain."
 (o::Union{Oracle,Association})(x) = operator(o)(x)
 
-function (o::Operator{<:X,Y})(x::X) where {X,Y}
-  y = Y()
+(o::AbstractLinearFunctional)(x) = operator(o)(x, "⟨" * label(o') * "," * label(x) * "⟩")
+
+function (o::Operator{<:X,Y})(x::X, label::String = "") where {X,Y}
+  y = Y(label)
   push!(samples(o), x => y)
   y
 end
 
-function (o::Map{<:X,Y})(x::X) where {X,Y}
+function (o::Map{<:X,Y})(x::X, label::String = "") where {X,Y}
   if x ∈ keys(samples(o))
     samples(o)[x]
   else
-    y = Y()
+    y = Y(label)
     push!(samples(o), x => y)
     y
   end
@@ -316,8 +318,8 @@ end
 *(o::Union{AbstractLinearMap,AbstractLinearFunctional,Association}, x) = o(x)
 
 "Sample a linear function of linear functionals by taking a linear combination of samples of each functional."
-function (o::LinearFunctionOfOracles{T})(x::X) where {F<:Field,X<:VectorSpace{F},T<:AbstractLinearFunctional{X}}
-  mapreduce( p -> (y=F(); push!(samples(p.first), x=>y); p.second*y), +, o.dict )
+function (o::LinearDecomposition{T})(x::X) where {F<:Field,X<:VectorSpace{F},T<:AbstractLinearFunctional{X}}
+  mapreduce( p -> (y=F(); push!(samples(first(p)), x=>y); last(p)*y), +, weights(o) )
 end
 
 
@@ -369,19 +371,19 @@ end
 
 function show(io::IO, o::AbstractOperator{X,Y}) where {X,Y}
   println(io, "\nOperator from $X to $Y: $(properties(o))")
-  map(p -> println(io, "  ", p), collect(samples(o)))
+  map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
 end
 
 function show(io::IO, o::AbstractLinearMap{X,Y}) where {X,Y}
   println(io, "\nLinear map from $X to $Y: $(properties(o))")
-  map(p -> println(io, "  ", p), collect(samples(o)))
+  map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
   println(io, "\nAdjoint operator from $Y to $X: $(properties(o'))")
-  map(p -> println(io, "  ", p), collect(samples(o')))
+  map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o')))
 end
 
 function show(io::IO, o::AbstractSymmetricLinearMap{X}) where {X}
   println(io, "\nSymmetric linear map on $X: $(properties(o))")
-  map(p -> println(io, "  ", p), collect(samples(o)))
+  map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
 end
 
 function show(io::IO, o::ConstantMap{X,Y}) where {X,Y}
@@ -390,20 +392,25 @@ end
 
 function show(io::IO, o::AbstractFunctional{X}) where {X}
   println(io, "\nFunctional on $X: $(properties(o))")
-  map(p -> println(io, "  ", p), collect(samples(o)))
+  map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
+end
+
+function show(io::IO, o::AbstractLinearFunctional{X}) where {X}
+  print(io, label(o'), "'")
+end
+
+function show(io::IO, mime::MIME"text/plain", o::AbstractLinearFunctional{X}) where {X}
+  println(io, "Linear functional on $X: $(properties(o))")
+  map(p -> println(io, "  "^get(io, :indent, 0), first(p), " ↦  ", last(p)), collect(samples(o)))
 end
 
 function show(io::IO, o::QuadraticFunctional{X}) where {X}
   print(io, "\nQuadratic functional on $X: $(properties(o))")
-  map(p -> print(io, "\n  ", p), collect(samples(o)))
+  map(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(o)))
   print(io, "\n\nGradient: $(properties(o'))")
-  map(p -> print(io, "\n  ", p), collect(samples(o')))
+  map(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(o')))
   print(io, "\n\nHessian: $(properties(o''))")
-  map(p -> print(io, "\n  ", p), collect(samples(o'')))
-end
-
-function show(io::IO, o::LinearFunctionOfOracles{T}) where {T<:Oracle}
-  println(io, "\nLinear function of oracles of type $T")
+  map(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(o'')))
 end
 
 
@@ -421,106 +428,3 @@ function adjoint(v::X) where {X<:InnerProductSpace}
     mapreduce( p -> p.second * p.first', +, weights(decomposition(v)) )
   end
 end
-
-
-# ###############################################################################
-# # Oracle
-
-# "Stationary point of an oracle."
-# function stationary_point end
-
-# "Get the label of an oracle."
-# label(o::Oracle) = o.label
-
-# properties(o::Oracle) = o.properties
-
-# ∈(o::Oracle, class::RelationProperty) = push!(properties(o), class)
-# ∈(o::Oracle, properties::RelationProperties) = map(class -> o ∈ class, properties)
-
-
-# ###############################################################################
-# # Dual oracle
-
-# "A dual oracle is an oracle that also has a dual relation. The semantics of the dual depend on the specific type of oracle. For instance, the dual of a linear operator is its adjoint (conjugate transpose), while the dual of a convex function is its subdifferential. The dual of an oracle `o` can be accessed by `o'`."
-# abstract type DualOracle{X,Y,U,V} <: Oracle{X,Y} end
-
-# "Generic wrapper for the dual of an object."
-# struct Dual{T}
-#   primal::T
-# end
-
-# adjoint(o::T) where {T<:DualOracle} = Dual{T}(o)
-
-# "A primal or dual oracle on X × Y."
-# const PrimalOrDual{X,Y} = Union{Oracle{X,Y}, Dual{<:DualOracle{x,y,X,Y}}}
-
-# "Get the relation corresponding to an oracle."
-# relation(o::PrimalOrDual) = error("relation not implemented for oracle $o")
-
-# "Get the oracle from either an oracle or its dual."
-# get_oracle(o::Oracle) = o
-# get_oracle(o::Dual{<:DualOracle}) = o.primal
-
-# "Sample an oracle (or its dual) at a point in the domain of its relation (or dual relation)."
-# function (o::PrimalOrDual{X,Y})(x::X) where {X,Y}
-#   y = relation(o)(x)
-#   add_oracle!(x, get_oracle(o))
-#   add_oracle!(y, get_oracle(o))
-#   y
-# end
-
-# # Can use o(x) or o*x to sample an oracle (or its dual) at a point
-# *(o::PrimalOrDual{X,Y}, x::X) where {X,Y} = o(x)
-
-# samples(o::PrimalOrDual) = samples(relation(o))
-
-# # evaluate(o::PrimalOrDual{X,Y}, x::X) where {X,Y} = evaluate(relation(o), x)
-
-# "Push a single sample onto either the primal or dual oracle."
-# push!(o::PrimalOrDual{X,Y}, p::Pair{<:X,<:Y}) where {X,Y} = push!(samples(o), p)
-# push!(o::PrimalOrDual{X,Y}, x::X, y::Y) where {X,Y} = push!(samples(o), x => y)
-
-# "Push a primal-dual pair onto an oracle."
-# function push!(o::DualOracle{X,Y,U,V}, p1::Pair{<:X,<:Y}, p2::Pair{<:U,<:V}) where {X,Y,U,V}
-#   push!(o,  p1)
-#   push!(o', p2)
-# end
-# push!(o::DualOracle{X,Y,U,V}, x::X, y::Y, u::U, v::V) where {X,Y,U,V} = push!(o, x => y, u => v)
-
-
-# ###############################################################################
-# # Inputs / outputs
-
-# inputs(o::PrimalOrDual) = iinputs(relation(o))
-# outputs(o::PrimalOrDual) = outputs(relation(o))
-
-# inputs(p::Oracle, d::Dual{<:DualOracle}) = inputs(p) ∪ inputs(d)
-# outputs(p::Oracle, d::Dual{<:DualOracle}) = outputs(p) ∪ outputs(d)
-
-
-# ###############################################################################
-# # Iterate
-
-# length(o::PrimalOrDual) = length(samples(o))
-
-# "Iterate over the samples of an oracle."
-# iterate(o::PrimalOrDual) = iterate(o,1)
-# iterate(o::PrimalOrDual, state::Int) = (state > length(o) ? nothing : ( collect(samples(o))[state], state+1))
-
-
-# ###############################################################################
-# # Show
-
-# function show(io::IO, o::Oracle{X,Y}) where {X,Y}
-#   println(io, "\n$(label(o)) from $(type(X())) to $(type(Y())): $(properties(o))")
-#   println(io, properties(relation(o)))
-#   map(p -> println(io, "    ", p), collect(samples(relation(o))))
-# end
-
-# function show(io::IO, o::DualOracle{X,Y,U,V}) where {X,Y,U,V}
-#   println(io, "\n$(label(o)) from $(type(X())) to $(type(Y())): $(properties(o))")
-#   println(io, "\n$(label(relation(o))): ", properties(relation(o)))
-#   map(p -> println(io, "    ", p), collect(samples(relation(o))))
-#   println(io, "\n$(label(relation(o'))): ", properties(relation(o')))
-#   map(p -> println(io, "    ", p), collect(samples(o')))
-# end
