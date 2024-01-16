@@ -1,9 +1,7 @@
 export Expression, Constraint, evaluate, head, id_hash, type, label!, label, children, parents, constraints, AbstractScalar, AbstractPoint, Scalar, Point, zero, lift
-
-
 export Constant, Variable, evaluate, zero, constraints, lift
 
-import Base.+, Base.-, Base.*, Base.^, Base.isequal
+import Base: +, -, *, ^, isequal, show
 
 
 # "Data type for the value of an expression."
@@ -58,7 +56,7 @@ function evaluate(e::Expression) end
 # methods.
 
 "Custom display of an expression."
-Base.show(io::IO, x::Expression) = println(io, "$(typeof(x))($(x.label))")
+show(io::IO, x::Expression) = println(io, "$(typeof(x))($(x.label))")
 
 "Set the label of an expression."
 label!(x::Expression, label::String) = (x.label = label; nothing)

@@ -7,43 +7,54 @@ export interpolation_conditions, triplets, Triplets
 import Base.∈
 
 ###############################################################################
-# Classes
+# Properties
 
-export Class, OperatorClass, FunctionClass, OnePointOperatorClass, TwoPointOperatorClass
-export Monotone, Comonotone, WeaklyMonotone, WeaklyComonotone
+export OperatorClass, FunctionClass, OnePointOperatorClass, TwoPointOperatorClass
 export Monotone, Comonotone, WeaklyMonotone, WeaklyComonotone
 export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded, WeaklyRelativelyCobounded
+export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded
+export Linearity, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
+export Monotonicity, RelativeBoundedness, Boundedness
+export propertyof
 
-abstract type OperatorClass <: Class end
-abstract type FunctionClass <: Class end
+abstract type OperatorClass <: Property end
+abstract type FunctionClass <: Property end
 
-abstract type OnePointOperatorClass <: OperatorClass end
-abstract type TwoPointOperatorClass <: OperatorClass end
+abstract type InnerProductSpaceProperty <: OperatorClass end
+abstract type NormedVectorSpaceProperty <: OperatorClass end
+abstract type Monotonicity <: InnerProductSpaceProperty end
+abstract type RelativeBoundedness <: NormedVectorSpaceProperty end
+abstract type Boundedness <: NormedVectorSpaceProperty end
+abstract type LinearMapProperty <: Property end
+abstract type SquareLinearMapProperty <: Property end
+abstract type FunctionalProperty <: Property end
 
 # operator classes
 #  - co     : apply the class to the inverse relation
 #  - weakly : apply the constraints with respect to a reference point
-# A relation class R is symmetric if and only if r ∈ R ⟺ r⁻¹ ∈ R
-struct Monotone{μ,L} <: TwoPointOperatorClass end                         # μ (xi-xj)² ≤ (xi-xj) ⋅ (yi-yj) ≤ L (xi-xj)² (requires X = Y)
-struct Comonotone{α,β} <: TwoPointOperatorClass end                       # α (yi-yj)² ≤ (xi-xj) ⋅ (yi-yj) ≤ β (yi-yj)²
-struct WeaklyMonotone{μ,L,xs,ys} <: OnePointOperatorClass end             # μ (x-xs)² ≤ (x-xs) ⋅ (y-ys) ≤ L (x-xs)²
-struct WeaklyComonotone{α,β,xs,ys} <: OnePointOperatorClass end           # α (y-ys)² ≤ (x-xs) ⋅ (y-ys) ≤ β (y-ys)²
+# A relation class R is involutive if and only if R = R⁻¹, or equivalently, r ∈ R ⟺ r⁻¹ ∈ R
 
-struct RelativelyBounded{μ,L} <: TwoPointOperatorClass end                # μ² (xi-xj)² ≤ (yi-yj)² ≤ L² (xi-xj)²
-struct RelativelyCobounded{α,β} <: TwoPointOperatorClass end              # α² (yi-yj)² ≤ (xi-xj)² ≤ β² (yi-yj)²
-struct WeaklyRelativelyBounded{μ,L,xs,ys} <: OnePointOperatorClass end    # μ² (x-xs)² ≤ (y-ys)² ≤ L² (x-xs)²
-struct WeaklyRelativelyCobounded{α,β,xs,ys} <: OnePointOperatorClass end  # α² (y-ys)² ≤ (x-xs)² ≤ β² (y-ys)²
+struct Monotone{μ,L} <: Monotonicity end                         # μ ‖xi-xj‖² ≤ (xi-xj) ⋅ (yi-yj) ≤ L ‖xi-xj‖² (requires X = Y)
+struct Comonotone{α,β} <: Monotonicity end                       # α ‖yi-yj‖² ≤ (xi-xj) ⋅ (yi-yj) ≤ β ‖yi-yj‖²
+struct WeaklyMonotone{μ,L,xs,ys} <: Monotonicity end             # μ ‖x -xs‖² ≤ (x -xs) ⋅ (y -ys) ≤ L ‖x -xs‖²
+struct WeaklyComonotone{α,β,xs,ys} <: Monotonicity end           # α ‖y -ys‖² ≤ (x -xs) ⋅ (y -ys) ≤ β ‖y -ys‖²
 
-struct Bounded{D} <: TwoPointOperatorClass end                            # (xi-xj)² ≤ D²
-struct Cobounded{D} <: TwoPointOperatorClass end                          # (yi-yj)² ≤ D²
-struct WeaklyBounded{D,xs} <: OnePointOperatorClass end                   # (x-xs)² ≤ D²
-struct WeaklyCobounded{D,ys} <: OnePointOperatorClass end                 # (y-ys)² ≤ D²
+struct RelativelyBounded{μ,L} <: RelativeBoundedness end                # μ² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ L² ‖xi-xj‖²
+struct RelativelyCobounded{α,β} <: RelativeBoundedness end              # α² ‖yi-yj‖² ≤ ‖xi-xj‖² ≤ β² ‖yi-yj‖²
+struct WeaklyRelativelyBounded{μ,L,xs,ys} <: RelativeBoundedness end    # μ² ‖x -xs‖² ≤ ‖y -ys‖² ≤ L² ‖x -xs‖²
+struct WeaklyRelativelyCobounded{α,β,xs,ys} <: RelativeBoundedness end  # α² ‖y -ys‖² ≤ ‖x -xs‖² ≤ β² ‖y -ys‖²
 
-struct LinearRelation <: OperatorClass end                       # X ⊗ V = Y ⊗ U (or x ⋅ v = y ⋅ u for (x,y) ∈ r and (u,v) ∈ r')
-struct Symmetric <: OperatorClass end                    # Linear and X ⊗ Y = Y ⊗ X and U ⊗ V = V ⊗ U (or xi ⋅ yj == yi ⋅ xj for (xi,yi) and (xj,yj) ∈ r ∪ r')
-struct SkewSymmetric <: OperatorClass end                # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
-struct Eigenvalues{μ,L} <: OperatorClass end             # Symmetric and (Y-μ X) ⊗ (L X-Y) ⪰ 0
-struct MaxSingularValue{L} <: OperatorClass end          # Linear and Y ⊗ Y ⪯ L² (X ⊗ X) and V ⊗ V ⪯ L² (U ⊗ U)
+struct Bounded{D} <: Boundedness end                            # ‖xi-xj‖² ≤ D²
+struct Cobounded{D} <: Boundedness end                          # ‖yi-yj‖² ≤ D²
+struct WeaklyBounded{D,xs} <: Boundedness end                   # ‖x -xs‖² ≤ D²
+struct WeaklyCobounded{D,ys} <: Boundedness end                 # ‖y -ys‖² ≤ D²
+
+"Linearity property. Applies to AbstractLinearMap oracles."
+struct Linearity <: Property end                    # X ⊗ V = Y ⊗ U (or x ⋅ v = y ⋅ u for (x,y) ∈ r and (u,v) ∈ r')
+struct Symmetric <: Property end                    # Linear and X ⊗ Y = Y ⊗ X and U ⊗ V = V ⊗ U (or xi ⋅ yj == yi ⋅ xj for (xi,yi) and (xj,yj) ∈ r ∪ r')
+struct SkewSymmetric <: Property end                # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
+struct Eigenvalues{μ,L} <: Property end             # Symmetric and (Y-μ X) ⊗ (L X-Y) ⪰ 0
+struct MaxSingularValue{L} <: Property end          # Linear and Y ⊗ Y ⪯ L² (X ⊗ X) and V ⊗ V ⪯ L² (U ⊗ U)
 
 struct Nonexpansive{v} <: OperatorClass end              # Lipschitz{1} and v² ≤ (x-y) ⋅ v
 
@@ -58,8 +69,51 @@ struct Curvature{μ,L} <: FunctionClass end               # fi-fj ≥ gj ⋅ (xi
 struct WeakCurvature{μ,L,xs,fs,gs} <: FunctionClass end  # fs-f ≥ g ⋅ (xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
 struct QuadraticGrowth{μ} <: FunctionClass end           # fi-fj ≥ gj ⋅ (xi-xj) + 1/2L gj²
 
+"Throw an error if a property is applied to an inapropriate oracle."
+∈(o::Oracle, ::T) where {T<:Property} = error("The property $T does not apply to the oracle type $(typeof(o)).")
+∈(::Oracle, ::T) where {T<:InnerProductSpaceProperty} = error("The property $T only applies to operators whose domain and codomain are inner product spaces over the same field.")
+∈(::Oracle, ::T) where {T<:NormedVectorSpaceProperty} = error("The property $T only applies to operators whose domain and codomain are normed vector spaces over the same field.")
 
-∈(o::AbstractOperator, ::Type{Monotone{μ,L}}) where {μ,L} = Constraints( μ*(xi-xj)^2 ≤ (xi-xj) ⋅ (yi-yj) ≤ L*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+"Add a property to an appropriate type of oracle."
+∈(o::AbstractOperator{X,Y}, p::Union{RelativeBoundedness,Boundedness}) where {F<:Field,X<:NormedVectorSpace{F},Y<:NormedVectorSpace{F}} = push!(properties(o), p)
+∈(o::AbstractOperator{X,X}, p::Monotonicity) where {X<:InnerProductSpace} = push!(properties(o), p)
+∈(o::AbstractLinearMap{X,Y}, p::Union{Linearity,MaxSingularValue}) where {F<:Field,X<:InnerProductSpace{F},Y<:InnerProductSpace{F}} = push!(properties(o), p)
+∈(o::AbstractLinearMap{X,X}, p::Union{Symmetric,SkewSymmetric,Eigenvalues}) where {X<:InnerProductSpace} = push!(properties(o), p)
+
+∈(o::Association, p::Property) = oracle(o) ∈ p
+
+
+###############################################################################
+# Interpolation conditions
+
+export interpolation_conditions
+
+interpolation_conditions(o::Union{Oracle,Association}) = mapreduce(p -> interpolation_conditions(oracle(o), p), ∪, properties(o))
+
+function interpolation_conditions(o::AbstractOperator{X,Y}, ::Bounded{D}) where {F<:Field,X<:NormedVectorSpace{F},Y<:NormedVectorSpace{F},D}
+  Constraints( (xi-xj)^2 ≤ D^2 for (xi,_) ∈ o, (xj,_) ∈ o )
+end
+
+function interpolation_conditions(o::AbstractOperator{X,X}, ::Monotone{μ,L}) where {X<:InnerProductSpace,μ,L}
+  Constraints( μ*(xi-xj)^2 ≤ (xi-xj) * (yi-yj) for (xi,yi) ∈ o, (xj,yj) ∈ o ) ∪ Constraints( (xi-xj) * (yi-yj) ≤ L*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+end
+
+function interpolation_conditions(o::AbstractLinearMap{X,Y}, ::Linearity) where {F<:Field,X<:InnerProductSpace{F},Y<:InnerProductSpace{F}}
+  Constraints( x*v == y*u for (x,y) ∈ o, (u,v) ∈ o' )
+end
+
+function interpolation_conditions(o::AbstractLinearMap{X,X}, ::Symmetric) where {X<:InnerProductSpace}
+  Constraints( xi*yj == yi*xj for (xi,yi) ∈ o, (xj,yj) ∈ o )
+end
+
+function interpolation_conditions(o::AbstractLinearMap{X,X}, ::SkewSymmetric) where {X<:InnerProductSpace}
+  Constraints( xi*yj + yi*xj == 0 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+end
+
+function interpolation_conditions(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace,μ,L}
+  x, y = inputs_outputs(o)
+  Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
+end
 
 
 # ConvexIndicator{D} = Curvature{0,∞} and BoundedRadius{∞,0} and BoundedDiameter{D,∞}

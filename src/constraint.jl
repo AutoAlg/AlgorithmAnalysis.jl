@@ -1,14 +1,17 @@
-export Constraint, Constraints
+export Constraint, Constraints, ConstraintSet
 export expression, set
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
-export ConeConstraint, Satisfied, Unsatisfied, prune, check
+export ConeConstraint, Satisfied, Unsatisfied, prune!, check
 export ⪯, ⪰
 
-import Base.show, Base.∈, Base.isequal, Base.==, Base.:≤, Base.:≥
+import Base: show, ∈, isequal, ==, ≤, ≥
 
-"Add a constraint to all variables in an expression or an array of expressions."
-add_constraint!(x::Expression, c::Constraint) = map(v -> push!(v.constraints, c), collect(variables(x)))
-add_constraint!(A::AbstractArray{<:Expression}, c::Constraint) = map(x -> add_constraint!(x,c), A)
+
+###############################################################################
+# Add constraint
+
+"Add a constraint to all variables in an expression."
+add_constraint!(x::Expression, c::Constraint) = map(v -> push!(constraints(v), c), collect(variables(x)))
 
 
 ###############################################################################
@@ -26,7 +29,7 @@ struct Unsatisfied <: Constraint end
 
 
 ###############################################################################
-# ConeConstraint
+# Cone constraint
 
 abstract type Cone <: ConstraintSet end
 struct PositiveSemidefiniteCone <: Cone end
@@ -34,11 +37,10 @@ struct PositiveOrthant <: Cone end
 struct ZeroSet <: Cone end
 
 struct ConeConstraint{K<:Cone} <: Constraint
-  x::Union{Expression, AbstractArray{<:Expression}}
+  x::Expression
   
   function ConeConstraint{K}(x) where {K<:Cone}
-    value = evaluate(x)
-    if ismissing(value)
+    if !hasvalue(x)
       this = new(x)
       add_constraint!(x, this)
       this
@@ -75,33 +77,25 @@ isequal(lhs::ConeConstraint{K}, rhs::ConeConstraint{K}) where {K<:Cone} = isequa
 ≥(lhs, rhs::Expression) = Positive(lhs-rhs)
 
 ⪯(lhs::Expression, rhs::Expression) = Semidefinite(rhs-lhs)
-⪯(lhs::Expression, rhs) = Semidefinite(rhs-lhs)
-⪯(lhs, rhs::Expression) = Semidefinite(rhs-lhs)
+⪯(lhs::Expression, rhs::Number) = Semidefinite(rhs-lhs)
+⪯(lhs::Number, rhs::Expression) = Semidefinite(rhs-lhs)
 
 ⪰(lhs::Expression, rhs::Expression) = Semidefinite(lhs-rhs)
-⪰(lhs::Expression, rhs) = Semidefinite(lhs-rhs)
-⪰(lhs, rhs::Expression) = Semidefinite(lhs-rhs)
+⪰(lhs::Expression, rhs::Number) = Semidefinite(lhs-rhs)
+⪰(lhs::Number, rhs::Expression) = Semidefinite(lhs-rhs)
 
-function ⪰(lhs::Matrix{<:Expression}, rhs::Int)
-  A = copy(lhs)
-  for i = 1:size(A, 1)
-    A[i,i] -= rhs
-  end
-  Semidefinite(A)
-end
-
-function ==(lhs::AbstractArray{<:Expression}, rhs::AbstractArray{<:Expression})
-  if size(lhs) ≠ size(rhs)
-    error("Sizes must be the same.")
-  end
-  cons = Constraints()
-  for i ∈ eachindex(lhs)
-    if !iszero(lhs[i] - rhs[i])
-      push!(cons, lhs[i] == rhs[i])
-    end
-  end
-  cons
-end
+# function ==(lhs::AbstractArray{<:Expression}, rhs::AbstractArray{<:Expression})
+#   if size(lhs) ≠ size(rhs)
+#     error("Sizes must be the same.")
+#   end
+#   cons = Constraints()
+#   for i ∈ eachindex(lhs)
+#     if !iszero(lhs[i] - rhs[i])
+#       push!(cons, lhs[i] == rhs[i])
+#     end
+#   end
+#   cons
+# end
 
 
 ###############################################################################
@@ -111,6 +105,13 @@ show(io::IO, c::Equality) = print(io, "0 = $(c.x)")
 show(io::IO, c::Positive) = print(io, "0 ≤ $(c.x)")
 show(io::IO, c::Semidefinite) = print(io, "0 ⪯ $(c.x)")
 
+function show(io::IO, mime::MIME"text/plain", C::Constraints)
+  prune!(C)
+  println(io, "Set of constraints with $(length(C)) elements:")
+  for c ∈ C
+    println(io, "  ", c)
+  end
+end
 
 ###############################################################################
 # Check
@@ -126,4 +127,4 @@ check(x, K::Type{PositiveSemidefiniteCone}) = evaluate(x) ⪰ 0
 # Prune
 
 "Prune a set of constraints by removing any constraints that are satisfied."
-prune(s::Constraints) = setdiff!(s, Set([Satisfied()]))
+prune!(s::Constraints) = setdiff!(s, Set([Satisfied()]))
