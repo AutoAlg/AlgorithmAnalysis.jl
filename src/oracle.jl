@@ -317,7 +317,7 @@ end
 "For linear maps, also use * to denote sampling."
 *(o::Union{AbstractLinearMap,AbstractLinearFunctional,Association}, x) = o(x)
 
-"Sample a linear function of linear functionals by taking a linear combination of samples of each functional."
+# "Sample a linear function of linear functionals by taking a linear combination of samples of each functional."
 function (o::LinearDecomposition{T})(x::X) where {F<:Field,X<:VectorSpace{F},T<:AbstractLinearFunctional{X}}
   mapreduce( p -> (y=F(); push!(samples(first(p)), x=>y); last(p)*y), +, weights(o) )
 end
