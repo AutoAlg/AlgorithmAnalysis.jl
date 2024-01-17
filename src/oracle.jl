@@ -1,4 +1,4 @@
-export Oracle, Dual, DualOracle, FunctionOracle, OperatorOracle, Functional
+export Oracle, Oracles, Dual, DualOracle, FunctionOracle, OperatorOracle, Functional
 export ConvexFunction, DifferentiableFunction
 export Operator, ContinuousOperator, LinearOperator
 export samples, relation, get_oracle

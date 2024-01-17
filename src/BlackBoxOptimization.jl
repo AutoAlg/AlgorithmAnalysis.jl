@@ -14,6 +14,9 @@
 # - CI/CD
 # - documentation
 
+"""
+  BlackBoxOptimization
+"""
 module BlackBoxOptimization
 
 export BlackBoxOptimization

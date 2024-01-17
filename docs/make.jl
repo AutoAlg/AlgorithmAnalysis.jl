@@ -1,9 +1,11 @@
+push!(LOAD_PATH,"../src/")
+
 using Documenter
 using BlackBoxOptimization
 
 makedocs(
   sitename = "BlackBoxOptimization",
-  format = Documenter.HTML(),
+  format = Documenter.HTML(edit_link="master"),
   modules = [BlackBoxOptimization]
 )
 

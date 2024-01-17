@@ -1,5 +1,5 @@
 export Constraint, Constraints, ConstraintSet
-export expression, set
+export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
 export ConeConstraint, Satisfied, Unsatisfied, prune!, check
 export ⪯, ⪰
