@@ -1,13 +1,4 @@
-# cd("C:\\Users\\vanscob\\.julia\\dev\\BlackBoxOptimization")
-# cd("C:\\Users\\Bryan\\.julia\\dev\\BlackBoxOptimization")
-# ] activate .
-# using Revise
-# using BlackBoxOptimization
-# using SCS
-# using LinearAlgebra
-# import Convex as cvx
 
-# ] test BlackBoxOptimization
 
 
 # TODO
