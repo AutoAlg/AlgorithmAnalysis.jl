@@ -115,12 +115,12 @@ function interpolation_conditions(o::AbstractSymmetricLinearMap{X}, ::Eigenvalue
   Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
 end
 
-function interpolation_conditions(o::AbstractSubdifferentiableFunctional, ::Curvature{μ,L}) where {μ,L}
-  if o isa ConvexFunction && L < Inf
-    @warn "Convex function $o is constrained to be L-smooth implying that it is differentiable. Use `DifferentiableFunction` instead."
-  end
-  Constraints( f2 ≥ f1 + g1*(x2-x1) for (x1,f1,g1) ∈ triplets(o), (x2,f2,_) ∈ triplets(o) )
-end
+# function interpolation_conditions(o::AbstractSubdifferentiableFunctional, ::Curvature{μ,L}) where {μ,L}
+#   if o isa ConvexFunction && L < Inf
+#     @warn "Convex function $o is constrained to be L-smooth implying that it is differentiable. Use `DifferentiableFunction` instead."
+#   end
+#   Constraints( f2 ≥ f1 + g1*(x2-x1) for (x1,f1,g1) ∈ triplets(o), (x2,f2,_) ∈ triplets(o) )
+# end
 
 
 # ConvexIndicator{D} = Curvature{0,∞} and BoundedRadius{∞,0} and BoundedDiameter{D,∞}
