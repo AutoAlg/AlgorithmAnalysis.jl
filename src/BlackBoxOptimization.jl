@@ -15,15 +15,24 @@
 # - documentation
 
 """
-  BlackBoxOptimization
+    BlackBoxOptimization
+    
+    Optimization Algorithm Analysis (OptAlg.jl)
+    Automated Algorithm Analysis (AutoAlg.jl)
+    Systematic Algorithm Analysis (SysAlg.jl)
+    Disciplined Algorithm Analysis (DAA.jl)
 """
 module BlackBoxOptimization
 
 export BlackBoxOptimization
 
-# import Convex as cvx
-# import SCS
+import Convex as cvx
+import SCS
 import LinearAlgebra
+import InteractiveUtils
+import AbstractTrees
+import Zeros: Zero
+
 
 "An abstract constraint that consists of an expression belonging to a set."
 abstract type Constraint end
@@ -46,5 +55,6 @@ include("interpolation.jl")
 # include("primitives.jl")
 # include("algorithms.jl")
 include("hash.jl")
+
 
 end

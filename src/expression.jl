@@ -1,12 +1,10 @@
 export Expression, Field, VectorSpace, NormedVectorSpace, InnerProductSpace, GramMatrix
-export Decomposition, LinearDecomposition, AffineDecomposition, Scalars, InnerProduct
+export Decomposition, LinearDecomposition, AffineDecomposition
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
 export label, label!, value, decomposition, selfdecomp, hasvalue, isvariable
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @autolabel
 
 import Base: +, -, *, /, ^, ==, isempty, iszero, promote_rule, convert, show, isequal, zero, adjoint, size
-
-import Zeros: Zero
 
 
 ###############################################################################
@@ -37,12 +35,6 @@ end
 "Constructor."
 GramMatrix{V}(m::Matrix{F}) where {F<:Field, V<:InnerProductSpace{F}} = GramMatrix{V}( "", missing, (m+m')/2 )
 
-"Inner products over a field."
-const InnerProduct{F<:Field} = Tuple{X,X} where {X<:InnerProductSpace{F}}
-
-"The scalars in a field are either elements of the field or the inner product of two vectors over the field."
-const Scalars{F} = Union{F,InnerProduct{F}}
-
 zero(x::Tuple{X,X}) where {X<:InnerProductSpace} = (X(Zero()), X(Zero()))
 zero(::F) where {F<:Field} = F(0)
 zero(::V) where {V<:VectorSpace} = V(Zero())
@@ -51,6 +43,7 @@ zero(::V) where {V<:VectorSpace} = V(Zero())
 
 adjoint(a::F) where {F<:Field} = a
 adjoint(G::GramMatrix) = G
+
 
 ###############################################################################
 
@@ -79,7 +72,15 @@ abstract type AbstractLinearFunctional{X} <: AbstractInfinitelyDifferentiableFun
 "Decomposition of an expression in terms of other expressions."
 abstract type Decomposition end
 
-"A linear decomposition."
+"""
+    LinearDecomposition
+  
+# Fields:
+    weights::Dict{T, Number}
+  
+# Constructor:
+    LinearDecomposition{T}(weights)
+"""
 struct LinearDecomposition{T} <: Decomposition
   weights::Dict{T,Number}
 
@@ -114,7 +115,7 @@ isempty(x::AffineDecomposition) = isempty(linear(x)) && iszero(constant(x))
 "Weights of the linear part of a decomposition."
 weights(x::Decomposition) = linear(x).weights
 
-"Sum two decompositions."
+# Sum two decompositions
 function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
   dict = mergewith(+, weights(x1), weights(x2))
   for (key,value) ∈ dict
@@ -128,16 +129,16 @@ end
 +(x::AffineDecomposition{T}, a::Number) where {T} = AffineDecomposition{T}( linear(x), constant(x) + a )
 +(a::Number, x::AffineDecomposition{T}) where {T} = x + a
 
-"Subtract two decompositions."
+# Subtract two decompositions
 -(x1::T, x2::T) where {T<:Decomposition} = x1 + (-x2)
 
-"Scale a decomposition."
+# Scale a decomposition
 *(a::Number, x::LinearDecomposition{T}) where {T} = LinearDecomposition{T}( Dict{T,Number}(keys(weights(x)) .=> map(x->a*x, values(weights(x)))) )
 *(a::Number, x::AffineDecomposition{T}) where {T} = AffineDecomposition{T}( a*linear(x), a*constant(x) )
 *(x::Decomposition, a::Number) = a*x
 /(x::Decomposition, a::Number) = (1/a)*x
 
-"Negate a decomposition."
+# Negate a decomposition
 -(x::Decomposition) = -1*x
 
 "Variables in a decomposition."
@@ -254,7 +255,6 @@ label(e::Expression) = e.label
 value(e::Expression) = e.value
 decomposition(e::Expression) = e.decomposition
 constraints(e::Expression) = e.constraints
-constraints(x::InnerProduct) = constraints(x[1]) ∪ constraints(x[2])
 variables(e::Expression) = variables(decomposition(e))
 variables(m::Matrix{F}) where {F<:Field} = mapreduce(variables, ∪, m)
 
@@ -306,27 +306,24 @@ isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 -(a1::Field, a2::Number) = a1 + (-a2)
 -(a1::Number, a2::Field) = a1 + (-a2)
 
-"Convert and promote numbers to scalars."
+# Convert and promote numbers to scalars
 promote_rule(::Type{F}, ::Type{<:Number}) where {F<:Field} = F
 convert(::Type{F}, a::Number) where {F<:Field} = F(a)
 
-"Inner product of two vectors."
-function *(v1::V, v2::V) where {F<:Field, V<:InnerProductSpace{F}}
-  w = Dict{InnerProduct{F}, Number}()
-  for (key1, value1) ∈ weights(selfdecomp(v1))
-    for (key2, value2) ∈ weights(selfdecomp(v2))
-      mergewith!(+, w, Dict( (key1,key2) => value1*value2 ))
-    end
-  end
-  F( AffineDecomposition{F}(w) )
-end
-
-*(v1::InnerProductSpace, v2::InnerProductSpace) = *(promote(v1,v2)...)
-
-"Squared norm of a vector in a normed vector space."
+# Squared norm of a vector in a normed vector space
 ^(v::NormedVectorSpace, n::Int) = (n == 2 ? v*v : error("Can only take inner product of points."))
 
-"Outer product (Gram matrix) of two vectors whose elements are themselves vectors in the same inner product space."
+@doc raw"""
+    ⊗(x1,x2)
+
+Outer product (Gram matrix) of two vectors whose elements are themselves vectors in the same inner product space.
+
+For example,
+
+``
+\begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix} \otimes \begin{bmatrix} y_1 \\ y_2 \end{bmatrix} = \begin{bmatrix} \langle x_1,y_1\rangle & \langle x_1,y_2\rangle \\ \langle x_2,y_1\rangle & \langle x_2,y_2\rangle \\ \langle x_3,y_1\rangle & \langle x_3,y_2\rangle \end{bmatrix}
+``
+"""
 ⊗(x1::Vector{V}, x2::Vector{V}) where {V<:InnerProductSpace} = GramMatrix{V}([ x*y for x ∈ x1, y ∈ x2 ])
 
 function +(G::GramMatrix{V}, a::Number) where {V<:InnerProductSpace}
@@ -366,7 +363,7 @@ evaluate(x::LinearDecomposition) = mapreduce( pair -> pair.second*evaluate(pair.
 evaluate(x::AffineDecomposition) = evaluate(linear(x)) + constant(x)
 evaluate(p::Tuple{X,X}) where {X<:InnerProductSpace} = evaluate(p[1])'*evaluate(p[2])
 
-evaluate(t::Tuple{LinearDecomposition{F},AffineDecomposition{InnerProduct{F}}}) where {F<:Field} = evaluate(t[1]) + evaluate(t[2])
+evaluate(t::Tuple{LinearDecomposition{F},AffineDecomposition{F}}) where {F<:Field} = evaluate(t[1]) + evaluate(t[2])
 
 
 ###############################################################################

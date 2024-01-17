@@ -2,7 +2,13 @@
 # https://github.com/JuliaLang/julia/issues/10267
 import Base.hash
 
-"Hash of an expression."
+"""
+    hash(x, h::UInt)
+
+Hash of an expression. Custom types must provide specialized methods for this function due to [this issue](https://github.com/JuliaLang/julia/issues/10267).
+"""
+function hash end
+
 hash(e::Expression, h::UInt) = isvariable(e) ? objectid(e) : hash(value(e), hash(decomposition(e), h))
 hash(x::LinearDecomposition, h::UInt) = hash(weights(x), h)
 hash(x::AffineDecomposition, h::UInt) = hash(linear(x), hash(constant(x), h))

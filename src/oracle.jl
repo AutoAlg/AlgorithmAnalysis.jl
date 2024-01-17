@@ -3,7 +3,7 @@ export ConvexFunction, DifferentiableFunction
 export Operator, ContinuousOperator, LinearOperator
 export samples, relation, get_oracle
 
-import Base.adjoint, Base.∈, Base.*, Base.push!
+import Base: adjoint, ∈, *, push!
 
 
 # Oracle (o,o',o'',...)
@@ -38,15 +38,6 @@ import Base.adjoint, Base.∈, Base.*, Base.push!
 #  - ConstantRelation
 
 
-export hierarchy
-import InteractiveUtils, AbstractTrees
-AbstractTrees.children(d::Union{DataType,UnionAll}) = InteractiveUtils.subtypes(d)
-
-hierarchy(d::DataType) = AbstractTrees.print_tree(d; maxdepth=10)
-
-
-
-
 ###############################################################################
 # Associations
 
@@ -77,11 +68,6 @@ end
 struct Hessian{T<:AbstractTwiceDifferentiableFunctional} <: AbstractDifferential
   parent::T
 end
-
-# "Generic wrapper for a linear combination of oracles."
-# struct LinearFunctionOfOracles{T<:Oracle} <: Association
-#   dict::Dict{T,Number}
-# end
 
 *(a::Number, o::T) where {T<:Oracle} = LinearDecomposition{T}(Dict(o => a))
 *(a::Number, o::LinearDecomposition{T}) where {T<:Oracle} = LinearDecomposition{T}(Dict(first(p) => a*last(p) for p ∈ weights(o)))
@@ -251,9 +237,13 @@ end
 ###############################################################################
 # Methods
 
-export oracle, get_root_oracle, samples, operator
+export oracle, samples, operator
 
-"Get the oracle corresponding to an association."
+"""
+    oracle(o)
+
+Get the oracle corresponding to an oracle or association.
+"""
 oracle(o::Oracle) = o.value
 oracle(o::Union{Map,Operator}) = o
 oracle(o::Transpose{<:AbstractLinearMap}) = o.parent.transpose
@@ -261,16 +251,20 @@ oracle(o::Subdifferential{<:AbstractSubdifferentiableFunctional}) = o.parent.sub
 oracle(o::Gradient{<:AbstractDifferentiableFunctional}) = o.parent.gradient
 oracle(o::Hessian{<:AbstractTwiceDifferentiableFunctional}) = o.parent.hessian
 
-"Get the root oracle from its association."
-get_root_oracle(o::Oracle) = o
-get_root_oracle(o::Association) = get_root_oracle(o.parent)
-
-"Get the operator associated with an oracle or its association."
+"""
+    operator(o)
+    
+Get the operator associated with an oracle or its association.
+"""
 operator(o::Union{Map,Operator}) = o
 operator(o::Oracle) = operator(o.value)
 operator(a::Association) = operator(oracle(a))
 
-"Get the samples associated with an oracle or its association."
+"""
+    samples(o)
+
+Get the samples associated with an oracle or its association.
+"""
 samples(o::Union{Oracle,Association}) = operator(o).value
 
 
@@ -281,7 +275,6 @@ import Base.length, Base.iterate
 
 length(o::Union{Oracle,Association}) = length(samples(o))
 
-"Iterate over the samples of an oracle."
 iterate(o::Union{Oracle,Association}) = iterate(samples(o))
 iterate(o::Union{Oracle,Association}, state::Int) = iterate(samples(o), state)
 
@@ -314,7 +307,7 @@ end
 
 (o::ConstantMap{<:X,Y})(::X) where {X,Y} = o.value
 
-"For linear maps, also use * to denote sampling."
+# For linear maps, also use * to denote sampling.
 *(o::Union{AbstractLinearMap,AbstractLinearFunctional,Association}, x) = o(x)
 
 # "Sample a linear function of linear functionals by taking a linear combination of samples of each functional."
@@ -428,3 +421,23 @@ function adjoint(v::X) where {X<:InnerProductSpace}
     mapreduce( p -> p.second * p.first', +, weights(decomposition(v)) )
   end
 end
+
+
+###############################################################################
+# Hierarchy
+
+export hierarchy
+
+AbstractTrees.children(d::Union{DataType,UnionAll}) = InteractiveUtils.subtypes(d)
+
+"""
+    hierarchy(datatype)
+    
+Print the subtype hierarchy of a datatype.
+
+# Examples
+```julia-repl
+julia> hierarchy(Oracle)
+```
+"""
+hierarchy(d::DataType) = AbstractTrees.print_tree(d; maxdepth=10)
