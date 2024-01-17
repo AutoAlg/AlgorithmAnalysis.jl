@@ -15,10 +15,13 @@
 # - clean up show methods
 # - more interpolation conditions
 # - interpolation conditions inherent to function classes (e.g., linear, quadratic)
-# - PEP
 # - algorithms
+# - performance measures
+# - PEP
 # - Lyapunov analysis
 # - benchmarking
+# - CI/CD
+# - documentation
 
 module BlackBoxOptimization
 
