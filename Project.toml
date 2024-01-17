@@ -13,6 +13,7 @@ SCS = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
 Zeros = "bd1ec220-6eb4-527a-9b49-e79c3db6233b"
 
 [compat]
+Convex = "0.15"
 Zeros = "0.3"
 SCS = "2"
 AbstractTrees = "0.4"
