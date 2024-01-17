@@ -14,6 +14,10 @@ Zeros = "bd1ec220-6eb4-527a-9b49-e79c3db6233b"
 
 [compat]
 Revise = "3"
+Convex = "0.15"
+Zeros = "0.3"
+SCS = "2"
+AbstractTrees = "0.4"
 julia = "1.9"
 
 [extras]
