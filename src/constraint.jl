@@ -44,13 +44,13 @@ const Positive = ConeConstraint{PositiveOrthant}
 const Semidefinite = ConeConstraint{PositiveSemidefiniteCone}
 const Equality = ConeConstraint{ZeroSet}
 
-Equality(x::Union{Number, AbstractArray}) = 
+# Equality(x::Union{Number, AbstractArray}) = 
 
 ∈(x::Expression, ::K) where {K<:Cone} = ConeConstraint{K}(x)
 
 expression(c::ConeConstraint) = c.x
 
-set(c::ConeConstraint{K}) where {K<:Cone} = K
+set(::ConeConstraint{K}) where {K<:Cone} = K
 
 isequal(lhs::ConeConstraint{K}, rhs::ConeConstraint{K}) where {K<:Cone} = isequal(lhs.x,rhs.x)
 
@@ -87,34 +87,30 @@ isequal(lhs::ConeConstraint{K}, rhs::ConeConstraint{K}) where {K<:Cone} = isequa
 #   cons
 # end
 
-
-############################################################################################
-# Show
-
-show(io::IO, c::Equality) = print(io, "0 = $(c.x)")
-show(io::IO, c::Positive) = print(io, "0 ≤ $(c.x)")
-show(io::IO, c::Semidefinite) = print(io, "0 ⪯ $(c.x)")
-
-function show(io::IO, mime::MIME"text/plain", C::Constraints)
-  prune!(C)
-  println(io, "Set of constraints with $(length(C)) elements:")
-  for c ∈ C
-    println(io, "  ", c)
-  end
-end
-
 ############################################################################################
 # Check
 
+"""
+    check(c::Constraint)
+    check(x::Expression, S::ConstraintSet)
+
+Check whether or not a constraint is satisfied.
+"""
+function check end
+
 check(c::Constraint) = check(expression(c), set(c))
 
-check(x, K::Type{ZeroSet}) = evaluate(x) == 0
-check(x, K::Type{PositiveOrthant}) = evaluate(x) ≥ 0
-check(x, K::Type{PositiveSemidefiniteCone}) = evaluate(x) ⪰ 0
+check(x, ::Type{ZeroSet}) = evaluate(x) == 0
+check(x, ::Type{PositiveOrthant}) = evaluate(x) ≥ 0
+check(x, ::Type{PositiveSemidefiniteCone}) = evaluate(x) ⪰ 0
 
 
 ############################################################################################
 # Prune
 
-"Prune a set of constraints by removing any constraints that are satisfied."
+"""
+    prune!(s)
+
+Prune a set of constraints by removing any constraints that are satisfied.
+"""
 prune!(s::Constraints) = setdiff!(s, Set([Satisfied()]))

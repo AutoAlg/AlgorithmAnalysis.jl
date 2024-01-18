@@ -11,93 +11,8 @@ end
 "Constructor."
 GramMatrix{V}(m::Matrix{F}) where {F<:Field, V<:InnerProductSpace{F}} = GramMatrix{V}( "", missing, (m+m')/2 )
 
-zero(x::Tuple{X,X}) where {X<:InnerProductSpace} = (X(Zero()), X(Zero()))
 zero(::F) where {F<:Field} = F(0)
 zero(::V) where {V<:VectorSpace} = V(Zero())
-
-==(x1::Tuple{X,X}, x2::Tuple{X,X}) where {X<:InnerProductSpace} = iszero(x1[1]-x2[1]) && iszero(x1[2] - x2[2])
-
-adjoint(a::F) where {F<:Field} = a
-adjoint(G::GramMatrix) = G
-
-
-############################################################################################
-# Primitive decompositions
-
-"Decomposition of an expression in terms of other expressions."
-abstract type Decomposition end
-
-"""
-    LinearDecomposition
-  
-# Fields:
-    weights::Dict{T, Number}
-  
-# Constructor:
-    LinearDecomposition{T}(weights)
-"""
-struct LinearDecomposition{T} <: Decomposition
-  weights::Dict{T,Number}
-
-  LinearDecomposition{T}(weights::Dict{<:T,<:Number}) where {T} = new{T}(Dict{T,Number}(weights))
-end
-
-"An affine decomposition."
-struct AffineDecomposition{T} <: Decomposition
-  linear::LinearDecomposition{T}
-  constant::Any
-end
-
-"Default constructors."
-LinearDecomposition{T}() where {T} = LinearDecomposition{T}(Dict{T,Number}())
-AffineDecomposition{T}() where {T} = AffineDecomposition{T}(LinearDecomposition{T}(), 0)
-AffineDecomposition{T}(x::LinearDecomposition{<:T}) where {T} = AffineDecomposition{T}( LinearDecomposition{T}(x.weights), 0)
-AffineDecomposition{T}(weights::Dict{<:T,<:Number}) where {T} = AffineDecomposition{T}( LinearDecomposition{T}(weights), 0)
-AffineDecomposition{T}(a::Number) where {T} = AffineDecomposition{T}( LinearDecomposition{T}(), a )
-
-"LinearDecomposition part of a decomposition."
-linear(x::LinearDecomposition) = x
-linear(x::AffineDecomposition) = x.linear
-
-"Constant part of a decomposition."
-constant(x::LinearDecomposition) = error("A linear expression has no constant term.")
-constant(x::AffineDecomposition) = x.constant
-
-"Check if a decomposition is empty."
-isempty(x::LinearDecomposition) = isempty(x.weights)
-isempty(x::AffineDecomposition) = isempty(linear(x)) && iszero(constant(x))
-
-"Weights of the linear part of a decomposition."
-weights(x::Decomposition) = linear(x).weights
-
-# Sum two decompositions
-function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
-  dict = mergewith(+, weights(x1), weights(x2))
-  for (key,value) ∈ dict
-    if iszero(key) || iszero(value)
-      delete!(dict, key)
-    end
-  end
-  LinearDecomposition{T}(dict)
-end
-+(x1::AffineDecomposition{T}, x2::AffineDecomposition{T}) where {T} = AffineDecomposition{T}( linear(x1) + linear(x2), constant(x1) + constant(x2) )
-+(x::AffineDecomposition{T}, a::Number) where {T} = AffineDecomposition{T}( linear(x), constant(x) + a )
-+(a::Number, x::AffineDecomposition{T}) where {T} = x + a
-
-# Subtract two decompositions
--(x1::T, x2::T) where {T<:Decomposition} = x1 + (-x2)
-
-# Scale a decomposition
-*(a::Number, x::LinearDecomposition{T}) where {T} = LinearDecomposition{T}( Dict{T,Number}(keys(weights(x)) .=> map(x->a*x, values(weights(x)))) )
-*(a::Number, x::AffineDecomposition{T}) where {T} = AffineDecomposition{T}( a*linear(x), a*constant(x) )
-*(x::Decomposition, a::Number) = a*x
-/(x::Decomposition, a::Number) = (1/a)*x
-
-# Negate a decomposition
--(x::Decomposition) = -1*x
-
-"Variables in a decomposition."
-variables(x::Decomposition) = Set(keys(weights(x)))
 
 
 ############################################################################################
@@ -268,18 +183,22 @@ convert(::Type{F}, a::Number) where {F<:Field} = F(a)
 # Squared norm of a vector in a normed vector space
 ^(v::NormedVectorSpace, n::Int) = (n == 2 ? v*v : error("Can only take inner product of points."))
 
-@doc raw"""
-    ⊗(x1,x2)
+"""
+    ⊗(x,x)
 
 Outer product (Gram matrix) of two vectors whose elements are themselves vectors in the same inner product space.
 
-For example,
-
-``
-\begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix} \otimes \begin{bmatrix} y_1 \\ y_2 \end{bmatrix} = \begin{bmatrix} \langle x_1,y_1\rangle & \langle x_1,y_2\rangle \\ \langle x_2,y_1\rangle & \langle x_2,y_2\rangle \\ \langle x_3,y_1\rangle & \langle x_3,y_2\rangle \end{bmatrix}
-``
+# Examples
+```julia-repl
+julia> x = [ Rⁿ(); Rⁿ(); Rⁿ() ]
+julia> y = [ Rⁿ(); Rⁿ() ]
+julia> G = x ⊗ y
+```
 """
 ⊗(x1::Vector{V}, x2::Vector{V}) where {V<:InnerProductSpace} = GramMatrix{V}([ x'*y for x ∈ x1, y ∈ x2 ])
+
+# \begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix} \otimes \begin{bmatrix} y_1 \\ y_2 \end{bmatrix} = \begin{bmatrix} \langle x_1,y_1\rangle & \langle x_1,y_2\rangle \\ \langle x_2,y_1\rangle & \langle x_2,y_2\rangle \\ \langle x_3,y_1\rangle & \langle x_3,y_2\rangle \end{bmatrix}
+
 
 function +(G::GramMatrix{V}, a::Number) where {V<:InnerProductSpace}
   m = copy(decomposition(G))
@@ -320,101 +239,6 @@ evaluate(x::AffineDecomposition) = evaluate(linear(x)) + constant(x)
 evaluate(p::Tuple{X,X}) where {X<:InnerProductSpace} = evaluate(p[1])'*evaluate(p[2])
 
 evaluate(t::Tuple{LinearDecomposition{F},AffineDecomposition{F}}) where {F<:Field} = evaluate(t[1]) + evaluate(t[2])
-
-
-############################################################################################
-# Show
-
-function show(io::IO, x::LinearDecomposition)
-  isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
-  first = true
-  for (key, value) ∈ weights(x)
-    if first
-      first = false
-      if value == 1
-        print(io, key)
-      elseif value == -1
-        print(io, "-", key)
-      else
-        print(io, value, " ", key)
-      end
-    else
-      if value == 1
-        print(io, " + ", key)
-      elseif value == -1
-        print(io, " - ", key)
-      elseif value ≥ 0
-        print(io, " + ", value, " ", key)
-      else
-        print(io, " - ", -value, " ", key)
-      end
-    end
-  end
-end
-
-# function show(io::IO, mime::MIME"text/plain", x::LinearDecomposition)
-#   isempty(x) && return println(io, "  "^get(io, :indent, 0), "(empty)")
-#   map( p -> println(io, "  "^get(io, :indent, 0), p.first, " ↦  ", p.second), collect(x.weights))
-# end
-
-function show(io::IO, x::AffineDecomposition)
-  print(io, linear(x))
-  !iszero(constant(x)) && print(io, " + ", constant(x))
-end
-
-# function show(io::IO, mime::MIME"text/plain", x::AffineDecomposition)
-#   show(io, mime, linear(x))
-#   !iszero(constant(x)) && print(io, "  "^get(io, :indent, 0), constant(x))
-# end
-
-function show(io::IO, e::Expression)
-  if hasvalue(e)
-    if iszero(e)
-      print(io, 0)
-    else
-      print(io, value(e))
-    end
-  elseif !isempty(label(e))
-    print(io, label(e))
-  elseif !isempty(decomposition(e))
-    print(io, decomposition(e))
-  else
-    print(io, "Variable{$(typeof(e))}")
-  end
-end
-
-function show(io::IO, mime::MIME"text/plain", v::VectorSpace)
-  print(io, "\nVector in $(typeof(v))")
-  print(io, "\n  Value: ", iszero(v) ? "zero" : value(v))
-  print(io, "\n  Decomposition: ", decomposition(v))
-  # show(IOContext(io, :indent => get(io,:indent,0)+2), mime, decomposition(v))
-end
-
-function show(io::IO, mime::MIME"text/plain", v::InnerProductSpace)
-  print(io, "\nVector in $(typeof(v))")
-  print(io, "\n  Value: ", iszero(v) ? "zero" : value(v))
-  print(io, "\n  Decomposition: ", decomposition(v))
-  print(io, "\n  Dual: ")
-  show(IOContext(io, :indent => get(io,:indent,0)+2), mime, v')
-end
-
-function show(io::IO, mime::MIME"text/plain", a::Field)
-  print(io, "\nScalar in $(typeof(a))")
-  print(io, "\n  Value: ", value(a))
-  print(io, "\n  Decomposition: ", decomposition(a))
-  # show(IOContext(io, :indent => get(io,:indent,0)+2), mime, decomposition(a))
-end
-
-show(io::IO, G::GramMatrix) = print(io, decomposition(G))
-
-function show(io::IO, mime::MIME"text/plain", G::GramMatrix{V}) where {V<:InnerProductSpace}
-  # println("Gram matrix in $(typeof(G))")
-  # display(G.decomposition)
-  println(io, "\nGram matrix of vectors in $V")
-  println(io, "  Value: ", value(G))
-  println(io, "  Decomposition:\n")
-  show(IOContext(io, :indent => get(io,:indent,0)+2), mime, decomposition(G))
-end
 
 
 ############################################################################################

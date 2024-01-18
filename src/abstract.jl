@@ -1,38 +1,84 @@
 ############################################################################################
 # Abstract types
 
-"An abstract constraint that consists of an expression belonging to a set."
-abstract type Constraint end
+"""
+    Expression
 
-abstract type ConstraintSet end
+An abstract expression.
 
-"An oracle is a set of operators and the ways in which they are related. For instance, an oracle may consist of the operators A and Aᵀ where A is linear and Aᵀ is its tranpose. Each operator can be sampled at a point in its domain, and its relation can be constrained to be in a class. Furthermore, the set of operators can also be constrained to be in a class."
-abstract type Oracle end
+An expression can be a constant (nonzero or zero), a variable (with known or unknown value), or a wrapper of other expressions.
 
-"An abstract expression. Each expression can be a constant (nonzero or zero), a variable (with known or unknown value), or a decomposition (function) of other expressions."
+Some subtypes are [`Field`](@ref), [`VectorSpace`](@ref), and [`GramMatrix`](@ref).
+"""
 abstract type Expression end
 
-"An abstract field. An element of a field is a scalar. A scalar is an expression that can be an affine function of other scalars and inner products of points in an inner product space over the field."
+"""
+    Field <: Expression
+
+An abstract field.
+
+An element of a field is a scalar. A scalar is an expression that can be an affine function of other scalars and inner products of points in an inner product space over the field.
+"""
 abstract type Field <: Expression end
 
-"An abstract vector space. A vector is an expression that can be a linear function of other vectors."
+"""
+    VectorSpace{F<:Field} <: Expression
+
+An abstract vector space.
+
+A vector is an expression that can be a linear function of other vectors.
+"""
 abstract type VectorSpace{F<:Field} <: Expression end
 
-"An abstract normed vector space. The squared norm of a vector produces a scalar."
+"""
+    NormedVectorSpace{F<:Field} <: VectorSpace{F}
+
+An abstract normed vector space. The squared norm of a vector produces a scalar.
+"""
 abstract type NormedVectorSpace{F<:Field} <: VectorSpace{F} end
 
-"An abstract inner product space. The inner product of two vectors produces a scalar, and the squared norm is the inner product of a vector with itself."
+"""
+    InnerProductSpace{F<:Field} <: NormedVectorSpace{F}
+
+An abstract inner product space. The inner product of two vectors produces a scalar, and the squared norm is the inner product of a vector with itself.
+"""
 abstract type InnerProductSpace{F<:Field} <: NormedVectorSpace{F} end
 
+"""
+    Constraint
 
-############################################################################################
-# Constants
+An abstract constraint that consists of an [`Expression`](@ref) belonging to a [`ConstraintSet`](@ref).
 
-"A set of oracles."
-const Oracles = Set{Oracle}
+Concrete subtypes should provide methods for `expression`, `set`, `∈`, `isequal`, and `check`.
+"""
+abstract type Constraint end
 
-"A set of constraints."
-const Constraints = Set{Constraint}
+"""
+    ConstraintSet
+
+An abstract set for use in a [`Constraint`](@ref).
+"""
+abstract type ConstraintSet end
+
+"""
+    Oracle
+
+An oracle is a set of operators and the ways in which they are related. For instance, an oracle may consist of the operators A and Aᵀ where A is linear and Aᵀ is its tranpose. Each operator can be sampled at a point in its domain, and its relation can be constrained to be in a class. Furthermore, the set of operators can also be constrained to be in a class.
+
+Any concrete subtype of `Oracle` must have the following fields:
+    label::String
+    class::Properties
+
+Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
+"""
+abstract type Oracle end
+
+"""
+    Wrapper
+
+Generic wrapper for an object of type `T`.
+"""
+abstract type Wrapper{T} end
 
 
 ############################################################################################
@@ -52,23 +98,43 @@ abstract type AbstractLinearFunctional{X} <: AbstractInfinitelyDifferentiableFun
 
 
 ############################################################################################
-# Properties
+# Properties of oracles
 
-############################################################################################
-# Property
+"""
+    Property{T}
 
+Property of objects of type `T`.
+"""
 abstract type Property end
 
-const Properties = Set{Property}
+# abstract type OnePointProperty <: Property end
+# abstract type TwoPointProperty <: Property end
+# abstract type AllPointProperty <: Property end
 
-abstract type OperatorClass <: Property end
-abstract type FunctionClass <: Property end
+abstract type OperatorProperty <: Property end
+abstract type FunctionProperty <: Property end
 
-abstract type InnerProductSpaceProperty <: OperatorClass end
-abstract type NormedVectorSpaceProperty <: OperatorClass end
+abstract type InnerProductSpaceProperty <: OperatorProperty end
+abstract type NormedVectorSpaceProperty <: OperatorProperty end
 abstract type Monotonicity <: InnerProductSpaceProperty end
 abstract type RelativeBoundedness <: NormedVectorSpaceProperty end
 abstract type Boundedness <: NormedVectorSpaceProperty end
 abstract type LinearMapProperty <: Property end
 abstract type SquareLinearMapProperty <: Property end
 abstract type FunctionalProperty <: Property end
+
+
+############################################################################################
+# Constants
+
+# A set of oracles
+const Oracles = Set{Oracle}
+
+# A set of constraints
+const Constraints = Set{Constraint}
+
+# A set of properties
+const Properties = Set{Property}
+
+# An oracle or a wrapper of an oracle
+const OracleOrWrapper = Union{Oracle, Wrapper{<:Oracle}}
