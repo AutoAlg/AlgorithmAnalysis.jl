@@ -1,23 +1,13 @@
-export Constraint, Constraints, ConstraintSet
-export expression, set, add_constraint!
-export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
-export ConeConstraint, Satisfied, Unsatisfied, prune!, check
-export ⪯, ⪰
 
-import Base: show, ∈, isequal, ==, ≤, ≥
-
-
-###############################################################################
+############################################################################################
 # Add constraint
 
 "Add a constraint to all variables in an expression."
 add_constraint!(x::Expression, c::Constraint) = map(v -> push!(constraints(v), c), collect(variables(x)))
 
 
-###############################################################################
+############################################################################################
 # Constraint
-
-abstract type ConstraintSet end
 
 ∈(x::Expression, s::ConstraintSet) = error("∈ not implemented for expression $(typeof(x)) and set $(typeof(s)).")
 expression(c::Constraint) = error("expression not implemented for constraint $(typeof(c)).")
@@ -28,7 +18,7 @@ struct Satisfied <: Constraint end
 struct Unsatisfied <: Constraint end
 
 
-###############################################################################
+############################################################################################
 # Cone constraint
 
 abstract type Cone <: ConstraintSet end
@@ -98,7 +88,7 @@ isequal(lhs::ConeConstraint{K}, rhs::ConeConstraint{K}) where {K<:Cone} = isequa
 # end
 
 
-###############################################################################
+############################################################################################
 # Show
 
 show(io::IO, c::Equality) = print(io, "0 = $(c.x)")
@@ -113,7 +103,7 @@ function show(io::IO, mime::MIME"text/plain", C::Constraints)
   end
 end
 
-###############################################################################
+############################################################################################
 # Check
 
 check(c::Constraint) = check(expression(c), set(c))
@@ -123,7 +113,7 @@ check(x, K::Type{PositiveOrthant}) = evaluate(x) ≥ 0
 check(x, K::Type{PositiveSemidefiniteCone}) = evaluate(x) ⪰ 0
 
 
-###############################################################################
+############################################################################################
 # Prune
 
 "Prune a set of constraints by removing any constraints that are satisfied."

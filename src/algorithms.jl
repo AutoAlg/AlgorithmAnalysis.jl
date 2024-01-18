@@ -2,7 +2,7 @@ export Algorithm
 export GradientMethod, MomentumMethod
 export update
 
-###############################################################################
+############################################################################################
 # Algorithms
 
 abstract type Algorithm end

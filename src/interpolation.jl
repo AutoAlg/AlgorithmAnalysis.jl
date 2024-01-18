@@ -1,33 +1,6 @@
-export FunctionClass, OperatorClass
-export Convex, Curvature, ConvexIndicator, StronglyConvex, Smooth, QuadraticGrowth
-export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive, Lipschitz
-export StronglyMonotone, MaxSingularValue
-export interpolation_conditions, triplets, Triplets
 
-import Base.∈
-
-###############################################################################
+############################################################################################
 # Properties
-
-export OperatorClass, FunctionClass, OnePointOperatorClass, TwoPointOperatorClass
-export Monotone, Comonotone, WeaklyMonotone, WeaklyComonotone
-export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded, WeaklyRelativelyCobounded
-export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded
-export Linearity, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
-export Monotonicity, RelativeBoundedness, Boundedness
-export propertyof
-
-abstract type OperatorClass <: Property end
-abstract type FunctionClass <: Property end
-
-abstract type InnerProductSpaceProperty <: OperatorClass end
-abstract type NormedVectorSpaceProperty <: OperatorClass end
-abstract type Monotonicity <: InnerProductSpaceProperty end
-abstract type RelativeBoundedness <: NormedVectorSpaceProperty end
-abstract type Boundedness <: NormedVectorSpaceProperty end
-abstract type LinearMapProperty <: Property end
-abstract type SquareLinearMapProperty <: Property end
-abstract type FunctionalProperty <: Property end
 
 # operator classes
 #  - co     : apply the class to the inverse relation
@@ -83,10 +56,8 @@ struct QuadraticGrowth{μ} <: FunctionClass end           # fi-fj ≥ gj ⋅ (xi
 ∈(o::Association, p::Property) = oracle(o) ∈ p
 
 
-###############################################################################
+############################################################################################
 # Interpolation conditions
-
-export interpolation_conditions
 
 interpolation_conditions(o::Union{Oracle,Association}) = mapreduce(p -> interpolation_conditions(oracle(o), p), ∪, properties(o))
 
@@ -95,19 +66,19 @@ function interpolation_conditions(o::AbstractOperator{X,Y}, ::Bounded{D}) where 
 end
 
 function interpolation_conditions(o::AbstractOperator{X,X}, ::Monotone{μ,L}) where {X<:InnerProductSpace,μ,L}
-  Constraints( μ*(xi-xj)^2 ≤ (xi-xj) * (yi-yj) for (xi,yi) ∈ o, (xj,yj) ∈ o ) ∪ Constraints( (xi-xj) * (yi-yj) ≤ L*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+  Constraints( μ*(xi-xj)^2 ≤ (xi-xj)' * (yi-yj) for (xi,yi) ∈ o, (xj,yj) ∈ o ) ∪ Constraints( (xi-xj)' * (yi-yj) ≤ L*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
 end
 
 function interpolation_conditions(o::AbstractLinearMap{X,Y}, ::Linearity) where {F<:Field,X<:InnerProductSpace{F},Y<:InnerProductSpace{F}}
-  Constraints( x*v == y*u for (x,y) ∈ o, (u,v) ∈ o' )
+  Constraints( x'*v == y'*u for (x,y) ∈ o, (u,v) ∈ o' )
 end
 
 function interpolation_conditions(o::AbstractLinearMap{X,X}, ::Symmetric) where {X<:InnerProductSpace}
-  Constraints( xi*yj == yi*xj for (xi,yi) ∈ o, (xj,yj) ∈ o )
+  Constraints( xi'*yj == yi'*xj for (xi,yi) ∈ o, (xj,yj) ∈ o )
 end
 
 function interpolation_conditions(o::AbstractLinearMap{X,X}, ::SkewSymmetric) where {X<:InnerProductSpace}
-  Constraints( xi*yj + yi*xj == 0 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+  Constraints( xi'*yj + yi'*xj == 0 for (xi,yi) ∈ o, (xj,yj) ∈ o )
 end
 
 function interpolation_conditions(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace,μ,L}

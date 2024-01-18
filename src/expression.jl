@@ -1,29 +1,5 @@
-export Expression, Field, VectorSpace, NormedVectorSpace, InnerProductSpace, GramMatrix
-export Decomposition, LinearDecomposition, AffineDecomposition
-export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
-export label, label!, value, decomposition, selfdecomp, hasvalue, isvariable
-export @field, @vectorspace, @normedvectorspace, @innerproductspace, @autolabel
-
-import Base: +, -, *, /, ^, ==, isempty, iszero, promote_rule, convert, show, isequal, zero, adjoint, size
-
-
-###############################################################################
-# Abstract types
-
-"An abstract expression. Each expression can be a constant (nonzero or zero), a variable (with known or unknown value), or a decomposition (function) of other expressions."
-abstract type Expression end
-
-"An abstract field. An element of a field is a scalar. A scalar is an expression that can be an affine function of other scalars and inner products of points in an inner product space over the field."
-abstract type Field <: Expression end
-
-"An abstract vector space. A vector is an expression that can be a linear function of other vectors."
-abstract type VectorSpace{F<:Field} <: Expression end
-
-"An abstract normed vector space. The squared norm of a vector produces a scalar."
-abstract type NormedVectorSpace{F<:Field} <: VectorSpace{F} end
-
-"An abstract inner product space. The inner product of two vectors produces a scalar, and the squared norm is the inner product of a vector with itself."
-abstract type InnerProductSpace{F<:Field} <: NormedVectorSpace{F} end
+############################################################################################
+# Gram matrix
 
 "A Gram matrix over a field."
 struct GramMatrix{V<:InnerProductSpace} <: Expression
@@ -45,28 +21,7 @@ adjoint(a::F) where {F<:Field} = a
 adjoint(G::GramMatrix) = G
 
 
-###############################################################################
-
-export Oracle, AbstractOperator, AbstractFunction, AbstractLinearMap
-export AbstractSymmetricLinearMap, AbstractSkewSymmetricLinearMap
-export AbstractFunctional, AbstractSubdifferentiableFunctional
-export AbstractDifferentiableFunctional, AbstractTwiceDifferentiableFunctional
-export AbstractInfinitelyDifferentiableFunctional, AbstractLinearFunctional
-
-abstract type AbstractOperator{X,Y} <: Oracle end
-abstract type AbstractFunction{X,Y} <: AbstractOperator{X,Y} end
-abstract type AbstractLinearMap{X,Y} <: AbstractFunction{X,Y} end
-abstract type AbstractSymmetricLinearMap{X} <: AbstractLinearMap{X,X} end
-abstract type AbstractSkewSymmetricLinearMap{X} <: AbstractLinearMap{X,X} end
-abstract type AbstractFunctional{X} <: AbstractFunction{X,F where F} end
-abstract type AbstractSubdifferentiableFunctional{X} <: AbstractFunctional{X} end
-abstract type AbstractDifferentiableFunctional{X} <: AbstractSubdifferentiableFunctional{X} end
-abstract type AbstractTwiceDifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X} end
-abstract type AbstractInfinitelyDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X} end
-abstract type AbstractLinearFunctional{X} <: AbstractInfinitelyDifferentiableFunctional{X} end
-
-
-###############################################################################
+############################################################################################
 # Primitive decompositions
 
 "Decomposition of an expression in terms of other expressions."
@@ -145,7 +100,7 @@ end
 variables(x::Decomposition) = Set(keys(weights(x)))
 
 
-###############################################################################
+############################################################################################
 # Macro definitions of concrete expression types
 
 "Define a field."
@@ -213,7 +168,7 @@ macro innerproductspace(ex::Expr)
 end
 
 
-###############################################################################
+############################################################################################
 # Automatic labeling of values
 
 "Automatic labeling of values."
@@ -247,7 +202,7 @@ function _autolabel(ex::Expr)
 end
 
 
-###############################################################################
+############################################################################################
 # Methods
 
 label!(e::Expression, label::String) = (e.label = label; nothing)
@@ -268,7 +223,7 @@ hasvalue(e::Expression) = !ismissing(value(e))
 isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 
 
-###############################################################################
+############################################################################################
 # Constructors
 
 # variable
@@ -288,7 +243,7 @@ isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 (::Type{V})(value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", value, decomposition, Constraints())
 
 
-###############################################################################
+############################################################################################
 # Algebra
 
 # Expressions
@@ -324,7 +279,7 @@ For example,
 \begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix} \otimes \begin{bmatrix} y_1 \\ y_2 \end{bmatrix} = \begin{bmatrix} \langle x_1,y_1\rangle & \langle x_1,y_2\rangle \\ \langle x_2,y_1\rangle & \langle x_2,y_2\rangle \\ \langle x_3,y_1\rangle & \langle x_3,y_2\rangle \end{bmatrix}
 ``
 """
-⊗(x1::Vector{V}, x2::Vector{V}) where {V<:InnerProductSpace} = GramMatrix{V}([ x*y for x ∈ x1, y ∈ x2 ])
+⊗(x1::Vector{V}, x2::Vector{V}) where {V<:InnerProductSpace} = GramMatrix{V}([ x'*y for x ∈ x1, y ∈ x2 ])
 
 function +(G::GramMatrix{V}, a::Number) where {V<:InnerProductSpace}
   m = copy(decomposition(G))
@@ -350,7 +305,8 @@ end
 
 size(G::GramMatrix, n::Int) = size(decomposition(G), n)
 
-###############################################################################
+
+############################################################################################
 # Evaluate
 
 function evaluate(e::Expression)
@@ -366,7 +322,7 @@ evaluate(p::Tuple{X,X}) where {X<:InnerProductSpace} = evaluate(p[1])'*evaluate(
 evaluate(t::Tuple{LinearDecomposition{F},AffineDecomposition{F}}) where {F<:Field} = evaluate(t[1]) + evaluate(t[2])
 
 
-###############################################################################
+############################################################################################
 # Show
 
 function show(io::IO, x::LinearDecomposition)
@@ -461,7 +417,7 @@ function show(io::IO, mime::MIME"text/plain", G::GramMatrix{V}) where {V<:InnerP
 end
 
 
-###############################################################################
+############################################################################################
 # IsEqual
 
 isequal(x1::Expression, x2::Expression) = false

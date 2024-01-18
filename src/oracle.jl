@@ -1,11 +1,3 @@
-export Oracle, Oracles, Dual, DualOracle, FunctionOracle, OperatorOracle, Functional
-export ConvexFunction, DifferentiableFunction
-export Operator, ContinuousOperator, LinearOperator
-export samples, relation, get_oracle
-
-import Base: adjoint, ∈, *, push!
-
-
 # Oracle (o,o',o'',...)
 #  - AbstractOperator: o: X → Y
 #    - Operator*
@@ -38,11 +30,8 @@ import Base: adjoint, ∈, *, push!
 #  - ConstantRelation
 
 
-###############################################################################
+############################################################################################
 # Associations
-
-export Transpose, AbstractDifferential, AbstractSubdifferential
-export Subdifferential, Gradient, Hessian
 
 abstract type Association end
 
@@ -76,8 +65,6 @@ end
 +(o1::T, o2::LinearDecomposition{T}) where {T<:Oracle} = LinearDecomposition{T}(Dict(o1=>1)) + o2
 +(o1::LinearDecomposition{T}, o2::T) where {T<:Oracle} = o1 + LinearDecomposition{T}(Dict(o2=>1))
 
-import Base.adjoint
-
 "For an oracle o, the notation o', o'', ... is used to access its related operators. The available operators and their properties depend on the type of oracle. For instance, o' of a linear operator is its transpose, while o' of a differentiable operator is its gradient."
 adjoint(o::Oracle) = error("Oracle $o does not have an associated operator o'. To specify a related operator, specialize `adjoint` for this oracle type.")
 adjoint(o::AbstractDifferential) = error("Differential $o does not have an associated operator o'. To specify a related operator, specialize `adjoint' for this differential type.")
@@ -91,26 +78,12 @@ adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional}) = Hessian{typeof(o
 adjoint(o::LinearDecomposition{<:Oracle}) = mapreduce( p -> last(p) * first(p)', +, weights(o) )
 
 
-###############################################################################
-# Property
-
-export Property, Properties
-
-abstract type Property end
-const Properties = Set{Property}
-
-
-###############################################################################
+############################################################################################
 # Concrete oracles
 # 
 # Every oracle has the following fields:
 #  - label::String
 #  - class::Properties
-
-export Operator, Map, LinearMap, SymmetricLinearMap, SkewSymmetricLinearMap
-export Functional, SubdifferentiableFunctional, DifferentiableFunctional
-export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
-export LinearFunctional
 
 struct Operator{X,Y} <: AbstractOperator{X,Y}
   label::String
@@ -234,10 +207,8 @@ end
 (::Type{T})(X) where {T<:AbstractFunctional} = T{X}()
 
 
-###############################################################################
+############################################################################################
 # Methods
-
-export oracle, samples, operator
 
 """
     oracle(o)
@@ -268,10 +239,8 @@ Get the samples associated with an oracle or its association.
 samples(o::Union{Oracle,Association}) = operator(o).value
 
 
-###############################################################################
+############################################################################################
 # Iterate
-
-import Base.length, Base.iterate
 
 length(o::Union{Oracle,Association}) = length(samples(o))
 
@@ -279,12 +248,28 @@ iterate(o::Union{Oracle,Association}) = iterate(samples(o))
 iterate(o::Union{Oracle,Association}, state::Int) = iterate(samples(o), state)
 
 
-###############################################################################
+############################################################################################
 # Sample
 
-import Base.*
+"""
+    oracle(x)
+    association(x)
 
-"Sample an oracle at a point in its domain."
+Sample an oracle (or its association) at a point in its domain.
+
+If the relation is single-valued and it has already been sampled at `x`, then the corresponding
+point in the codomain is returned. Otherwise, a new point is sampled using `Y(label)`.
+
+For linear maps, `*` may also be used to denote sampling.
+
+# Examples
+```julia-repl
+julia> A = LinearFunctional{Rⁿ}()
+julia> x = Rⁿ()
+julia> A(x)
+julia> A*x
+```
+"""
 (o::Union{Oracle,Association})(x) = operator(o)(x)
 
 (o::AbstractLinearFunctional)(x) = operator(o)(x, "⟨" * label(o') * "," * label(x) * "⟩")
@@ -307,21 +292,17 @@ end
 
 (o::ConstantMap{<:X,Y})(::X) where {X,Y} = o.value
 
-# For linear maps, also use * to denote sampling.
+# For linear maps, also use * to denote sampling
 *(o::Union{AbstractLinearMap,AbstractLinearFunctional,Association}, x) = o(x)
 
-# "Sample a linear function of linear functionals by taking a linear combination of samples of each functional."
+# Sample a linear function of linear functionals by taking a linear combination of samples of each functional
 function (o::LinearDecomposition{T})(x::X) where {F<:Field,X<:VectorSpace{F},T<:AbstractLinearFunctional{X}}
   mapreduce( p -> (y=F(); push!(samples(first(p)), x=>y); last(p)*y), +, weights(o) )
 end
 
 
-###############################################################################
+############################################################################################
 # Methods
-
-export label, label!, properties
-
-import Base.∈
 
 label(o::Oracle) = o.label
 label!(o::Oracle, label::String) = (o.label = label)
@@ -332,10 +313,8 @@ properties(o::Union{Oracle,Association}) = operator(o).properties
 ∈(o::Union{Oracle,Association}, properties::Properties) = map(class -> o ∈ class, properties)
 
 
-###############################################################################
+############################################################################################
 # Inputs / outputs
-
-export inputs, outputs, domain, codomain, inputs_outputs
 
 inputs(o::Union{Oracle,Association}) = Set(p.first for p ∈ oracle(o))
 outputs(o::Union{Oracle,Association}) = Set(p.second for p ∈ oracle(o))
@@ -348,10 +327,8 @@ inputs_outputs(o::Union{Oracle,Association}) = (pairs=collect(samples(o)); ([fir
 domain(a::Association) = domain(oracle(a))
 codomain(a::Association) = codomain(oracle(a))
 
-###############################################################################
+############################################################################################
 # Show
-
-import Base.show
 
 show(io::IO, a::Association) = show(io, oracle(a))
 
@@ -407,7 +384,7 @@ function show(io::IO, o::QuadraticFunctional{X}) where {X}
 end
 
 
-###############################################################################
+############################################################################################
 # Dual
 
 adjoint(o::AbstractLinearFunctional) = o.dual
@@ -423,10 +400,8 @@ function adjoint(v::X) where {X<:InnerProductSpace}
 end
 
 
-###############################################################################
+############################################################################################
 # Hierarchy
-
-export hierarchy
 
 AbstractTrees.children(d::Union{DataType,UnionAll}) = InteractiveUtils.subtypes(d)
 

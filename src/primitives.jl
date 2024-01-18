@@ -2,7 +2,7 @@ export first_order_stationary_point
 
 
 
-###############################################################################
+############################################################################################
 # Stationary points
 
 function first_order_stationary_point(o::Functional{X,F}) where {X,F}

@@ -1,5 +1,3 @@
-export maximize, lift, project, variables, constraints, variables_constraints
-
 function maximize(P::AbstractAffine{<:Field}; optimizer=SCS.Optimizer)
 
   # variables and constraints associated with the objective

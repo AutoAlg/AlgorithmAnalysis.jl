@@ -44,7 +44,6 @@ PackageCompiler.create_sysimage(
         :SCS,
         :LinearAlgebra,
     ];
-    precompile_execution_file = "src/precompilation/precompile.jl",
     sysimage_path = "image.so",
 )
 ```
@@ -54,6 +53,10 @@ Then start Julia with the -J flag pointing to the system image that was created,
 "julia.additionalArgs": [
     "-Jpath_to_image.so"
 ]
+```
+
+```json
+"editor.rulers": [92]
 ```
 
 

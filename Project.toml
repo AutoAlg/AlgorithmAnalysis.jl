@@ -9,6 +9,7 @@ Convex = "f65535da-76fb-5f13-bab9-19810c17039a"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SCS = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
 Zeros = "bd1ec220-6eb4-527a-9b49-e79c3db6233b"
 

@@ -5,7 +5,7 @@ import Base.push!, Base.length, Base.inv, Base.zeros, Base.show, Base.Generator,
 import Base.∈, Base.+, Base.-, Base.*, Base./, Base.∘, Base.∩, Base.==
 
 
-###############################################################################
+############################################################################################
 # Relation
 
 "A relation is a subset of the product space X × Y."
@@ -56,7 +56,7 @@ function show(io::IO, r::Relation{X,Y}) where {X,Y}
 end
 
 
-###############################################################################
+############################################################################################
 # Multi-valued relation
 
 "A relation is a subset of the Cartesian product of its domain `X` and codomain `Y`."
@@ -81,7 +81,7 @@ MultiValuedRelation(g::Generator) = MultiValuedRelation(Set(p for p ∈ g))
 (r::MultiValuedRelation{X,Y})(v::Vector{X}) where {X,Y} = r(Set(v))
 
 
-###############################################################################
+############################################################################################
 # Single-valued relation
 
 "A single-valued relation (also known as a function) is a relation in which there is a unique element of the codomain associated with each element of the domain."
@@ -104,7 +104,7 @@ SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
 (r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(pairs(r), x, missing)
 
 
-###############################################################################
+############################################################################################
 # Constant relation
 
 "A constant relation is a relation in which there is a unique element of the codomain that is associated with any element of the domain."
@@ -125,7 +125,7 @@ end
 (r::ConstantRelation{X,Y})(x::X) where {X,Y} = r.output
 
 
-###############################################################################
+############################################################################################
 # Sample
 
 "Sample a relation at a point in its domain."
@@ -150,7 +150,7 @@ end
 sample(r::ConstantRelation{X,Y}, x::X) where {X,Y} = r.output
 
 
-###############################################################################
+############################################################################################
 # Operations involving relations
 
 "Invert a relation."
@@ -190,7 +190,7 @@ end
 +(y, r::Relation{X,Y}) where {X,Y} = r + y
 
 
-###############################################################################
+############################################################################################
 # RelationClass
 
 "An abstract class of relations. Each `RelationClass` must provide a method ∈(r,R) to test whether or not a relation `r` is in a relation class `R`. For a relation class that consists of a finite number of relations, this function could simply check whether or not the relation is an element of the class. For relation classes that consist of an infinite number of relations, these are the interpolation conditions for the relation class."
