@@ -7,4 +7,9 @@ Expressions may be variables, constants, or functions of other expressions. Stan
 
 # Oracles
 
+An oracle is a 
 Iterating over an oracle iterates over its samples.
+
+- Some constraint properties dictate what dual operators are available (e.g., linear implies that o' is the adjoint)
+- Some constraint properties simplify the structure of the oracle (e.g., symmetric implies o' = o)
+- Other properties don't do either (e.g., monotone)

@@ -1,7 +1,9 @@
-# Automated Algorithm Analysis and Design (AutoAlg.jl)
-# Systematic Algorithm Analysis (SysAlg.jl)
-# Disciplined Algorithm Analysis (DAA.jl)
-# Optimization Algorithm Analysis (OptAlg.jl)
+# Organizations: Mathematics > JuliaOptAlg - Automated and assisted analysis of optimization algorithms in Julia
+#   - VectorSpaces.jl (see VectorInterface.jl)
+#   - BlackBoxOracles.jl
+#   - OptimizationAlgorithms.jl
+#   - PerformanceEstimation.jl
+#   - LyapunovAnalysis.jl
 module BlackBoxOptimization
 
 # TODO
@@ -22,7 +24,7 @@ module BlackBoxOptimization
 
 # abstract types
 export Constraint, Constraints, ConstraintSet
-export Expression, Field, VectorSpace, NormedVectorSpace, InnerProductSpace
+export Expression, Field, Reals, R, VectorSpace, NormedVectorSpace, InnerProductSpace
 
 # expression
 export GramMatrix
@@ -44,7 +46,7 @@ export domain, codomain, inputs, outputs, inputs_outputs
 export Oracle, Oracles, Dual, DualOracle, FunctionOracle, OperatorOracle, Functional
 export ConvexFunction, DifferentiableFunction
 export Operator, ContinuousOperator, LinearOperator
-export oracle, suboracle, sample, samples, relation, get_oracle
+export oracle, suboracle, suboracles, sample, samples, relation, get_oracle
 
 export AbstractOperator, AbstractFunction, AbstractLinearMap
 export AbstractSymmetricLinearMap, AbstractSkewSymmetricLinearMap
@@ -55,7 +57,7 @@ export AbstractInfinitelyDifferentiableFunctional, AbstractLinearFunctional
 export Operator, Map, LinearMap, SymmetricLinearMap, SkewSymmetricLinearMap
 export Functional, SubdifferentiableFunctional, DifferentiableFunctional
 export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
-export LinearFunctional
+export LinearFunctional, ZeroFunctional
 
 # wrappers
 export Wrapper, LinearDecomposition, AffineDecomposition
@@ -79,6 +81,7 @@ export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded
 export Linear, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
 export Monotonicity, RelativeBoundedness, Boundedness
 export propertyof, properties, allproperties
+export Co, Weakly, PropertyOrWrapper
 
 # solve
 export maximize, lift, project, variables, constraints, variables_constraints
@@ -115,6 +118,7 @@ include("oracle.jl")
 include("adjoint.jl")
 include("interpolation.jl")
 include("show.jl")
+include("label.jl")
 # include("solve.jl")
 # include("primitives.jl")
 # include("algorithms.jl")

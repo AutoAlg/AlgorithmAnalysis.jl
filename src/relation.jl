@@ -9,14 +9,13 @@ A relation is a subset of the Cartesian product of its domain `X` and codomain `
 mutable struct Relation{X,Y}
     label::String
     samples::Set{Pair{X,Y}}
-    properties::Properties
 
     # Construct an empty relation
-    Relation{X,Y}(label::String = "") where {X,Y} = new(label, Set{Pair{X,Y}}(), Properties())
+    Relation{X,Y}(label::String = "") where {X,Y} = new(label, Set{Pair{X,Y}}())
 
     # Construct a relation from a set of input-output pairs
-    Relation(s::Set{Pair{X,Y}}) where {X,Y} = new{X,Y}("", s, Properties())
-    Relation{X,Y}(s::Set{Pair{<:X,<:Y}}) where {X,Y} = new("", s, Properties())
+    Relation(s::Set{Pair{X,Y}}) where {X,Y} = new{X,Y}("", s)
+    Relation{X,Y}(s::Set{Pair{<:X,<:Y}}) where {X,Y} = new("", s)
 end
 
 # A set of relations
@@ -24,6 +23,11 @@ const Relations = Set{Relation}
 
 # Construct a relation from a generator of pairs of points
 Relation(g::Generator) = Relation(Set(p for p ∈ g))
+
+# Construct a relation from a dictionary
+Relation(d::Dict) = Relation(first(p) => last(p) for p ∈ d)
+
+Relation(s::Set{Pair{X}}) where {X} = Relation(Set{Pair{X,X}}(s))
 
 # Domain of a relation
 domain(::Relation{X,Y}) where {X,Y} = X
@@ -33,9 +37,6 @@ codomain(::Relation{X,Y}) where {X,Y} = Y
 
 # Set of pairs of points at which a relation has been sampled
 samples(r::Relation) = r.samples
-
-# Properties of a relation
-properties(r::Relation) = r.properties
 
 # Check equality of two relations
 ==(r1::Relation, r2::Relation) = (samples(r1) == samples(r2))

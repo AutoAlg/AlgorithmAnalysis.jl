@@ -3,9 +3,9 @@
 
 "A Gram matrix over a field."
 struct GramMatrix{V<:InnerProductSpace} <: Expression
-  label::String
-  value::Union{Matrix{Number},Missing}
-  decomposition::Matrix
+    label::String
+    value::Union{Matrix{Number},Missing}
+    decomposition::Matrix
 end
 
 "Constructor."
@@ -20,113 +20,84 @@ zero(::V) where {V<:VectorSpace} = V(Zero())
 
 "Define a field."
 macro field(s::Symbol)
-  quote
-    mutable struct $(esc(s)) <: Field
-      label::String
-      value::Union{Number,Missing}
-      decomposition::AffineDecomposition{$(esc(s))}
-      constraints::Constraints
+    quote
+        mutable struct $(esc(s)) <: Field
+            label::String
+            value::Union{Number,Missing}
+            decomposition::AffineDecomposition{$(esc(s))}
+            constraints::Constraints
+        end
     end
-  end
 end
+
+"""
+    R <: Field
+
+The field of real numbers.
+"""
+@field R
 
 "Define a vector space over a field."
 macro vectorspace(ex::Expr)
-  if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
-    throw(ArgumentError("@vectorspace: `$(ex)` must be of the form: `V, F` where `V` is a vector space over a field `F`."))
-  end
-  quote
-    mutable struct $(esc(ex.args[1])) <: VectorSpace{$(esc(ex.args[2]))}
-      label::String
-      value::Union{Vector,Missing,Zero}
-      decomposition::LinearDecomposition{$(esc(ex.args[1]))}
-      constraints::Constraints
+    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+        throw(ArgumentError("@vectorspace: `$(ex)` must be of the form: `V, F` where `V` is a vector space over a field `F`."))
     end
-  end
+    quote
+        mutable struct $(esc(ex.args[1])) <: VectorSpace{$(esc(ex.args[2]))}
+        label::String
+        value::Union{Vector,Missing,Zero}
+        decomposition::LinearDecomposition{$(esc(ex.args[1]))}
+        constraints::Constraints
+        end
+    end
 end
 
 "Define a normed vector space over a field."
 macro normedvectorspace(ex::Expr)
-  if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
-    throw(ArgumentError("@normedvectorspace: `$(ex)` must be of the form: `V, F` where `V` is a normed vector space over a field `F`."))
-  end
-  quote
-    mutable struct $(esc(ex.args[1])) <: NormedVectorSpace{$(esc(ex.args[2]))}
-      label::String
-      value::Union{Vector,Missing,Zero}
-      decomposition::LinearDecomposition{$(esc(ex.args[1]))}
-      constraints::Constraints
+    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+        throw(ArgumentError("@normedvectorspace: `$(ex)` must be of the form: `V, F` where `V` is a normed vector space over a field `F`."))
     end
-  end
+    quote
+        mutable struct $(esc(ex.args[1])) <: NormedVectorSpace{$(esc(ex.args[2]))}
+        label::String
+        value::Union{Vector,Missing,Zero}
+        decomposition::LinearDecomposition{$(esc(ex.args[1]))}
+        constraints::Constraints
+        end
+    end
 end
 
 "Define an inner product space over a field."
 macro innerproductspace(ex::Expr)
-  if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
-    throw(ArgumentError("@innerproductspace: `$(ex)` must be of the form: `V, F` where `V` is an inner product space over a field `F`."))
-  end
-  quote
-    mutable struct $(esc(ex.args[1])) <: InnerProductSpace{$(esc(ex.args[2]))}
-      label::String
-      value::Union{Vector,Missing,Zero}
-      decomposition::LinearDecomposition{$(esc(ex.args[1]))}
-      constraints::Constraints
-      dual::LinearFunctional{$(esc(ex.args[1]))}
-
-      function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{$(esc(ex.args[1]))}, constraints::Constraints)
-        x = new(label, value, decomposition, constraints, LinearFunctional{$(esc(ex.args[1]))}())
-        x.dual.dual = x
-        x
-      end
+    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+        throw(ArgumentError("@innerproductspace: `$(ex)` must be of the form: `V, F` where `V` is an inner product space over a field `F`."))
     end
-  end
-end
-
-
-############################################################################################
-# Automatic labeling of values
-
-"Automatic labeling of values."
-macro autolabel(ex::Expr)
-  if ex.head == :block
-    Expr(:block, [ _autolabel(arg) for arg ∈ ex.args if !(arg isa LineNumberNode) ]...)
-  else
-    _autolabel(ex)
-  end
-end
-
-function _autolabel(ex::Expr)
-  if ex.head ≠ :(=)
-    throw(ArgumentError("@autolabel: `$ex` is not an assigment expression."))
-  end
-  if ex.args[1] isa Symbol
     quote
-      local var = $(esc(ex.args[2]))
-      label!(var, $(string(ex.args[1])))
-      $(esc(ex.args[1])) = var
+        mutable struct $(esc(ex.args[1])) <: InnerProductSpace{$(esc(ex.args[2]))}
+            label::String
+            value::Union{Vector,Missing,Zero}
+            decomposition::LinearDecomposition{$(esc(ex.args[1]))}
+            constraints::Constraints
+            dual::LinearFunctional{$(esc(ex.args[1]))}
+
+            function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{$(esc(ex.args[1]))}, constraints::Constraints)
+                x = new(label, value, decomposition, constraints, LinearFunctional{$(esc(ex.args[1]))}())
+                x.dual.dual = x
+                x
+            end
+        end
     end
-  elseif ex.args[1] isa Expr && ex.args[1].head == :tuple
-    quote
-      local var = $(esc(ex.args[2]))
-      label!.(var, $([string(x) for x ∈ ex.args[1].args]))
-      $(esc(ex.args[1])) = var
-    end
-  else
-    throw(ArgumentError("@autolabel: `$ex` does not have the correct left-hand side."))
-  end
 end
 
 
 ############################################################################################
 # Methods
 
-label!(e::Expression, label::String) = (e.label = label; nothing)
-label(e::Expression) = e.label
 value(e::Expression) = e.value
 decomposition(e::Expression) = e.decomposition
 constraints(e::Expression) = e.constraints
 variables(e::Expression) = variables(decomposition(e))
-variables(m::Matrix{F}) where {F<:Field} = mapreduce(variables, ∪, m)
+variables(m::Matrix{F}) where {F<:Field} = mapreduce(variables, ∪, m; init=Set{F}())
 
 # decomposition that defaults to self => 1 if empty
 selfdecomp(a::F) where {F<:Field} = isempty(decomposition(a)) ? AffineDecomposition{F}(Dict(a => 1)) : decomposition(a)
@@ -142,8 +113,8 @@ isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 # Constructors
 
 # variable
-(::Type{F})(label::String = "") where {F<:Field} = F(label, missing, AffineDecomposition{F}(), Constraints())
-(::Type{V})(label::String = "") where {V<:VectorSpace} = V(label, missing, LinearDecomposition{V}(), Constraints())
+(::Type{F})(label::String = "Variable{$F}") where {F<:Field} = F(label, missing, AffineDecomposition{F}(), Constraints())
+(::Type{V})(label::String = "Variable{$V}") where {V<:VectorSpace} = V(label, missing, LinearDecomposition{V}(), Constraints())
 
 # constant
 (::Type{F})(value::Number) where {F<:Field} = F("", value, AffineDecomposition{F}(), Constraints())
@@ -181,7 +152,7 @@ promote_rule(::Type{F}, ::Type{<:Number}) where {F<:Field} = F
 convert(::Type{F}, a::Number) where {F<:Field} = F(a)
 
 # Squared norm of a vector in a normed vector space
-^(v::NormedVectorSpace, n::Int) = (n == 2 ? v*v : error("Can only take inner product of points."))
+^(v::NormedVectorSpace, n::Int) = (n == 2 ? v'*v : error("Can only take inner product of points."))
 
 """
     ⊗(x,x)
@@ -201,24 +172,24 @@ julia> G = x ⊗ y
 
 
 function +(G::GramMatrix{V}, a::Number) where {V<:InnerProductSpace}
-  m = copy(decomposition(G))
-  for i = 1:size(G,1)
-    m[i,i] += a
-  end
-  GramMatrix{V}( label(G), value(G), m )
+    m = copy(decomposition(G))
+    for i = 1:size(G,1)
+        m[i,i] += a
+    end
+    GramMatrix{V}( label(G), value(G), m )
 end
 +(a::Number, G::GramMatrix) = G + a
 -(G::GramMatrix, a::Number) = G + (-a)
 -(a::Number, G::GramMatrix) = a + (-G)
 
 function *(a::Number, G::GramMatrix{V}) where {V<:InnerProductSpace}
-  m = copy(decomposition(G))
-  for i = 1:size(G,1)
-    for j = 1:size(G,2)
-      m[i,j] *= a
+    m = copy(decomposition(G))
+    for i = 1:size(G,1)
+        for j = 1:size(G,2)
+        m[i,j] *= a
+        end
     end
-  end
-  GramMatrix{V}( label(G), value(G), m )
+    GramMatrix{V}( label(G), value(G), m )
 end
 *(G::GramMatrix, a::Number) = a*G
 
@@ -229,10 +200,10 @@ size(G::GramMatrix, n::Int) = size(decomposition(G), n)
 # Evaluate
 
 function evaluate(e::Expression)
-  if hasvalue(e)
-    return iszero(e) ? 0 : value(e)
-  end
-  isvariable(e) ? missing : evaluate(decomposition(e))
+    if hasvalue(e)
+        return iszero(e) ? 0 : value(e)
+    end
+    isvariable(e) ? missing : evaluate(decomposition(e))
 end
 evaluate(x::LinearDecomposition) = mapreduce( pair -> pair.second*evaluate(pair.first), +, weights(x); init=0 )
 evaluate(x::AffineDecomposition) = evaluate(linear(x)) + constant(x)
@@ -252,7 +223,7 @@ isequal(x1::Expression, x2::AbstractArray{<:Expression}) = false
 isequal(a1::AbstractArray{E}, a2::AbstractArray{E}) where {E<:Expression} = size(a1) == size(a2) && all( isequal(a1[i],a2[i]) for i ∈ eachindex(a1) )
 
 function isequal(x1::T, x2::T) where {T<:Expression}
-  isvariable(x1) && isvariable(x2) && return isequal(objectid(x1), objectid(x2))
-  !isvariable(x1) && !isvariable(x2) && return isequal(value(x1), value(x2)) && isequal(decomposition(x1), decomposition(x2))
-  false
+    isvariable(x1) && isvariable(x2) && return isequal(objectid(x1), objectid(x2))
+    !isvariable(x1) && !isvariable(x2) && return isequal(value(x1), value(x2)) && isequal(decomposition(x1), decomposition(x2))
+    false
 end

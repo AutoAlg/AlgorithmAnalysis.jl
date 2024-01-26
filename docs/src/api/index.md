@@ -1,10 +1,19 @@
 # API
 
+## General
+
+```@docs
+label
+label!
+@autolabel
+```
+
 ## Expressions
 
 ```@docs
 Expression
 Field
+R
 @field
 VectorSpace
 @vectorspace
@@ -14,7 +23,6 @@ InnerProductSpace
 @innerproductspace
 GramMatrix
 ⊗
-@autolabel
 variables
 ```
 
@@ -26,18 +34,21 @@ ConstraintSet
 add_constraint!
 check
 prune!
+constraints
 ```
 
 ## Oracles
 
 ```@docs
 Oracle
+Operator
+Map
+ConstantMap
 Relation
 LinearMap
 Functional
 oracle
 suboracle
-relation
 samples
 sample
 ```
@@ -48,12 +59,6 @@ sample
 Property
 Linear
 allproperties
-```
-
-## Interpolation
-
-```@docs
-interpolation_conditions
 ```
 
 ## Wrappers

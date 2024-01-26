@@ -18,6 +18,8 @@ abstract type Expression end
 An abstract field.
 
 An element of a field is a scalar. A scalar is an expression that can be an affine function of other scalars and inner products of points in an inner product space over the field.
+
+Use [`@field]`](@ref) to construct a field.
 """
 abstract type Field <: Expression end
 
@@ -63,11 +65,11 @@ abstract type ConstraintSet end
 """
     Oracle
 
-An oracle is a set of operators and the ways in which they are related. For instance, an oracle may consist of the operators A and Aᵀ where A is linear and Aᵀ is its tranpose. Each operator can be sampled at a point in its domain, and its relation can be constrained to be in a class. Furthermore, the set of operators can also be constrained to be in a class.
+An oracle is a set of operators and the ways in which they are related. For instance, an oracle may consist of the operators A and Aᵀ where A is linear and Aᵀ is its tranpose. Each operator can be sampled at a point in its domain, and it can have a set of properties.
 
 Any concrete subtype of `Oracle` must have the following fields:
     label::String
-    class::Properties
+    properties::Properties
 
 Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
 """
