@@ -8,23 +8,47 @@ label!
 @autolabel
 ```
 
+
 ## Expressions
 
 ```@docs
 Expression
+```
+
+### Abstract expression types
+
+```@docs
 Field
-R
-@field
 VectorSpace
-@vectorspace
 NormedVectorSpace
-@normedvectorspace
 InnerProductSpace
-@innerproductspace
+```
+
+### Concrete expression types
+
+```@docs
+R
+Rⁿ
+Rᵐ
 GramMatrix
+```
+
+# Macros to create other types of expressions
+
+```@docs
+@field
+@vectorspace
+@normedvectorspace
+@innerproductspace
+```
+
+### Expression methods
+
+```@docs
 ⊗
 variables
 ```
+
 
 ## Constraints
 
@@ -36,6 +60,7 @@ check
 prune!
 constraints
 ```
+
 
 ## Oracles
 
@@ -53,6 +78,7 @@ samples
 sample
 ```
 
+
 ## Properties
 
 ```@docs
@@ -60,6 +86,7 @@ Property
 Linear
 allproperties
 ```
+
 
 ## Wrappers
 
@@ -77,6 +104,7 @@ linear
 constant
 unwrap
 ```
+
 
 ## Other
 

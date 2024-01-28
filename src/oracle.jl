@@ -86,7 +86,7 @@ mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
     properties::Properties
     value::LinearMap{X,X}
     
-    SymmetricLinearMap{X}() where {X} = new{X}("", Properties([Linear(),Symmetric()]), LinearMap{X,X}())
+    SymmetricLinearMap{X}() where {X} = new{X}("", Properties([Symmetric()]), LinearMap{X,X}())
 end
 
 mutable struct SkewSymmetricLinearMap{X} <: AbstractSkewSymmetricLinearMap{X}
@@ -94,7 +94,7 @@ mutable struct SkewSymmetricLinearMap{X} <: AbstractSkewSymmetricLinearMap{X}
     properties::Properties
     value::LinearMap{X,X}
     
-    SkewSymmetricLinearMap{X}() where {X} = new{X}("", Properties([Linear(),SkewSymmetric()]), LinearMap{X,X}())
+    SkewSymmetricLinearMap{X}() where {X} = new{X}("", Properties([SkewSymmetric()]), LinearMap{X,X}())
 end
 
 """
@@ -225,7 +225,7 @@ function suboracles(o::OracleOrWrapper)
     v = Vector{Oracle}()
     while true
         push!(v, oracle(o))
-        isequal(o, suboracle(o)) && break
+        isequal(oracle(o), suboracle(o)) && break
         o = suboracle(o)
     end
     v

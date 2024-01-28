@@ -132,6 +132,11 @@ function show(io::IO, o::AbstractOperator{X,Y}) where {X,Y}
     # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
 end
 
+function show(io::IO, o::AbstractFunction{X,Y}) where {X,Y}
+    print(io, "\nFunction from $X to $Y: $(allproperties(o))")
+    # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
+end
+
 function show(io::IO, o::AbstractLinearMap{X,Y}) where {X,Y}
     print(io, "\nLinear map from $X to $Y: $(allproperties(o))")
     # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
@@ -152,6 +157,10 @@ end
 function show(io::IO, o::AbstractFunctional{X}) where {X}
     print(io, "\nFunctional on $X: $(allproperties(o))")
     # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
+end
+
+function show(io::IO, o::AbstractDifferentiableFunctional{X}) where {X}
+    print(io, "\nDifferentiable functional on $X: $(allproperties(o))")
 end
 
 function show(io::IO, o::AbstractLinearFunctional{X}) where {X}

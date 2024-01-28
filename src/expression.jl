@@ -30,13 +30,6 @@ macro field(s::Symbol)
     end
 end
 
-"""
-    R <: Field
-
-The field of real numbers.
-"""
-@field R
-
 "Define a vector space over a field."
 macro vectorspace(ex::Expr)
     if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
@@ -44,10 +37,10 @@ macro vectorspace(ex::Expr)
     end
     quote
         mutable struct $(esc(ex.args[1])) <: VectorSpace{$(esc(ex.args[2]))}
-        label::String
-        value::Union{Vector,Missing,Zero}
-        decomposition::LinearDecomposition{$(esc(ex.args[1]))}
-        constraints::Constraints
+            label::String
+            value::Union{Vector,Missing,Zero}
+            decomposition::LinearDecomposition{$(esc(ex.args[1]))}
+            constraints::Constraints
         end
     end
 end
@@ -59,10 +52,10 @@ macro normedvectorspace(ex::Expr)
     end
     quote
         mutable struct $(esc(ex.args[1])) <: NormedVectorSpace{$(esc(ex.args[2]))}
-        label::String
-        value::Union{Vector,Missing,Zero}
-        decomposition::LinearDecomposition{$(esc(ex.args[1]))}
-        constraints::Constraints
+            label::String
+            value::Union{Vector,Missing,Zero}
+            decomposition::LinearDecomposition{$(esc(ex.args[1]))}
+            constraints::Constraints
         end
     end
 end

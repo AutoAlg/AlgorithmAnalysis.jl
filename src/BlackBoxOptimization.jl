@@ -24,7 +24,8 @@ module BlackBoxOptimization
 
 # abstract types
 export Constraint, Constraints, ConstraintSet
-export Expression, Field, Reals, R, VectorSpace, NormedVectorSpace, InnerProductSpace
+export Expression, Field, Reals, VectorSpace, NormedVectorSpace, InnerProductSpace, Subset
+export R, Rⁿ, Rᵐ
 
 # expression
 export GramMatrix
@@ -77,7 +78,7 @@ export Property, Properties
 export OperatorClass, FunctionClass, OnePointOperatorClass, TwoPointOperatorClass
 export Monotone, Comonotone, WeaklyMonotone, WeaklyComonotone
 export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded, WeaklyRelativelyCobounded
-export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded
+export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded, Convex
 export Linear, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
 export Monotonicity, RelativeBoundedness, Boundedness
 export propertyof, properties, allproperties
@@ -123,5 +124,30 @@ include("label.jl")
 # include("primitives.jl")
 # include("algorithms.jl")
 include("hash.jl")
+
+
+############################################################################################
+# Concrete types of expressions
+
+"""
+    R <: Field
+
+The field of real numbers.
+"""
+@field R
+
+"""
+    Rⁿ <: InnerProductSpace
+
+A real inner product space.
+"""
+@innerproductspace Rⁿ, R
+
+"""
+    Rᵐ <: InnerProductSpace
+
+A real inner product space.
+"""
+@innerproductspace Rᵐ, R
 
 end

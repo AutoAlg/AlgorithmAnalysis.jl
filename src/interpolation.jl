@@ -2,30 +2,31 @@
 ############################################################################################
 # Properties
 
-struct Monotone{a,b} <: Monotonicity end                         # a ‖xi-xj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖xi-xj‖²
-struct Comonotone{a,b} <: Monotonicity end                       # a ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖yi-yj‖²
-struct WeaklyMonotone{a,b,xs,ys} <: Monotonicity end             # a ‖x -xs‖² ≤ (x -xs)'*(y -ys) ≤ b ‖x -xs‖²
-struct WeaklyComonotone{a,b,xs,ys} <: Monotonicity end           # a ‖y -ys‖² ≤ (x -xs)'*(y -ys) ≤ b ‖y -ys‖²
+struct Monotone{a,b} <: Property{AbstractOperator} end                         # a ‖xi-xj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖xi-xj‖²
+struct Comonotone{a,b} <: Property{AbstractOperator} end                       # a ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖yi-yj‖²
+struct WeaklyMonotone{a,b,xs,ys} <: Property{AbstractOperator} end             # a ‖x -xs‖² ≤ (x -xs)'*(y -ys) ≤ b ‖x -xs‖²
+struct WeaklyComonotone{a,b,xs,ys} <: Property{AbstractOperator} end           # a ‖y -ys‖² ≤ (x -xs)'*(y -ys) ≤ b ‖y -ys‖²
 
-struct RelativelyBounded{a,b} <: RelativeBoundedness end                # a² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ b² ‖xi-xj‖²
-struct RelativelyCobounded{a,b} <: RelativeBoundedness end              # a² ‖yi-yj‖² ≤ ‖xi-xj‖² ≤ b² ‖yi-yj‖²
-struct WeaklyRelativelyBounded{a,b,xs,ys} <: RelativeBoundedness end    # a² ‖x -xs‖² ≤ ‖y -ys‖² ≤ b² ‖x -xs‖²
-struct WeaklyRelativelyCobounded{a,b,xs,ys} <: RelativeBoundedness end  # a² ‖y -ys‖² ≤ ‖x -xs‖² ≤ b² ‖y -ys‖²
+struct RelativelyBounded{a,b} <: Property{AbstractOperator} end                # a² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ b² ‖xi-xj‖²
+struct RelativelyCobounded{a,b} <: Property{AbstractOperator} end              # a² ‖yi-yj‖² ≤ ‖xi-xj‖² ≤ b² ‖yi-yj‖²
+struct WeaklyRelativelyBounded{a,b,xs,ys} <: Property{AbstractOperator} end    # a² ‖x -xs‖² ≤ ‖y -ys‖² ≤ b² ‖x -xs‖²
+struct WeaklyRelativelyCobounded{a,b,xs,ys} <: Property{AbstractOperator} end  # a² ‖y -ys‖² ≤ ‖x -xs‖² ≤ b² ‖y -ys‖²
 
-struct Bounded{b} <: Boundedness end                            # ‖xi-xj‖² ≤ b²
-struct Cobounded{b} <: Boundedness end                          # ‖yi-yj‖² ≤ b²
-struct WeaklyBounded{b,xs} <: Boundedness end                   # ‖x -xs‖² ≤ b²
-struct WeaklyCobounded{b,ys} <: Boundedness end                 # ‖y -ys‖² ≤ b²
-
+struct Bounded{b} <: Property{NormedVectorSpace} end                            # ‖xi-xj‖² ≤ b²
+# struct Cobounded{b} <: Property{NormedVectorSpace} end                          # ‖yi-yj‖² ≤ b²
+struct WeaklyBounded{b,xs} <: Property{NormedVectorSpace} end                   # ‖x -xs‖² ≤ b²
+# struct WeaklyCobounded{b,ys} <: Property{NormedVectorSpace} end                 # ‖y -ys‖² ≤ b²
+struct Convex <: Property{VectorSpace} end
 
 "Linearity property. Applies to AbstractLinearMap oracles."
-struct Linear <: Property end                       # X ⊗ V = Y ⊗ U (or x'*v = y'*u for (x,y) ∈ r and (u,v) ∈ r')
-struct Symmetric <: Property end                    # Linear and X ⊗ Y = Y ⊗ X and U ⊗ V = V ⊗ U (or xi'*yj == yi'*xj for (xi,yi) and (xj,yj) ∈ r ∪ r')
-struct SkewSymmetric <: Property end                # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
-struct Eigenvalues{a,b} <: Property end             # Symmetric and (Y-aX) ⊗ (bX-Y) ⪰ 0
-struct MaxSingularValue{b} <: Property end          # Linear and Y ⊗ Y ⪯ b² (X ⊗ X) and V ⊗ V ⪯ b² (U ⊗ U)
+struct Linear <: Property{AbstractLinearMap} end                       # X ⊗ V = Y ⊗ U (or x'*v = y'*u for (x,y) ∈ r and (u,v) ∈ r')
+struct Symmetric <: Property{AbstractSymmetricLinearMap} end           # X ⊗ Y = Y ⊗ X and U ⊗ V = V ⊗ U (or xi'*yj == yi'*xj for (xi,yi) and (xj,yj) ∈ r ∪ r')
+struct SkewSymmetric <: Property{AbstractSkewSymmetricLinearMap} end   # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
+struct MaxSingularValue{b} <: Property{AbstractLinearMap} end          # Y ⊗ Y ⪯ b² (X ⊗ X) and V ⊗ V ⪯ b² (U ⊗ U)
 
-struct Nonexpansive{v} <: OperatorProperty end              # Lipschitz{1} and v² ≤ (x-y)'*v
+struct Eigenvalues{a,b} <: Property{AbstractSymmetricLinearMap} end    # (Y-aX) ⊗ (bX-Y) ⪰ 0
+
+# struct Nonexpansive{v} <: OperatorProperty end              # Lipschitz{1} and v² ≤ (x-y)'*v
 
 # Lipschitz continuous  = RelativelyBounded{0,L}
 # Strongly monotone     = Monotone{μ,∞}
@@ -34,9 +35,9 @@ struct Nonexpansive{v} <: OperatorProperty end              # Lipschitz{1} and v
 # Negatively comonotone = Comonotone{-ρ,∞}
 
 # function properties
-struct Curvature{μ,L} <: FunctionProperty end               # fi-fj ≥ gj'*(xi-xj) + 1/2L (gi-gj)² + μ/(2(1-μ/L)) (xi-xj-1/L (gi-gj))²
-struct WeakCurvature{μ,L,xs,fs,gs} <: FunctionProperty end  # fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
-struct QuadraticGrowth{μ} <: FunctionProperty end           # fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
+struct Curvature{μ,L} <: Property{AbstractSubdifferentiableFunctional} end               # fi-fj ≥ gj'*(xi-xj) + 1/2L (gi-gj)² + μ/(2(1-μ/L)) (xi-xj-1/L (gi-gj))²
+struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end  # fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
+struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end           # fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
 
 
 struct Co
@@ -56,10 +57,16 @@ const PropertyOrWrapper = Union{Property, Co, Weakly}
 
 
 ############################################################################################
+# Subsets
+
+∈(s::Subset{<:T}, p::Property{T}) where {T} = push!(s.properties, p)
+
+
+############################################################################################
 # Add a property to an oracle only if its constraints are implemented
-function ∈(o::Oracle, p::Property)
+function ∈(o::Oracle, p::Property{T}) where {T<:Oracle}
     for s ∈ reverse(suboracles(o))
-        if applicable(constraints, s, p)
+        if s isa T
             push!(properties(s), p)
             return
         end
@@ -83,22 +90,22 @@ constraints(o::OracleOrWrapper) = mapreduce(∪, ∪, Set(constraints(s,p) for s
 constraints(o::OracleOrWrapper, p::PropertyOrWrapper) = constraints(suboracle(o), p)
 constraints(o::AbstractOperator, P::PropertyOrWrapper) = constraints(samples(o), P)
 
-# Relations
+# Operators
 
 constraints(r::Relation, p::Property) = constraints(r, r, p)
 constraints(r::Relation, p::Co) = constraints(inv(r), inv(p.property))
 constraints(r::Relation, p::Weakly) = constraints(r, Relation(Dict(p.x=>p.y)), p.property)
 
-function constraints(r1::Relation, r2::Relation, ::Bounded{b}) where {b}
-    Constraints( (xi-xj)^2 ≤ b^2 for (xi,_) ∈ r1, (xj,_) ∈ r2 if !isequal(xi,xj) )
-end
+# function constraints(r1::Relation, r2::Relation, ::Bounded{b}) where {b}
+#     Constraints( (xi-xj)^2 ≤ b^2 for (xi,_) ∈ r1, (xj,_) ∈ r2 if !isequal(xi,xj) )
+# end
 
 function constraints(r1::Relation, r2::Relation, ::RelativelyBounded{a,b}) where {a, b}
     Constraints( a^2*(xi-xj)^2 ≤ (yi-yj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) ) ∪ Constraints( (yi-yj)^2 ≤ b^2*(xi-xj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) )
 end
 
 function constraints(r1::Relation{X,X}, r2::Relation{X,X}, ::Monotone{a,b}) where {X<:InnerProductSpace, a, b}
-    Constraints( 0 ≤ (xi-xj)'*(yi-yj-a*(xi-xj)) for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) ) # ∪ Constraints( (xi-xj)'*(yi-yj) ≤ b*(xi-xj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) )
+    Constraints( 0 ≤ (xi-xj)'*(yi-yj-a*(xi-xj)) for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) ) ∪ Constraints( (xi-xj)'*(yi-yj) ≤ b*(xi-xj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) )
 end
 
 # Linear maps
@@ -122,12 +129,14 @@ function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) wher
     Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
 end
 
-# function constraints(o::AbstractSubdifferentiableFunctional, ::Curvature{μ,L}) where {μ,L}
+triplets(o::AbstractSubdifferentiableFunctional) = Set( (x,o(x),o'(x)) for (x,_) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
+
+function constraints(o::AbstractSubdifferentiableFunctional, ::Curvature{μ,L}) where {μ,L}
 #   if o isa ConvexFunction && L < Inf
 #     @warn "Convex function $o is constrained to be L-smooth implying that it is differentiable. Use `DifferentiableFunction` instead."
 #   end
-#   Constraints( f2 ≥ f1 + g1*(x2-x1) for (x1,f1,g1) ∈ triplets(o), (x2,f2,_) ∈ triplets(o) )
-# end
+  Constraints( f2 ≥ f1 + g1'*(x2-x1) for (x1,f1,g1) ∈ triplets(o), (x2,f2,_) ∈ triplets(o) )
+end
 
 
 # ConvexIndicator{D} = Curvature{0,∞} and BoundedRadius{∞,0} and BoundedDiameter{D,∞}
@@ -194,8 +203,6 @@ end
 # ###############################################################################
 
 # const Triplets{X,F} = Set{Tuple{X,F,X}}
-
-# triplets(o::DifferentiableFunction) = Set( (x,o(x),o'(x)) for x ∈ preimage(o,o') )
 
 # function triplets(o::ConvexFunction)
 #   p = samples(o)
