@@ -13,7 +13,6 @@ import Pkg; Pkg.add("BlackBoxOptimization")
 ```julia
 using BlackBoxOptimization
 
-@field R
 @innerproductspace Rⁿ, R
 
 A = LinearMap{Rⁿ,Rᵐ}()

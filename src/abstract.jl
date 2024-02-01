@@ -92,8 +92,9 @@ abstract type AbstractLinearMap{X,Y} <: AbstractFunction{X,Y} end
 abstract type AbstractSymmetricLinearMap{X} <: AbstractLinearMap{X,X} end
 abstract type AbstractSkewSymmetricLinearMap{X} <: AbstractLinearMap{X,X} end
 abstract type AbstractFunctional{X} <: AbstractFunction{X,F where F} end
-abstract type AbstractSubdifferentiableFunctional{X} <: AbstractFunctional{X} end
-abstract type AbstractDifferentiableFunctional{X} <: AbstractSubdifferentiableFunctional{X} end
+abstract type AbstractLocallyLipschitzFunctional{X} <: AbstractFunctional{X} end
+abstract type AbstractSubdifferentiableFunctional{X} <: AbstractLocallyLipschitzFunctional{X} end
+abstract type AbstractDifferentiableFunctional{X} <: AbstractLocallyLipschitzFunctional{X} end
 abstract type AbstractTwiceDifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X} end
 abstract type AbstractInfinitelyDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X} end
 abstract type AbstractLinearFunctional{X} <: AbstractInfinitelyDifferentiableFunctional{X} end

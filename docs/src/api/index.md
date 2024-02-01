@@ -74,6 +74,7 @@ LinearMap
 Functional
 oracle
 suboracle
+suboracles
 samples
 sample
 ```
