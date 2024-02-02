@@ -24,8 +24,10 @@
 ############################################################################################
 # Oracles
 
+const Associations = Dict{Type{<:Wrapper}, Oracle}
+
 """
-    Operator{X,Y} <: AbstractOperator{X,Y}
+    Operator{X,Y}()
 
 An operator from `X` to `Y`.
 
@@ -40,7 +42,7 @@ mutable struct Operator{X,Y} <: AbstractOperator{X,Y}
 end
 
 """
-    Map{X,Y} <: AbstractFunction{X,Y}
+    Map{X,Y}()
 
 A map from `X` to `Y`.
 
@@ -55,7 +57,7 @@ mutable struct Map{X,Y} <: AbstractFunction{X,Y}
 end
 
 """
-    ConstantMap{X,Y} <: AbstractFunction{X,Y}
+    ConstantMap{X,Y}(value = missing)
 
 A constant map from `X` to `Y`.
 
@@ -70,15 +72,15 @@ mutable struct ConstantMap{X,Y} <: AbstractFunction{X,Y}
 end
 
 """
-    LinearMap{X,Y}
+    LinearMap{X,Y}()
 """
 mutable struct LinearMap{X,Y} <: AbstractLinearMap{X,Y}
     label::String
     properties::Properties
     value::Map{X,Y}
-    transpose::Map{Y,X}
+    associations::Associations
     
-    LinearMap{X,Y}() where {X,Y} = new{X,Y}("", Properties([Linear()]), Map{X,Y}(), Map{Y,X}())
+    LinearMap{X,Y}() where {X,Y} = new{X,Y}("", Properties([Linear()]), Map{X,Y}(), Dict(Transpose => Map{Y,X}()))
 end
 
 mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
@@ -112,38 +114,36 @@ mutable struct SubdifferentiableFunctional{X} <: AbstractSubdifferentiableFuncti
     label::String
     properties::Properties
     value::Functional{X}
-    subdifferential::Operator{X,X}
+    associations::Associations
     
-    SubdifferentiableFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), Operator{X,X}())
+    SubdifferentiableFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), Dict(Subdifferential => Operator{X,X}()))
 end
 
 mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X}
     label::String
     properties::Properties
     value::Functional{X}
-    gradient::Map{X,X}
+    associations::Associations
     
-    DifferentiableFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), Map{X,X}())
+    DifferentiableFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), Dict(Gradient => Map{X,X}()))
 end
 
 mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
     label::String
     properties::Properties
     value::Functional{X}
-    gradient::Map{X,X}
-    hessian::Map{X,SymmetricLinearMap{X}}
+    associations::Associations
     
-    TwiceDifferentiableFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), Map{X,X}(), Map{X,SymmetricLinearMap{X}}())
+    TwiceDifferentiableFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), Dict(Gradient => Map{X,X}(), Hessian => Map{X,SymmetricLinearMap{X}}()))
 end
 
 mutable struct QuadraticFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
     label::String
     properties::Properties
     value::Functional{X}
-    gradient::LinearMap{X,X} # Affine
-    hessian::SymmetricLinearMap{X}
+    associations::Associations
     
-    QuadraticFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), LinearMap{X,X}(), SymmetricLinearMap{X}())
+    QuadraticFunctional{X}() where {X} = new{X}("", Properties(), Functional{X}(), Dict(Gradient => LinearMap{X,X}(), Hessian => SymmetricLinearMap{X}()))
 end
 
 mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
@@ -197,6 +197,21 @@ oracle(o::Oracle) = o
 oracle(w::Wrapper{<:Oracle}) = unwrap(w)
 
 """
+    superoracle(o)
+
+Get the suproracle associated with an oracle (or its wrapper).
+
+# Examples
+```julia-repl
+julia> A = Map{Rⁿ,Rᵐ}();     # an oracle
+julia> superoracle(A) == A   # true
+julia> superoracle(A') == A  # true
+```
+"""
+superoracle(o::Oracle) = o
+superoracle(w::Wrapper{<:Oracle}) = w.parent
+
+"""
     suboracle(o)
 
 Get the suboracle associated with an oracle (or its wrapper).
@@ -232,6 +247,13 @@ function suboracles(o::OracleOrWrapper)
 end
 
 """
+    associations(o)
+
+Get the set of oracles associated with the oracle `o`.
+"""
+associations(o::OracleOrWrapper) = hasproperty(oracle(o), :associations) ? oracle(o).associations : Associations()
+
+"""
     samples(o)
 
 Get the samples associated with an oracle (or its wrapper).
@@ -244,6 +266,26 @@ samples(o::ConstantMap) = o.value
 samples(o::ZeroFunctional{X}) where {F<:Field, X<:VectorSpace{F}} = Relation{X,F}()
 samples(o::Oracle) = samples(o.value)
 samples(w::Wrapper{<:Oracle}) = samples(suboracle(w))
+
+"""
+    description(o)
+
+Get a description of an oracle (or its wrapper).
+"""
+description(w::W) where {W<:Wrapper{<:Oracle}} = "$(string(Base.typename(W).wrapper)) of $(label(w.parent))"
+description(o::Operator) = "Operator from $(domain(o)) to $(codomain(o))"
+description(o::Map) = "Map from $(domain(o)) to $(codomain(o))"
+description(o::ConstantMap) = "Constant map from $(domain(o)) to $(codomain(o))"
+description(o::LinearMap) = "Linear map from $(domain(o)) to $(codomain(o))"
+description(o::SymmetricLinearMap) = "Symmetric linear map from $(domain(o)) to $(codomain(o))"
+description(o::SkewSymmetricLinearMap) = "Skew-symmetric linear map from $(domain(o)) to $(codomain(o))"
+description(o::Functional) = "Function on $(domain(o))"
+description(o::DifferentiableFunctional) = "Differentiable functional on $(domain(o))"
+description(o::SubdifferentiableFunctional) = "Subdifferentiable functional on $(domain(o))"
+description(o::TwiceDifferentiableFunctional) = "Twice differentiable functional on $(domain(o))"
+description(o::QuadraticFunctional) = "Quadratic functional on $(domain(o))"
+description(o::LinearFunctional) = "Linear functional on $(domain(o))"
+description(o::ZeroFunctional) = "Zero functional on $(domain(o))"
 
 
 ############################################################################################
@@ -259,41 +301,46 @@ iterate(o::OracleOrWrapper, state::Int) = iterate(samples(o), state)
 # Sample
 
 """
-    sample(o, x)
+    sample(o, x, l = "")
 
 Sample an oracle (or its wrapper) at a point in its domain.
 
 If the relation is single-valued and it has already been sampled at `x`, then the corresponding
 point in the codomain is returned. Otherwise, a new point is sampled using `Y()`, and a
-default label is used for the sample.
+default label is used for the sample. A label may be specified for the sampled point, or
+it defaults to an intuitive label.
 
-For linear maps, `*` may also be used to denote sampling.
+**Important:** Do not call `sample` directly. Instead, use `o(x)` to sample an oracle at a
+point. For linear maps, `o*x` may also be used to denote sampling.
 
 # Examples
 ```julia-repl
 julia> A = LinearFunctional{Rⁿ}()
 julia> x = Rⁿ()
-julia> A(x) == A*x  # true
+julia> isequal(A(x), A*x)  # true
 ```
 """
 function sample end
 
-
 # by default, sample the suboracle (specialized for primitive oracles)
 sample(o::OracleOrWrapper, x, l::String = "") = sample(suboracle(o), x, l)
 
-sample(o::Operator{<:X,Y}, x::X, l::String = label(o)*"("*label(x)*")") where {X,Y} = (y=Y(l); push!(samples(o), x => y); y)
+sample(o::Operator{<:X,Y}, x::X, l::String = "") where {X,Y} = (y=Y(isempty(l) ? label(o)*"("*label(x)*")" : l); push!(samples(o), x => y); y)
 
-sample(o::Map{<:X,Y}, x::X, l::String = label(o)*"("*label(x)*")") where {X,Y} = haskey(o.relation, x) ? o.relation[x] : (y=Y(l); push!(o.relation, x=>y); y)
+sample(o::Map{<:X,Y}, x::X, l::String = "") where {X,Y} = haskey(o.relation, x) ? o.relation[x] : (y=Y(isempty(l) ? label(o)*"("*label(x)*")" : l); push!(o.relation, x=>y); y)
 
-sample(o::ConstantMap{<:X,Y}, x::X, l::String = label(o)) where {X,Y} = !ismissing(o.value) ? o.value : (y=Y(l); o.value=y; y)
+sample(o::ConstantMap{<:X,Y}, x::X, l::String = "") where {X,Y} = !ismissing(o.value) ? o.value : (y=Y(isempty(l) ? label(o) : l); o.value=y; y)
 
 sample(o::ZeroFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}} = F(0)
 
 function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}}
     
-    # if x has an empty decomposition, sample it directly
-    if isempty(decomposition(x))
+    # if x is zero, then return the scalar zero
+    if iszero(x)
+        F(Zero())
+        
+    # else if x has an empty decomposition, sample it directly
+    elseif isempty(decomposition(x))
         sample(suboracle(o), x, isequal(x,o') ? "|"*label(x)*"|²" : "⟨"*label(o')*","*label(x)*"⟩")
         
     # otherwise, sample each element of the decomposition
@@ -338,6 +385,7 @@ outputs(o::OracleOrWrapper) = Set(last(p) for p ∈ oracle(o))
 
 domain(::AbstractOperator{X,Y}) where {X,Y} = X
 codomain(::AbstractOperator{X,Y}) where {X,Y} = Y
+codomain(::AbstractFunctional{X}) where {F<:Field, X<:VectorSpace{F}} = F
 
 inputs_outputs(o::OracleOrWrapper) = (pairs=collect(samples(o)); ([first(p) for p ∈ pairs], [last(p) for p ∈ pairs]))
 

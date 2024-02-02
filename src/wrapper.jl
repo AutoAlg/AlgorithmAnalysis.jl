@@ -144,7 +144,4 @@ end
 Unwrap a wrapper (get the object that it wraps).
 """
 unwrap(x) = x
-unwrap(w::Transpose{<:AbstractLinearMap}) = w.parent.transpose
-unwrap(w::Subdifferential{<:AbstractSubdifferentiableFunctional}) = w.parent.subdifferential
-unwrap(w::Gradient{<:AbstractDifferentiableFunctional}) = w.parent.gradient
-unwrap(w::Hessian{<:AbstractTwiceDifferentiableFunctional}) = w.parent.hessian
+unwrap(w::W) where {W<:Wrapper{<:Oracle}} = w.parent.associations[Base.typename(W).wrapper]

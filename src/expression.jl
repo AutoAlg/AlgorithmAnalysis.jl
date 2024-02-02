@@ -111,7 +111,8 @@ isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 
 # constant
 (::Type{F})(value::Number) where {F<:Field} = F("", value, AffineDecomposition{F}(), Constraints())
-(::Type{V})(value::Union{Vector,Zero}) where {V<:VectorSpace} = V("", value, LinearDecomposition{V}(), Constraints())
+(::Type{V})(value::Vector) where {V<:VectorSpace} = V("", value, LinearDecomposition{V}(), Constraints())
+(::Type{V})(value::Zero) where {V<:VectorSpace} = V("0", value, LinearDecomposition{V}(), Constraints())
 
 # decomposition (if the decomposition is empty, set the value to zero)
 (::Type{F})(decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", missing, decomposition, Constraints())

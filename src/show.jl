@@ -112,81 +112,7 @@ end
 
 
 ############################################################################################
-# Oracles
-
-show(io::IO, a::Wrapper{<:Oracle}) = show(io, oracle(a))
-
-function show(io::IO, c::Properties)
-    if isempty(c)
-        print(io, "(empty set of properties)")
-    else
-        first = true
-        for c ∈ collect(c)
-            first ? (print(io, typeof(c)); first = false) : print(io, ", ", typeof(c))
-        end
-    end
-end
-
-function show(io::IO, o::AbstractOperator{X,Y}) where {X,Y}
-    print(io, "\nOperator from $X to $Y: $(allproperties(o))")
-    # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-end
-
-function show(io::IO, o::AbstractFunction{X,Y}) where {X,Y}
-    print(io, "\nFunction from $X to $Y: $(allproperties(o))")
-    # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-end
-
-function show(io::IO, o::AbstractLinearMap{X,Y}) where {X,Y}
-    print(io, "\nLinear map from $X to $Y: $(allproperties(o))")
-    # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-    #   println(io, "\nAdjoint operator from $Y to $X: $(properties(o'))")
-    #   map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o')))
-end
-
-function show(io::IO, o::AbstractSymmetricLinearMap{X}) where {X}
-    print(io, "\nSymmetric linear map on $X: $(allproperties(o))")
-    # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-end
-
-function show(io::IO, o::ConstantMap{X,Y}) where {X,Y}
-    print(io, "\nConstant map from $X to $Y: $(allproperties(o))")
-    # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-end
-
-function show(io::IO, o::AbstractFunctional{X}) where {X}
-    print(io, "\nFunctional on $X: $(allproperties(o))")
-    # map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-end
-
-function show(io::IO, o::AbstractDifferentiableFunctional{X}) where {X}
-    print(io, "\nDifferentiable functional on $X: $(allproperties(o))")
-end
-
-function show(io::IO, o::AbstractLinearFunctional{X}) where {X}
-    print(io, label(o'), "'")
-end
-
-# function show(io::IO, o::AbstractLinearFunctional{X}) where {X}
-#     println(io, "\nLinear functional on $X: $(allproperties(o))")
-#     map(p -> println(io, "  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-# end
-
-function show(io::IO, mime::MIME"text/plain", o::AbstractLinearFunctional{X}) where {X}
-    print(io, "\nLinear functional on $X: $(allproperties(o))")
-    # map(p -> println(io, "  "^get(io, :indent, 0), first(p), " ↦  ", last(p)), collect(samples(o)))
-end
-
-show(io::IO, mime::MIME"text/plain", o::ZeroFunctional{X}) where {X} = print(io, "\nZero functional on $X")
-
-function show(io::IO, o::QuadraticFunctional{X}) where {X}
-    print(io, "\nQuadratic functional on $X: $(allproperties(o))")
-    # map(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(o)))
-    #   print(io, "\n\nGradient: $(properties(o'))")
-    #   map(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(o')))
-    #   print(io, "\n\nHessian: $(properties(o''))")
-    #   map(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(o'')))
-end
+# Relation
 
 function show(io::IO, r::Relation)
     if isempty(samples(r))
@@ -196,3 +122,47 @@ function show(io::IO, r::Relation)
         map(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(r)))
     end
 end
+
+
+############################################################################################
+# Properties
+
+function show(io::IO, P::Properties)
+    if isempty(P)
+        print(io, "Empty set of properties")
+    else
+        first = true
+        for p ∈ P
+            first ? (print(io, p); first = false) : print(io, ", ", p)
+        end
+    end
+end
+
+show(io::IO, p::SmoothStronglyConvex) = print(io, "$(p.b)-smooth, $(p.a)-strongly convex")
+
+
+############################################################################################
+# Oracles
+
+show(io::IO, o::Oracle) = print(io, label(o))
+show(io::IO, w::Wrapper{<:Oracle}) = show(io, unwrap(w))
+
+function show(io::IO, mime::MIME"text/plain", o::Oracle, desc::String = "")
+    print(io, "\nOracle")
+    print(io, "\n  Description: $(description(o))")
+    if !isempty(desc)
+        print(io, ", ", desc)
+    end
+    print(io, "\n  Label: $(label(o))")
+    print(io, "\n  Properties: $(allproperties(o))")
+    print(io, "\n  Associations: ")
+    if isempty(associations(o))
+        print(io, "No associations")
+    else
+        for a ∈ associations(o)
+            print(io, "\n    $(first(a)) => $(last(a))")
+        end
+    end
+end
+
+show(io::IO, mime::MIME"text/plain", w::Wrapper{<:Oracle}) = show(io, mime, unwrap(w), description(w))

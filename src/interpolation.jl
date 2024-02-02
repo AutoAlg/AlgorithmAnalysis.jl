@@ -2,15 +2,105 @@
 ############################################################################################
 # Properties
 
-struct Monotone{a,b} <: Property{AbstractOperator} end                         # a ‖xi-xj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖xi-xj‖²
+abstract type AbstractQuadraticConstraint <: Property{AbstractOperator} end
+abstract type AbstractPointwiseQuadraticConstraint <: AbstractQuadraticConstraint end
+abstract type AbstractIncrementalQuadraticConstraint <: AbstractQuadraticConstraint end
+
+abstract type AbstractLinearQuadraticConstraint <: Property{AbstractLocallyLipschitzFunctional} end
+abstract type AbstractTwoPointLinearQuadraticConstraint <: AbstractLinearQuadraticConstraint end
+
+# ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
+"""
+    PointwiseQuadraticConstraint(M, x, y)
+
+A generic pointwise quadratic constraint.
+"""
+struct PointwiseQuadraticConstraint <: AbstractPointwiseQuadraticConstraint
+    M::Matrix{Real}
+    x::VectorSpace
+    y::VectorSpace
+end
+
+"""
+    IncrementalQuadraticConstraint(M)
+
+A generic incremental quadratic constraint.
+"""
+struct IncrementalQuadraticConstraint <: AbstractIncrementalQuadraticConstraint
+    M::Matrix{Real}
+end
+
+# """
+#     PointwiseLinearQuadraticConstraint(M, m, x, y, f)
+
+# A generic pointwise linear--quadratic constraint.
+# """
+# struct PointwiseLinearQuadraticConstraint <: AbstractPointwiseLinearQuadraticConstraint
+#     M::Matrix{Real}
+#     m::Vector{Real}
+#     x::VectorSpace
+#     y::VectorSpace
+#     f::Field
+# end
+
+"""
+    TwoPointLinearQuadraticConstraint(M, m)
+
+A generic incremental linear--quadratic constraint.
+"""
+struct TwoPointLinearQuadraticConstraint <: AbstractTwoPointLinearQuadraticConstraint
+    M::Matrix{Real}
+    m::Vector{Real}
+end
+
+"""
+    SlopeRestricted(a,b)
+
+A slope-restricted constraint.
+"""
+struct SlopeRestricted <: AbstractIncrementalQuadraticConstraint
+    a::Real
+    b::Real
+end
+
+"""
+SectorBounded(a,b)
+
+A sector-bounded constraint.
+"""
+struct SectorBounded <: AbstractPointwiseQuadraticConstraint
+    a::Real
+    b::Real
+    x::VectorSpace
+    y::VectorSpace
+end
+
+# ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
+"""
+    Monotone
+
+
+"""
+struct Monotone{a,b} <: Property{AbstractOperator} end
 struct Comonotone{a,b} <: Property{AbstractOperator} end                       # a ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖yi-yj‖²
 struct WeaklyMonotone{a,b,xs,ys} <: Property{AbstractOperator} end             # a ‖x -xs‖² ≤ (x -xs)'*(y -ys) ≤ b ‖x -xs‖²
 struct WeaklyComonotone{a,b,xs,ys} <: Property{AbstractOperator} end           # a ‖y -ys‖² ≤ (x -xs)'*(y -ys) ≤ b ‖y -ys‖²
 
-struct RelativelyBounded{a,b} <: Property{AbstractOperator} end                # a² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ b² ‖xi-xj‖²
-struct RelativelyCobounded{a,b} <: Property{AbstractOperator} end              # a² ‖yi-yj‖² ≤ ‖xi-xj‖² ≤ b² ‖yi-yj‖²
-struct WeaklyRelativelyBounded{a,b,xs,ys} <: Property{AbstractOperator} end    # a² ‖x -xs‖² ≤ ‖y -ys‖² ≤ b² ‖x -xs‖²
-struct WeaklyRelativelyCobounded{a,b,xs,ys} <: Property{AbstractOperator} end  # a² ‖y -ys‖² ≤ ‖x -xs‖² ≤ b² ‖y -ys‖²
+"""
+    RelativelyBounded(a,b,x,y)
+
+The property that an operator is relatively bounded.
+
+``a^2\\,\\|x_i-x_j\\|^2 \\leq \\|y_i-y_j\\|^2 \\leq b^2\\,\\|x_i-x_j\\|^2``
+"""
+struct RelativelyBounded <: Property{AbstractOperator} # a² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ b² ‖xi-xj‖²
+    a::Real
+    b::Real
+    x::Union{NormedVectorSpace, Missing}
+    y::Union{NormedVectorSpace, Missing}
+    
+    RelativelyBounded(a,b,x=missing,y=missing) = new(a,b,x,y)
+end
 
 struct Bounded{b} <: Property{NormedVectorSpace} end                            # ‖xi-xj‖² ≤ b²
 # struct Cobounded{b} <: Property{NormedVectorSpace} end                          # ‖yi-yj‖² ≤ b²
@@ -35,25 +125,49 @@ struct Eigenvalues{a,b} <: Property{AbstractSymmetricLinearMap} end    # (Y-aX) 
 # Negatively comonotone = Comonotone{-ρ,∞}
 
 # function properties
-struct Curvature{μ,L} <: Property{AbstractSubdifferentiableFunctional} end               # fi-fj ≥ gj'*(xi-xj) + 1/2L (gi-gj)² + μ/(2(1-μ/L)) (xi-xj-1/L (gi-gj))²
+
+# fi-fj ≥ gj'*(xi-xj) + 1/2L (gi-gj)² + μ/(2(1-μ/L)) (xi-xj-1/L (gi-gj))²
+"""
+    SmoothStronglyConvex(a,b)
+
+Property of a locally Lipschitz functional that is `b`-smooth and `a`-strongly convex.
+
+``f_i-f_j \\geq \\langle g_j,x_i-x_j\\rangle + \\frac{1}{2b} \\|g_i-g_j\\|^2 + \\frac{a}{2(1-a/b)} \\|x_i-x_j-\\frac{1}{b} (g_i-g_j)\\|^2``
+"""
+struct SmoothStronglyConvex <: AbstractTwoPointLinearQuadraticConstraint
+    a::Real
+    b::Real
+end
+
 struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end  # fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
 struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end           # fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
 
 
-struct Co
-    property
-end
-struct Weakly
-    property
-    x
-    y
-end
+"""
+    reference(p)
 
-inv(p::Property) = p
-inv(p::Weakly) = Weakly(p.property, p.y, p.x)
+Reference point of a pointwise constraint.
+"""
+reference(p::AbstractPointwiseQuadraticConstraint) = (p.x, p.y)
 
-# A property or a wrapper of a property
-const PropertyOrWrapper = Union{Property, Co, Weakly}
+"""
+    quadraticform(p)
+
+Quadratic form of a quadratic constraint.
+"""
+quadraticform(p::PointwiseQuadraticConstraint) = p.M
+quadraticform(p::IncrementalQuadraticConstraint) = p.M
+quadraticform(p::SlopeRestricted) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SectorBounded) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+
+"""
+    linearquadraticform(p)
+
+Linear--quadratic form of a constraint.
+"""
+linearquadraticform(p::TwoPointLinearQuadraticConstraint) = (p.m, p.M)
+linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
+
 
 
 ############################################################################################
@@ -71,7 +185,7 @@ function ∈(o::Oracle, p::Property{T}) where {T<:Oracle}
             return
         end
     end
-    error("The oracle of type $(typeof(o)) does not have interpolation conditions for the property of type $(typeof(p)).")
+    error("The oracle of type $(typeof(o)) does not have a property of type $(typeof(p)).")
 end
 
 
@@ -86,22 +200,67 @@ All constraints for an oracle, or the constraints for an oracle to have a given 
 """
 function constraints end
 
-constraints(o::OracleOrWrapper) = mapreduce(∪, ∪, Set(constraints(s,p) for s ∈ suboracles(o) for p ∈ properties(s)))
-constraints(o::OracleOrWrapper, p::PropertyOrWrapper) = constraints(suboracle(o), p)
-constraints(o::AbstractOperator, P::PropertyOrWrapper) = constraints(samples(o), P)
+# constraints(o::OracleOrWrapper) = mapreduce(∪, ∪, Set(constraints(s,p) for s ∈ suboracles(o) for p ∈ properties(s)); init=Constraints())
+function constraints(o::OracleOrWrapper)
+    c = Constraints()
+    for s ∈ suboracles(o)
+        for p ∈ properties(s)
+            c = c ∪ constraints(s,p)
+        end
+    end
+    for a ∈ values(associations(o))
+        for s ∈ suboracles(a)
+            for p ∈ properties(s)
+                c = c ∪ constraints(s,p)
+            end
+        end
+    end
+    c
+end
+constraints(o::OracleOrWrapper, p::Property) = constraints(suboracle(o), p)
 
 # Operators
 
-constraints(r::Relation, p::Property) = constraints(r, r, p)
-constraints(r::Relation, p::Co) = constraints(inv(r), inv(p.property))
-constraints(r::Relation, p::Weakly) = constraints(r, Relation(Dict(p.x=>p.y)), p.property)
+function constraints(o::AbstractOperator, p::AbstractPointwiseQuadraticConstraint)
+    xs, ys = reference(p)
+    Constraints( 0 ≤ [x-xs; y-ys]'*quadraticform(p)*[x-xs; y-ys] for (x,y) ∈ o )
+end
 
-# function constraints(r1::Relation, r2::Relation, ::Bounded{b}) where {b}
-#     Constraints( (xi-xj)^2 ≤ b^2 for (xi,_) ∈ r1, (xj,_) ∈ r2 if !isequal(xi,xj) )
+function constraints(o::AbstractOperator, p::AbstractIncrementalQuadraticConstraint)
+    Constraints( 0 ≤ [xi-xj; yi-yj]'*quadraticform(p)*[xi-xj; yi-yj] for (xi,yi) ∈ o, (xj,yj) ∈ o )
+end
+
+triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
+
+# function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractPointwiseLinearQuadraticConstraint)
+#     m, M = linearquadraticform(p)
+#     xs, fs, gs = reference(p)
+#     Constraints( 0 ≤ m'*[f; fs] + [x; xs; g; gs]'*M*[x; xs; g; gs] for (x,f,g) ∈ triplets(o) )
 # end
 
-function constraints(r1::Relation, r2::Relation, ::RelativelyBounded{a,b}) where {a, b}
-    Constraints( a^2*(xi-xj)^2 ≤ (yi-yj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) ) ∪ Constraints( (yi-yj)^2 ≤ b^2*(xi-xj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) )
+function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractTwoPointLinearQuadraticConstraint)
+    m, M = linearquadraticform(p)
+    Constraints( 0 ≤ m'*[fᵢ; fⱼ] + [xᵢ; xⱼ; gᵢ; gⱼ]'*M*[xᵢ; xⱼ; gᵢ; gⱼ] for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
+end
+
+# function constraints(o::AbstractLocallyLipschitzFunctional, p::SmoothStronglyConvex)
+#     a, b = p.a, p.b
+#     if o isa AbstractSubdifferentiableFunctional && b < Inf
+#         @warn "`SubdifferentiableFunctional` $o is constrained to be $b-smooth implying that it is differentiable. Use `DifferentiableFunctional` instead."
+#     end
+#     Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2b*(gᵢ-gⱼ)^2 + a/(2*(1-a/b))*(xᵢ-xⱼ-1/b*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
+# end
+
+
+function constraints(o::AbstractOperator, p::RelativelyBounded)
+    a, b = p.a, p.b
+    if ismissing(p.x) && ismissing(p.y)
+        constraints(o, PointwiseQuadraticConstraint([]))
+        Constraints( a^2*(xi-xj)^2 ≤ (yi-yj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o ) ∪ Constraints( (yi-yj)^2 ≤ b^2*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    else
+        xs, ys = p.x, p.y
+        Constraints( a^2*(x-xs)^2 ≤ (y-ys)^2 for (x,y) ∈ o ) ∪ Constraints( (y-ys)^2 ≤ b^2*(x-xs)^2 for (x,y) ∈ o )
+    end
 end
 
 function constraints(r1::Relation{X,X}, r2::Relation{X,X}, ::Monotone{a,b}) where {X<:InnerProductSpace, a, b}
@@ -127,15 +286,6 @@ end
 function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace, μ, L}
     x, y = inputs_outputs(o)
     Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
-end
-
-triplets(o::AbstractSubdifferentiableFunctional) = Set( (x,o(x),o'(x)) for (x,_) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
-
-function constraints(o::AbstractSubdifferentiableFunctional, ::Curvature{μ,L}) where {μ,L}
-#   if o isa ConvexFunction && L < Inf
-#     @warn "Convex function $o is constrained to be L-smooth implying that it is differentiable. Use `DifferentiableFunction` instead."
-#   end
-  Constraints( f2 ≥ f1 + g1'*(x2-x1) for (x1,f1,g1) ∈ triplets(o), (x2,f2,_) ∈ triplets(o) )
 end
 
 

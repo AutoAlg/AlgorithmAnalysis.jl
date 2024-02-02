@@ -33,7 +33,7 @@ Rᵐ
 GramMatrix
 ```
 
-# Macros to create other types of expressions
+### Macros to create types of expressions
 
 ```@docs
 @field
@@ -73,10 +73,13 @@ Relation
 LinearMap
 Functional
 oracle
+superoracle
 suboracle
 suboracles
 samples
 sample
+associations
+description
 ```
 
 
@@ -86,6 +89,17 @@ sample
 Property
 Linear
 allproperties
+RelativelyBounded
+Monotone
+SmoothStronglyConvex
+PointwiseQuadraticConstraint
+IncrementalQuadraticConstraint
+TwoPointLinearQuadraticConstraint
+SlopeRestricted
+SectorBounded
+quadraticform
+linearquadraticform
+reference
 ```
 
 

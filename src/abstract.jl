@@ -79,6 +79,8 @@ abstract type Oracle end
     Wrapper
 
 Generic wrapper for an object of type `T`.
+
+Every concrete subtype must have a field `parent::T` that stores the object being wrapped.
 """
 abstract type Wrapper{T} end
 

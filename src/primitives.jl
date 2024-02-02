@@ -1,13 +1,11 @@
-export first_order_stationary_point
-
-
 
 ############################################################################################
 # Stationary points
 
-function first_order_stationary_point(o::Functional{X,F}) where {X,F}
-  x, f, g = X(), F(), zero(X)
-  push!(o, x => f, x => g)
+function first_order_stationary_point(o::AbstractLocallyLipschitzFunctional{X}) where {F<:Field, X<:VectorSpace{F}}
+  x, f, g = X(), F(), X(Zero())
+  push!(samples(o), x => f)
+  push!(samples(o'), x => g)
   x, f, g
 end
 

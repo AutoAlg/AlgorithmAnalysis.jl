@@ -47,9 +47,10 @@ export domain, codomain, inputs, outputs, inputs_outputs
 export Oracle, Oracles, Dual, DualOracle, FunctionOracle, OperatorOracle, Functional
 export ConvexFunction, DifferentiableFunction
 export Operator, ContinuousOperator, LinearOperator
-export oracle, suboracle, suboracles, sample, samples, relation, get_oracle
+export oracle, superoracle, suboracle, suboracles, sample, samples, relation, get_oracle
+export associations, description
 
-export AbstractOperator, AbstractFunction, AbstractLinearMap
+export AbstractOperator, AbstractFunction, AbstractLinearMap, AbstractLocallyLipschitzFunctional
 export AbstractSymmetricLinearMap, AbstractSkewSymmetricLinearMap
 export AbstractFunctional, AbstractSubdifferentiableFunctional
 export AbstractDifferentiableFunctional, AbstractTwiceDifferentiableFunctional
@@ -68,7 +69,7 @@ export unwrap
 
 # interpolation
 export FunctionClass, OperatorClass
-export Convex, Curvature, ConvexIndicator, StronglyConvex, Smooth, QuadraticGrowth
+export Convex, SmoothStronglyConvex, ConvexIndicator, StronglyConvex, Smooth, QuadraticGrowth
 export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive, Lipschitz
 export StronglyMonotone, MaxSingularValue
 export interpolation_conditions, triplets, Triplets
@@ -77,6 +78,11 @@ export interpolation_conditions, triplets, Triplets
 export Property, Properties
 export OperatorClass, FunctionClass, OnePointOperatorClass, TwoPointOperatorClass
 export Monotone, Comonotone, WeaklyMonotone, WeaklyComonotone
+export AbstractQuadraticConstraint, AbstractPointwiseQuadraticConstraint, AbstractIncrementalQuadraticConstraint
+export PointwiseQuadraticConstraint, IncrementalQuadraticConstraint
+export AbstractLinearQuadraticConstraint, AbstractTwoPointLinearQuadraticConstraint, TwoPointLinearQuadraticConstraint
+export SlopeRestricted, SectorBounded
+export reference, quadraticform, linearquadraticform
 export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded, WeaklyRelativelyCobounded
 export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded, Convex
 export Linear, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
@@ -86,6 +92,9 @@ export Co, Weakly, PropertyOrWrapper
 
 # solve
 export maximize, lift, project, variables, constraints, variables_constraints
+
+# primitives
+export first_order_stationary_point
 
 # other
 export hierarchy
@@ -121,7 +130,7 @@ include("interpolation.jl")
 include("show.jl")
 include("label.jl")
 # include("solve.jl")
-# include("primitives.jl")
+include("primitives.jl")
 # include("algorithms.jl")
 include("hash.jl")
 
