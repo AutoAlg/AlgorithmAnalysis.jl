@@ -132,6 +132,9 @@ abstract type Property{T} end
 ############################################################################################
 # Constants
 
+# A set of expressions
+const Expressions = Set{Expression}
+
 # A set of oracles
 const Oracles = Set{Oracle}
 

@@ -30,7 +30,7 @@ export R, Rⁿ, Rᵐ
 # expression
 export GramMatrix
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
-export label, label!, value, decomposition, selfdecomp, hasvalue, isvariable
+export label, label!, getlabel, value, decomposition, selfdecomp, hasvalue, isvariable
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @autolabel
 
 # constraint
@@ -40,15 +40,15 @@ export ConeConstraint, Satisfied, Unsatisfied, prune!, check
 export ⪯, ⪰
 
 # relation
-export Relation, Relations, RelationClass, RelationClasses
+export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
 export domain, codomain, inputs, outputs, inputs_outputs
 
 # oracle
 export Oracle, Oracles, Dual, DualOracle, FunctionOracle, OperatorOracle, Functional
 export ConvexFunction, DifferentiableFunction
 export Operator, ContinuousOperator, LinearOperator
-export oracle, superoracle, suboracle, suboracles, sample, samples, relation, get_oracle
-export associations, description
+export oracle, oracles, superoracle, suboracle, suboracles, sample, samples, relation, get_oracle
+export associations, description, relation
 
 export AbstractOperator, AbstractFunction, AbstractLinearMap, AbstractLocallyLipschitzFunctional
 export AbstractSymmetricLinearMap, AbstractSkewSymmetricLinearMap
@@ -87,11 +87,11 @@ export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded, WeaklyRe
 export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded, Convex
 export Linear, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
 export Monotonicity, RelativeBoundedness, Boundedness
-export propertyof, properties, allproperties
+export propertyof, properties
 export Co, Weakly, PropertyOrWrapper
 
 # solve
-export maximize, lift, project, variables, constraints, variables_constraints
+export maximize, lift, project, variables, constraints, variables_constraints, transform
 
 # primitives
 export first_order_stationary_point
@@ -113,7 +113,7 @@ import Zeros: Zero
 import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩
 import Base: isempty, iszero, isequal
 import Base: promote_rule, convert, show, zero, zeros, adjoint
-import Base: length, Generator, iterate, size, push!, inv
+import Base: length, Generator, iterate, size, push!, inv, pairs
 
 
 ############################################################################################
@@ -129,7 +129,6 @@ include("adjoint.jl")
 include("interpolation.jl")
 include("show.jl")
 include("label.jl")
-# include("solve.jl")
 include("primitives.jl")
 # include("algorithms.jl")
 include("hash.jl")
@@ -158,5 +157,9 @@ A real inner product space.
 A real inner product space.
 """
 @innerproductspace Rᵐ, R
+
+
+include("solve.jl")
+
 
 end

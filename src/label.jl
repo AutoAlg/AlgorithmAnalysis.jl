@@ -46,22 +46,18 @@ label(w::Wrapper{<:Oracle}) = label(oracle(w))
 # Expressions
 
 label!(e::Expression, label::String) = (e.label=label; nothing)
-label!(x::InnerProductSpace, label::String) = (x.label=label; x.dual.label=label*"ᵀ"; x.dual.value.label=label*"ᵀ"; nothing)
+label!(x::InnerProductSpace, label::String) = (x.label=label; label!(x.dual,label*"ᵀ"); nothing)
 
 
 ############################################################################################
 # Oracles
 
-label!(o::Oracle, label::String) = (o.label=label; label!(suboracle(o),label); nothing)
-label!(o::Union{Operator,Map,ConstantMap}, label::String) = (o.label=label; nothing)
-label!(o::AbstractLinearMap, label::String) = (o.label=label; label!(suboracle(o),label); label!(suboracle(o'),label*"ᵀ"); nothing)
-label!(o::AbstractSymmetricLinearMap, label::String) = (o.label=label; label!(suboracle(o),label); nothing)
-label!(o::AbstractSkewSymmetricLinearMap, label::String) = (o.label=label; label!(suboracle(o),label); nothing)
-label!(o::AbstractFunction, label::String) = (o.label=label; label!(suboracle(o),label); nothing)
-label!(o::AbstractSubdifferentiableFunctional, label::String) = (o.label=label; label!(suboracle(o),label); label!(suboracle(o'),"∂"*label); nothing)
-label!(o::AbstractDifferentiableFunctional, label::String) = (o.label=label; label!(suboracle(o),label); label!(suboracle(o'),"∇"*label); nothing)
-label!(o::AbstractTwiceDifferentiableFunctional, label::String) = (o.label=label; label!(suboracle(o),label); label!(suboracle(o'),"∇"*label); label!(suboracle(o''),"∇²"*label); nothing)
-label!(o::AbstractLinearFunctional, label::String) = (o.label=label; label!(suboracle(o),label); label!(suboracle(o'),label*"ᵀ"); nothing)
+label!(o::Oracle, label::String) = (o.label=label; map(p -> label!(last(p), defaultlabel(first(p), label)), collect(associations(o))); nothing)
+
+defaultlabel(::Type{Transpose}, label::String) = label * "ᵀ"
+defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
+defaultlabel(::Type{Gradient}, label::String) = "∇" * label
+defaultlabel(::Type{Hessian}, label::String) = "∇²" * label
 
 
 ############################################################################################

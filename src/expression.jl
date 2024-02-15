@@ -26,6 +26,7 @@ macro field(s::Symbol)
             value::Union{Number,Missing}
             decomposition::AffineDecomposition{$(esc(s))}
             constraints::Constraints
+            oracles::Oracles
         end
     end
 end
@@ -41,6 +42,7 @@ macro vectorspace(ex::Expr)
             value::Union{Vector,Missing,Zero}
             decomposition::LinearDecomposition{$(esc(ex.args[1]))}
             constraints::Constraints
+            oracles::Oracles
         end
     end
 end
@@ -56,6 +58,7 @@ macro normedvectorspace(ex::Expr)
             value::Union{Vector,Missing,Zero}
             decomposition::LinearDecomposition{$(esc(ex.args[1]))}
             constraints::Constraints
+            oracles::Oracles
         end
     end
 end
@@ -71,10 +74,11 @@ macro innerproductspace(ex::Expr)
             value::Union{Vector,Missing,Zero}
             decomposition::LinearDecomposition{$(esc(ex.args[1]))}
             constraints::Constraints
+            oracles::Oracles
             dual::LinearFunctional{$(esc(ex.args[1]))}
 
-            function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{$(esc(ex.args[1]))}, constraints::Constraints)
-                x = new(label, value, decomposition, constraints, LinearFunctional{$(esc(ex.args[1]))}())
+            function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{$(esc(ex.args[1]))}, constraints::Constraints, oracles::Oracles)
+                x = new(label, value, decomposition, constraints, oracles, LinearFunctional{$(esc(ex.args[1]))}())
                 x.dual.dual = x
                 x
             end
@@ -89,8 +93,10 @@ end
 value(e::Expression) = e.value
 decomposition(e::Expression) = e.decomposition
 constraints(e::Expression) = e.constraints
+oracles(e::Expression) = e.oracles
+oracles(s::Set{<:Expression}) = mapreduce(oracles, ∪, s; init=Oracles())
 variables(e::Expression) = variables(decomposition(e))
-variables(m::Matrix{F}) where {F<:Field} = mapreduce(variables, ∪, m; init=Set{F}())
+variables(m::AbstractArray{F}) where {F<:Field} = mapreduce(variables, ∪, m; init=Set{F}())
 
 # decomposition that defaults to self => 1 if empty
 selfdecomp(a::F) where {F<:Field} = isempty(decomposition(a)) ? AffineDecomposition{F}(Dict(a => 1)) : decomposition(a)
@@ -106,21 +112,21 @@ isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 # Constructors
 
 # variable
-(::Type{F})(label::String = "Variable{$F}") where {F<:Field} = F(label, missing, AffineDecomposition{F}(), Constraints())
-(::Type{V})(label::String = "Variable{$V}") where {V<:VectorSpace} = V(label, missing, LinearDecomposition{V}(), Constraints())
+(::Type{F})(label::String = "Variable{$F}") where {F<:Field} = F(label, missing, AffineDecomposition{F}(), Constraints(), Oracles())
+(::Type{V})(label::String = "Variable{$V}") where {V<:VectorSpace} = V(label, missing, LinearDecomposition{V}(), Constraints(), Oracles())
 
 # constant
-(::Type{F})(value::Number) where {F<:Field} = F("", value, AffineDecomposition{F}(), Constraints())
-(::Type{V})(value::Vector) where {V<:VectorSpace} = V("", value, LinearDecomposition{V}(), Constraints())
-(::Type{V})(value::Zero) where {V<:VectorSpace} = V("0", value, LinearDecomposition{V}(), Constraints())
+(::Type{F})(value::Number) where {F<:Field} = F("", value, AffineDecomposition{F}(), Constraints(), Oracles())
+(::Type{V})(value::Vector) where {V<:VectorSpace} = V("", value, LinearDecomposition{V}(), Constraints(), Oracles())
+(::Type{V})(value::Zero) where {V<:VectorSpace} = V("0", value, LinearDecomposition{V}(), Constraints(), Oracles())
 
 # decomposition (if the decomposition is empty, set the value to zero)
-(::Type{F})(decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", missing, decomposition, Constraints())
-(::Type{V})(decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", missing, decomposition, Constraints())
+(::Type{F})(decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", missing, decomposition, Constraints(), Oracles())
+(::Type{V})(decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", missing, decomposition, Constraints(), Oracles())
 
 # value and decomposition (if the decomposition is empty, set the value to zero)
-(::Type{F})(value::Union{Number,Missing}, decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", value, decomposition, Constraints())
-(::Type{V})(value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", value, decomposition, Constraints())
+(::Type{F})(value::Union{Number,Missing}, decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", value, decomposition, Constraints(), Oracles())
+(::Type{V})(value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", value, decomposition, Constraints(), Oracles())
 
 
 ############################################################################################

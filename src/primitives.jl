@@ -4,8 +4,8 @@
 
 function first_order_stationary_point(o::AbstractLocallyLipschitzFunctional{X}) where {F<:Field, X<:VectorSpace{F}}
   x, f, g = X(), F(), X(Zero())
-  push!(samples(o), x => f)
-  push!(samples(o'), x => g)
+  push!(relation(o), x => f)
+  push!(relation(o'), x => g)
   x, f, g
 end
 

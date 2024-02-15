@@ -42,14 +42,15 @@ adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
 adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional}) = Hessian{typeof(o.parent)}(o.parent)
 adjoint(o::LinearDecomposition{<:Oracle}) = mapreduce( p -> last(p) * first(p)', +, weights(o) )
 adjoint(o::AbstractLinearFunctional) = o.dual
+adjoint(::ZeroFunctional{X}) where {X} = X(Zero())
 adjoint(a::F) where {F<:Field} = a
 adjoint(G::GramMatrix) = G
 
 function adjoint(x::X) where {F<:Field, X<:InnerProductSpace{F}}
-    if isvariable(x)
-        x.dual
-    elseif iszero(x)
+    if iszero(x)
         ZeroFunctional{X}()
+    elseif isvariable(x)
+        x.dual
     else
         mapreduce( p -> p.second * p.first', +, weights(decomposition(x)) )
     end

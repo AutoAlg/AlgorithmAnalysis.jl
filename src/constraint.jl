@@ -44,8 +44,6 @@ const Positive = ConeConstraint{PositiveOrthant}
 const Semidefinite = ConeConstraint{PositiveSemidefiniteCone}
 const Equality = ConeConstraint{ZeroSet}
 
-# Equality(x::Union{Number, AbstractArray}) = 
-
 ∈(x::Expression, ::K) where {K<:Cone} = ConeConstraint{K}(x)
 
 expression(c::ConeConstraint) = c.x

@@ -200,24 +200,11 @@ All constraints for an oracle, or the constraints for an oracle to have a given 
 """
 function constraints end
 
-# constraints(o::OracleOrWrapper) = mapreduce(∪, ∪, Set(constraints(s,p) for s ∈ suboracles(o) for p ∈ properties(s)); init=Constraints())
-function constraints(o::OracleOrWrapper)
-    c = Constraints()
-    for s ∈ suboracles(o)
-        for p ∈ properties(s)
-            c = c ∪ constraints(s,p)
-        end
-    end
-    for a ∈ values(associations(o))
-        for s ∈ suboracles(a)
-            for p ∈ properties(s)
-                c = c ∪ constraints(s,p)
-            end
-        end
-    end
-    c
-end
-constraints(o::OracleOrWrapper, p::Property) = constraints(suboracle(o), p)
+constraints(o::OracleOrWrapper) = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints()) ∪ mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+
+constraints(s::Set{<:OracleOrWrapper}) = mapreduce(constraints , ∪, s; init=Constraints())
+
+# constraints(o::OracleOrWrapper, p::Property) = constraints(suboracle(o), p)
 
 # Operators
 

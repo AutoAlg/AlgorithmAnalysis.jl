@@ -154,7 +154,7 @@ function show(io::IO, mime::MIME"text/plain", o::Oracle, desc::String = "")
         print(io, ", ", desc)
     end
     print(io, "\n  Label: $(label(o))")
-    print(io, "\n  Properties: $(allproperties(o))")
+    print(io, "\n  Properties: $(properties(o))")
     print(io, "\n  Associations: ")
     if isempty(associations(o))
         print(io, "No associations")

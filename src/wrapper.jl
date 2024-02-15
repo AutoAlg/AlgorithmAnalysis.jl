@@ -88,7 +88,7 @@ end
 -(x::Union{LinearDecomposition,AffineDecomposition}) = -1*x
 
 "Variables in a decomposition."
-variables(x::Union{LinearDecomposition,AffineDecomposition}) = Set(keys(weights(x)))
+variables(x::Union{LinearDecomposition,AffineDecomposition}) = Set( v for v ∈ keys(weights(x)) if !hasvalue(v) )
 
 
 ############################################################################################

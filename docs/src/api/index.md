@@ -88,7 +88,6 @@ description
 ```@docs
 Property
 Linear
-allproperties
 RelativelyBounded
 Monotone
 SmoothStronglyConvex
@@ -113,6 +112,7 @@ Transpose
 Subdifferential
 Gradient
 Hessian
+Adjoint
 isempty
 weights
 linear
