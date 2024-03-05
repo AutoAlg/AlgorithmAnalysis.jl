@@ -1,4 +1,4 @@
-cd("C:\\Users\\vanscob\\.julia\\dev\\BlackBoxOptimization")
+cd("C:\\Users\\nlam1\\.julia\\dev\\BlackBoxOptimization.jl")
 
 using PackageCompiler
 

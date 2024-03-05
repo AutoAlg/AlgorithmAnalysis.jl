@@ -25,7 +25,7 @@ module BlackBoxOptimization
 # abstract types
 export Constraint, Constraints, ConstraintSet
 export Expression, Field, Reals, VectorSpace, NormedVectorSpace, InnerProductSpace, Subset
-export R, Rⁿ, Rᵐ
+export R, Rⁿ, Rᵐ, X
 
 # expression
 export GramMatrix
@@ -99,6 +99,8 @@ export first_order_stationary_point
 # other
 export hierarchy
 
+# analysis
+export analysis, createConstraintMatrix, solve
 
 ############################################################################################
 # Import
@@ -132,6 +134,7 @@ include("label.jl")
 include("primitives.jl")
 # include("algorithms.jl")
 include("hash.jl")
+include("analysis.jl")
 
 
 ############################################################################################
@@ -157,7 +160,7 @@ A real inner product space.
 A real inner product space.
 """
 @innerproductspace Rᵐ, R
-
+@innerproductspace X, R
 
 include("solve.jl")
 
