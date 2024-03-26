@@ -100,14 +100,15 @@ export first_order_stationary_point
 export hierarchy
 
 # analysis
-export stateupdate, getmatrix, getparams, solve, bsmin, rate
+export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye
 
 ############################################################################################
 # Import
 
-import Convex as cvx
+# import Convex as cvx
+import JuMP
 import SCS
-import LinearAlgebra
+import LinearAlgebra as la
 import InteractiveUtils
 import AbstractTrees
 import Zeros: Zero

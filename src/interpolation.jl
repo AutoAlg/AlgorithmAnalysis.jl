@@ -157,8 +157,8 @@ Quadratic form of a quadratic constraint.
 """
 quadraticform(p::PointwiseQuadraticConstraint) = p.M
 quadraticform(p::IncrementalQuadraticConstraint) = p.M
-quadraticform(p::SlopeRestricted) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
-quadraticform(p::SectorBounded) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SlopeRestricted) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SectorBounded) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
 
 """
     linearquadraticform(p)
