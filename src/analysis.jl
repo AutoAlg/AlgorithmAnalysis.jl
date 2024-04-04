@@ -1,31 +1,109 @@
 eye(n) = Matrix{Float64}(la.I, n, n)
 
-function stateupdate(pair)
-    vars     = mapreduce( x->keys(selfdecomp(x).weights), ∪, first(pair), init=Expressions() )
-    nextvars = mapreduce( x->keys(selfdecomp(x).weights), ∪, last(pair), init=Expressions() )
-    
-    u = collect(setdiff(vars, nextvars) ∪ setdiff(nextvars, vars))
-    
-    A = Float64[ get(selfdecomp(xp).weights, x, 0) for xp ∈ last(pair), x ∈ first(pair) ]
-    B = Float64[ get(selfdecomp(xp).weights, y, 0) for xp ∈ last(pair), y ∈ u ]
-    
-    return A, B, u
+tr(A) = sum(la.diag(A))
+
+function linearform(p::Pair)
+    A = Float64[ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
+    if !isequal(last(p), A*first(p))
+        error("The expression $(last(p)) is not a linear form in the variable $(first(p))")
+    end
+    A
 end
 
-function getmatrix(e::Expression, v::Vector)
-    M = [ get(weights(selfdecomp(e)), x'*y, 0) for x ∈ v, y ∈ v ]
-    0.5*(M+M')
+function linearform(G::GramMatrix{V}, x::F) where {F<:Field, V<:InnerProductSpace{F}}
+    if any(!isvariable(a) for a ∈ decomposition(G))
+        error("The Gram matrix $G must consist of only variables to construct linear forms.")
+    end
+    A = Float64[ get(weights(selfdecomp(x)), a, 0) for a ∈ decomposition(G) ]
+    if !isequal(x, tr(A*G))
+        error("The expression $x is not a linear form in the Gram matrix $G")
+    end
+    A
 end
 
-getparams(c::Constraint, x, u) = getmatrix(expression(c), [x; u])
+function quadraticform(p::Pair)
+    Q = Float64[ get(weights(selfdecomp(last(p))), x'*y, 0) for x ∈ first(p), y ∈ first(p) ]
+    if !isequal(last(p), first(p)'*Q*first(p))
+        error("The expression $(last(p)) is not a quadratic form in the variable $(first(p))")
+    end
+    Q
+end
 
-getparams(cons::Constraints, x, u) = [getparams(c, x, u) for c in prune!(cons)]
+function stateupdate(vars)
+    x  = collect(v for v ∈ vars if !ismissing(next(v)))
+    xp = next(x)
+    u  = collect(setdiff(variables(xp), variables(x)))
+    X  = linearform([x; u] => x)
+    Xp = linearform([x; u] => xp)
+    
+    X, Xp, x, u
+end
 
-function solve(A,B,Q,ℳ,ρ)
+function certify(performance::Field, ρ::Number)
+    
+    # variables, constraints, and oracles associated with the performance measure
+    vars, cons, orcs = variables_constraints_oracles(performance)
+
+    # # types of variables
+    # var_types = Set( typeof(v) for v ∈ vars )
+    
+    # # dictionary of variables of each type
+    # var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
+    
+    lifted_vars = Expressions()
+    lifted_cons = Constraints()
+    
+    # for each type of variable...
+    for T ∈ Set( typeof(v) for v ∈ vars )
+        
+        # get the variables of that type
+        vals = Set{T}( v for v ∈ vars if v isa T )
+        
+        if T <: InnerProductSpace
+            
+            X, Xp, x, u = stateupdate(vals)
+            
+            G = T[x; u] ⊗ T[x; u]
+            
+            Q = linearform(G, performance)
+            
+            push!(lifted_cons, G ⪰ 0)
+            push!(lifted_vars, G)
+            setdiff!(lifted_vars, [a for a ∈ decomposition(G)])
+            
+        elseif T <: Field
+            
+            union!(lifted_vars, vals)
+            union!(lifted_cons, constraints(vals))
+            
+        end
+    end
+    
+    # the constraints can couple the subspaces...
+    # ℳ = [ linearform(G, expression(c)) for c in prune!(lifted_cons) ]
+    
+    lifted_vars, lifted_cons
+    
+    # nums = Set( v for v ∈ vars if v isa Field )
+    # vecs = Set( v for v ∈ vars if v isa VectorSpace )
+    
+    # # state update
+    # X, Xp, x, u = stateupdate(vecs)
+    
+    # G = [x; u] ⊗ [x; u]
+    
+    # Q = linearform(G, performance)
+    
+    # ℳ = [ linearform(G, expression(c)) for c in prune!(cons) ]
+    
+    # feas = solve(X,Xp,Q,ℳ,ρ) == MOI.OPTIMAL
+end
+
+function solve(X,Xp,Q,ℳ,ρ)
     
     # dimensions
-    n = size(A,1)
-    m = size(B,2)
+    n = size(X,1)
+    m = size(X,2)-n
 
     # optimization problem
     model = JuMP.Model(SCS.Optimizer)
@@ -36,36 +114,24 @@ function solve(A,B,Q,ℳ,ρ)
     JuMP.@variable(model, P[1:n,1:n], Symmetric )
     JuMP.@variable(model, λ1[1:length(ℳ)] ≥ 0)
     JuMP.@variable(model, λ2[1:length(ℳ)] ≥ 0)
+    JuMP.@variable(model, G1[1:n+m,1:n+m], PSD )
+    JuMP.@variable(model, G2[1:n+m,1:n+m], PSD )
     
     # multipliers
     Π1 = sum( first(p)*last(p) for p ∈ zip(λ1,ℳ) )
     Π2 = sum( first(p)*last(p) for p ∈ zip(λ2,ℳ) )
-    
-    X  = [eye(n) zeros(n,m)]
-    Xp = [A B]
 
     # constraints
-    JuMP.@constraint(model, 0 ≥ Xp'*P*Xp - ρ^2*(X'*P*X) + Π1, JuMP.PSDCone() )
-    JuMP.@constraint(model, 0 ≥ X'*(Q-P)*X + Π2, JuMP.PSDCone() )
+    JuMP.@constraint(model, 0 .== Xp'*P*Xp - ρ^2*(X'*P*X) + Π1 + G1 )
+    JuMP.@constraint(model, 0 .== X'*(Q-P)*X + Π2 + G2 )
 
     JuMP.optimize!(model)
-
-    # @show n, m
-    # @show A
-    # @show B
-    # @show Q
-    # @show P
-    # @show ℳ
-    # @show X
-    # @show Xp
-    # @show JuMP.value(P)
-    # @show JuMP.value.(λ1)
-    # @show JuMP.value.(λ2)
-    # @show cvx.evaluate(LMI1)
-    # @show la.eigvals(cvx.evaluate(LMI1))
     
     return JuMP.termination_status(model)
 end
+
+rate(performance::Field) = bsmin( ρ -> certify(performance,ρ), 0, 1 )
+
 
 """
     Bisection search to find minimum
@@ -96,64 +162,3 @@ function bsmin( f, a, b, tol=1e-5 )
     return b
 end
 
-function rate(x,xp,𝒫,f)
-    A, B, u = stateupdate(x => xp)
-    ℳ = getparams(constraints(f), x, u)
-    Q = getmatrix(𝒫,x)
-    bsmin( ρ -> (solve(A,B,Q,ℳ,ρ) == MOI.OPTIMAL), 0, 1 )
-end
-
-
-abstract type StateTransition end
-abstract type LyapunovClass end
-abstract type PerformanceClass end
-abstract type MultiplierClass end
-
-function rate(f::StateTransition,𝒱::LyapunovClass,𝒫::PerformanceClass,ℳ::MultiplierClass,ρ::Number)
-
-    # optimization problem
-    model = JuMP.Model(SCS.Optimizer)
-
-    # variables
-    JuMP.@variable(model, V ∈ 𝒱 )
-    JuMP.@variable(model, P ∈ 𝒫 )
-    JuMP.@variable(model, M₁ ∈ ℳ )
-    JuMP.@variable(model, M₂ ∈ ℳ )
-
-    # constraints
-    JuMP.@constraint(model, 0 ≥ V ∘ f - ρ*V + M₁ )
-    JuMP.@constraint(model, 0 ≥ P - V + M₂ )
-
-    # options
-    JuMP.set_silent(model)
-
-    # solve
-    JuMP.optimize!(model)
-    
-    return JuMP.termination_status(model)
-end
-
-struct LinearStateTransition <: StateTransition
-    A::Matrix
-    B::Matrix
-end
-
-struct QuadraticLyapunovClass <: LyapunovClass
-    P::Matrix
-end
-
-struct QuadraticPerformanceClass <: PerformanceClass
-    Q::Matrix
-end
-
-struct QuadraticMultiplierClass <: MultiplierClass
-    M::Matrix
-end
-
-# # for each subspace with lift ℓ from state-input pairs to convex set C in S...
-# X  = projection(ℓ)'
-# X₊ = commutator(ℓ,f)'
-
-# # commutator(::GramLift, A, B)' = [A B]
-# JuMP.@constraint(model, 0 ≥ V ∘ X₊ - ρ*(V ∘ X) + M₁, C' )
-# JuMP.@constraint(model, 0 ≥ (P - V) ∘ X + M₂, C' )

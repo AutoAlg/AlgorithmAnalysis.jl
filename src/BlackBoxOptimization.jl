@@ -24,19 +24,20 @@ module BlackBoxOptimization
 
 # abstract types
 export Constraint, Constraints, ConstraintSet
-export Expression, Field, Reals, VectorSpace, NormedVectorSpace, InnerProductSpace, Subset
-export R, Rⁿ, Rᵐ, X
+export Expression, Expressions, Field, Reals, VectorSpace, NormedVectorSpace, InnerProductSpace, Subset
+export R, Rⁿ, Rᵐ
 
 # expression
 export GramMatrix
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
 export label, label!, getlabel, value, decomposition, selfdecomp, hasvalue, isvariable
+export previous, previous!, next, next!, update
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @autolabel
 
 # constraint
 export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
-export ConeConstraint, Satisfied, Unsatisfied, prune!, check
+export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual
 export ⪯, ⪰
 
 # relation
@@ -91,7 +92,8 @@ export propertyof, properties
 export Co, Weakly, PropertyOrWrapper
 
 # solve
-export maximize, lift, project, variables, constraints, variables_constraints, transform
+export maximize, lift, project, variables, constraints, variables_constraints_oracles
+export transform
 
 # primitives
 export first_order_stationary_point
@@ -100,7 +102,7 @@ export first_order_stationary_point
 export hierarchy
 
 # analysis
-export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye
+export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify, quadraticform, linearform, tr
 
 ############################################################################################
 # Import

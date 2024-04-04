@@ -27,17 +27,17 @@ struct PositiveOrthant <: Cone end
 struct ZeroSet <: Cone end
 
 struct ConeConstraint{K<:Cone} <: Constraint
-  x::Expression
-  
-  function ConeConstraint{K}(x) where {K<:Cone}
-    if !hasvalue(x)
-      this = new(x)
-      add_constraint!(x, this)
-      this
-    else
-      check(x,K) ? Satisfied() : Unsatisfied()
+    x::Expression
+    
+    function ConeConstraint{K}(x) where {K<:Cone}
+        if !hasvalue(x)
+            this = new(x)
+            add_constraint!(x, this)
+            this
+        else
+            check(x,K) ? Satisfied() : Unsatisfied()
+        end
     end
-  end
 end
 
 const Positive = ConeConstraint{PositiveOrthant}
@@ -84,6 +84,29 @@ isequal(lhs::ConeConstraint{K}, rhs::ConeConstraint{K}) where {K<:Cone} = isequa
 #   end
 #   cons
 # end
+
+############################################################################################
+# Duality
+
+# duals of cones
+dual(::Type{PositiveSemidefiniteCone}) = PositiveSemidefiniteCone
+dual(::Type{PositiveOrthant}) = PositiveOrthant
+dual(::Type{ZeroSet}) = Any
+
+function dual(c::Positive, G, model)
+    JuMP.@variable(model, λ[1:length(x)] ≥ 0)
+    M = linearform(G, expression(c))
+    
+    λ*M
+end
+
+function dual(c::Semidefinite, G, model)
+    JuMP.@variable(model, λ[1:length(x)] ≥ 0)
+    M = linearform(G, expression(c))
+    
+    λ*M
+end
+
 
 ############################################################################################
 # Check

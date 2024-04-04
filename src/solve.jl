@@ -1,7 +1,7 @@
 function maximize(performance::R; optimizer=SCS.Optimizer)
 
-    # variables and constraints associated with the objective
-    vars, cons = variables_constraints(performance)
+    # variables and constraints associated with the performance measure
+    vars, cons, _ = variables_constraints_oracles(performance)
 
     # construct the lifted transformation
     t = transform(vars, cons)
@@ -23,70 +23,100 @@ function maximize(performance::R; optimizer=SCS.Optimizer)
     problem.optval
 end
 
-"""
-    variables_constraints
+"Set of variables in a constraint or set of constraints."
+variables(c::Constraint) = variables(expression(c))
 
-Recursively find all variables and constraints associated with a real scalar expression.
-"""
-function variables_constraints end
-
-function variables_constraints(x::Expression)
-    vars = variables(x)
-    cons = constraints(vars) ∪ constraints(oracles(vars))
-    
-    vars, cons
-    # (vars ∪ variables(vars), cons ∪ constraints(cons))
+function variables(o::OracleOrWrapper)
+    vars = variables(inputs(o) ∪ outputs(o))
+    for a ∈ values(associations(o))
+        union!(vars, variables(inputs(a) ∪ outputs(a)))
+    end
+    vars
 end
 
-# function variables_constraints(x::R)
+# Set of variables and constraints that depend on a set of variables.
+variables(X::Union{AbstractArray,AbstractSet}) = mapreduce(variables, ∪, X; init=Expressions())
+constraints(X::Union{AbstractArray,AbstractSet}) = mapreduce(constraints, ∪, X; init=Constraints())
+oracles(X::Union{AbstractArray,AbstractSet}) = mapreduce(oracles, ∪, X; init=Oracles())
 
-#     scalars = variables(x)
-#     vectors = Set(o' for o ∈ oracles(scalars))
-#     orcs = oracles(vectors ∪ scalars)
-#     cons = constraints(outputs(orcs))
+variables(g::Generator) = variables(Set(x for x ∈ g))
+constraints(g::Generator) = constraints(Set(x for x ∈ g))
+oracles(g::Generator) = oracles(Set(x for x ∈ g))
 
-#     count = 0
+"""
+    variables_constraints_oracles
 
-#     while true
+Recursively find all variables, constraints, and oracles associated with an expression.
+"""
+function variables_constraints_oracles end
 
-#         # get the variables associated with those constraints
-#         vars_new = variables(cons)
+function variables_constraints_oracles(x::Expression)
+    
+    vars = variables(x)
+    orcs = oracles(vars)
+    cons = prune!(constraints(vars) ∪ constraints(orcs))
+    
+    variables_constraints_oracles(vars, cons, orcs)
+end
 
-#         # get the constraints associated with those variables
-#         cons_new = constraints(vars_new)
+function variables_constraints_oracles(vars::Expressions, cons::Constraints, orcs::Oracles)
 
-#         # if no new variables or constraints are found, then exit
-#         if vars_new ⊆ vars && cons_new ⊆ cons
-#             break
+    count = 1
+    
+    while true
+        
+        # get the oracles associated with the variables
+        orcs_new = oracles(vars)
 
-#         # otherwise, append the new variables and constraints and repeat
-#         else
-#             vars = vars ∪ vars_new
-#             cons = cons ∪ cons_new
-#         end
+        # get the constraints associated with the oracles
+        cons_new = prune!(constraints(orcs_new))
+        
+        # get the variables associated with the constraints and the oracles
+        vars_new = variables(cons) ∪ variables(orcs_new)
 
-#         if count > 10
-#             @warn "Limit reached before all variables and constraints were found."
-#             break
-#         else
-#             count += 1
-#         end
-#     end
-#     vars, cons
-# end
-
-"Set of constraints that depend on a set of variables."
-constraints(vars::Set{<:Expression}) = mapreduce(constraints, ∪, vars; init=Constraints())
-
-"Set of variables in a constraint or set of constraints."
-variables(c::ConeConstraint) = variables(expression(c))
-variables(cons::Set{<:Constraint}) = mapreduce(variables, ∪, cons; init=Expressions())
-variables(A::AbstractArray{<:Expression}) = mapreduce(variables, ∪, A)
+        # if there are no new variables, constraints, or oracles, then exit
+        if vars_new ⊆ vars && orcs_new ⊆ orcs && cons_new ⊆ cons
+            break
+        end
+        
+        # otherwise, append the new information and repeat
+        union!(vars, vars_new)
+        union!(orcs, orcs_new)
+        union!(cons, cons_new)
+        
+        # check for an infinite loop
+        if count > 10
+            error("Recursion limit reached while finding variables, constraints, and oracles")
+        end
+        
+        count += 1
+    end
+    
+    vars, cons, orcs
+end
 
 function transform(vars, cons)
+    
+    # types of variables
+    var_types = Set( typeof(v) for v ∈ vars )
 
-    scalars = collect(filter(x -> x isa R, vars))
-    points  = collect(filter(x -> x isa Rⁿ, vars))
+    # dictionary mapping variable types to the associated variables
+    var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
+
+    # lifted variables and constraints
+    lifted_vars = vars
+    lifted_cons = cons
+
+    for (T,vals) ∈ var_dict
+        if T <: InnerProductSpace
+            v = collect(vals)
+            push!(lifted_cons, v ⊗ v ⪰ 0)
+            setdiff!(lifted_vars, v)
+        end
+    end
+
+    scalars = collect(v for v ∈ vars if v isa R)
+    points  = collect(v for v ∈ vars if v isa Rⁿ)
 
     X = (points, scalars)
 

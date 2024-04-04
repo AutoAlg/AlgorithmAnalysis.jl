@@ -6,13 +6,23 @@ struct GramMatrix{V<:InnerProductSpace} <: Expression
     label::String
     value::Union{Matrix{Number},Missing}
     decomposition::Matrix
+    constraints::Constraints
 end
 
 "Constructor."
-GramMatrix{V}(m::Matrix{F}) where {F<:Field, V<:InnerProductSpace{F}} = GramMatrix{V}( "", missing, (m+m')/2 )
+GramMatrix{V}(m::Matrix{F}) where {F<:Field, V<:InnerProductSpace{F}} = GramMatrix{V}( "", missing, m, Constraints() )
+
+# iterator
+length(G::GramMatrix) = length(decomposition(G))
+
+iterate(G::GramMatrix) = iterate(decomposition(G))
+iterate(G::GramMatrix, state::Int) = iterate(decomposition(G), state)
 
 zero(::F) where {F<:Field} = F(0)
 zero(::V) where {V<:VectorSpace} = V(Zero())
+
+variables(G::GramMatrix) = variables(a for a ∈ G)
+constraints(G::GramMatrix) = G.constraints ∪ constraints(a for a ∈ G)
 
 
 ############################################################################################
@@ -27,6 +37,8 @@ macro field(s::Symbol)
             decomposition::AffineDecomposition{$(esc(s))}
             constraints::Constraints
             oracles::Oracles
+            next::Union{$(esc(s)),Missing}
+            previous::Union{$(esc(s)),Missing}
         end
     end
 end
@@ -43,6 +55,8 @@ macro vectorspace(ex::Expr)
             decomposition::LinearDecomposition{$(esc(ex.args[1]))}
             constraints::Constraints
             oracles::Oracles
+            next::Union{$(esc(ex.args[1])),Missing}
+            previous::Union{$(esc(ex.args[1])),Missing}
         end
     end
 end
@@ -59,6 +73,8 @@ macro normedvectorspace(ex::Expr)
             decomposition::LinearDecomposition{$(esc(ex.args[1]))}
             constraints::Constraints
             oracles::Oracles
+            next::Union{$(esc(ex.args[1])),Missing}
+            previous::Union{$(esc(ex.args[1])),Missing}
         end
     end
 end
@@ -75,10 +91,12 @@ macro innerproductspace(ex::Expr)
             decomposition::LinearDecomposition{$(esc(ex.args[1]))}
             constraints::Constraints
             oracles::Oracles
+            next::Union{$(esc(ex.args[1])),Missing}
+            previous::Union{$(esc(ex.args[1])),Missing}
             dual::LinearFunctional{$(esc(ex.args[1]))}
 
-            function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{$(esc(ex.args[1]))}, constraints::Constraints, oracles::Oracles)
-                x = new(label, value, decomposition, constraints, oracles, LinearFunctional{$(esc(ex.args[1]))}())
+            function $(esc(ex.args[1]))(label::String, value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{$(esc(ex.args[1]))}, constraints::Constraints, oracles::Oracles, next::Union{$(esc(ex.args[1])),Missing}, previous::Union{$(esc(ex.args[1])),Missing})
+                x = new(label, value, decomposition, constraints, oracles, next, previous, LinearFunctional{$(esc(ex.args[1]))}())
                 x.dual.dual = x
                 x
             end
@@ -94,9 +112,7 @@ value(e::Expression) = e.value
 decomposition(e::Expression) = e.decomposition
 constraints(e::Expression) = e.constraints
 oracles(e::Expression) = e.oracles
-oracles(s::Set{<:Expression}) = mapreduce(oracles, ∪, s; init=Oracles())
-variables(e::Expression) = variables(decomposition(e))
-variables(m::AbstractArray{F}) where {F<:Field} = mapreduce(variables, ∪, m; init=Set{F}())
+variables(e::Expression) = variables(selfdecomp(e))
 
 # decomposition that defaults to self => 1 if empty
 selfdecomp(a::F) where {F<:Field} = isempty(decomposition(a)) ? AffineDecomposition{F}(Dict(a => 1)) : decomposition(a)
@@ -107,26 +123,34 @@ iszero(e::Expression) = hasvalue(e) && iszero(value(e))
 hasvalue(e::Expression) = !ismissing(value(e))
 isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 
+# update
+next!(x::Expression, y::Expression) = x.next = y
+next(x::Expression) = x.next
+next(A::AbstractArray{<:Expression}) = [ next(x) for x ∈ A ]
+previous!(x::Expression, y::Expression) = x.previous = y
+previous(x::Expression) = x.previous
+update(p::Pair{<:Expression}) = (next!(first(p),last(p)); previous!(last(p),first(p)); nothing)
+
 
 ############################################################################################
 # Constructors
 
 # variable
-(::Type{F})(label::String = "Variable{$F}") where {F<:Field} = F(label, missing, AffineDecomposition{F}(), Constraints(), Oracles())
-(::Type{V})(label::String = "Variable{$V}") where {V<:VectorSpace} = V(label, missing, LinearDecomposition{V}(), Constraints(), Oracles())
+(::Type{F})(label::String = "Variable{$F}") where {F<:Field} = F(label, missing, AffineDecomposition{F}(), Constraints(), Oracles(), missing, missing)
+(::Type{V})(label::String = "Variable{$V}") where {V<:VectorSpace} = V(label, missing, LinearDecomposition{V}(), Constraints(), Oracles(), missing, missing)
 
 # constant
-(::Type{F})(value::Number) where {F<:Field} = F("", value, AffineDecomposition{F}(), Constraints(), Oracles())
-(::Type{V})(value::Vector) where {V<:VectorSpace} = V("", value, LinearDecomposition{V}(), Constraints(), Oracles())
-(::Type{V})(value::Zero) where {V<:VectorSpace} = V("0", value, LinearDecomposition{V}(), Constraints(), Oracles())
+(::Type{F})(value::Number) where {F<:Field} = F("", value, AffineDecomposition{F}(), Constraints(), Oracles(), missing, missing)
+(::Type{V})(value::Vector) where {V<:VectorSpace} = V("", value, LinearDecomposition{V}(), Constraints(), Oracles(), missing, missing)
+(::Type{V})(value::Zero) where {V<:VectorSpace} = V("0", value, LinearDecomposition{V}(), Constraints(), Oracles(), missing, missing)
 
 # decomposition (if the decomposition is empty, set the value to zero)
-(::Type{F})(decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", missing, decomposition, Constraints(), Oracles())
-(::Type{V})(decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", missing, decomposition, Constraints(), Oracles())
+(::Type{F})(decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", missing, decomposition, Constraints(), Oracles(), missing, missing)
+(::Type{V})(decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", missing, decomposition, Constraints(), Oracles(), missing, missing)
 
 # value and decomposition (if the decomposition is empty, set the value to zero)
-(::Type{F})(value::Union{Number,Missing}, decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", value, decomposition, Constraints(), Oracles())
-(::Type{V})(value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", value, decomposition, Constraints(), Oracles())
+(::Type{F})(value::Union{Number,Missing}, decomposition::AffineDecomposition{<:F}) where {F<:Field} = isempty(decomposition) ? F(0) : F("", value, decomposition, Constraints(), Oracles(), missing, missing)
+(::Type{V})(value::Union{Vector,Missing,Zero}, decomposition::LinearDecomposition{<:V}) where {V<:VectorSpace} = isempty(decomposition) ? V(Zero()) : V("", value, decomposition, Constraints(), Oracles(), missing, missing)
 
 
 ############################################################################################
@@ -146,6 +170,9 @@ isvariable(e::Expression) = !hasvalue(e) && isempty(decomposition(e))
 +(a1::Number, a2::Field) = +(promote(a1,a2)...)
 -(a1::Field, a2::Number) = a1 + (-a2)
 -(a1::Number, a2::Field) = a1 + (-a2)
+
+# Gram matrix
+*(A::Matrix, G::GramMatrix) = A*decomposition(G)
 
 # Convert and promote numbers to scalars
 promote_rule(::Type{F}, ::Type{<:Number}) where {F<:Field} = F
@@ -176,7 +203,7 @@ function +(G::GramMatrix{V}, a::Number) where {V<:InnerProductSpace}
     for i = 1:size(G,1)
         m[i,i] += a
     end
-    GramMatrix{V}( label(G), value(G), m )
+    GramMatrix{V}( label(G), value(G), m, constraints(G) )
 end
 +(a::Number, G::GramMatrix) = G + a
 -(G::GramMatrix, a::Number) = G + (-a)
@@ -189,7 +216,7 @@ function *(a::Number, G::GramMatrix{V}) where {V<:InnerProductSpace}
         m[i,j] *= a
         end
     end
-    GramMatrix{V}( label(G), value(G), m )
+    GramMatrix{V}( label(G), value(G), m, constraints(G) )
 end
 *(G::GramMatrix, a::Number) = a*G
 
@@ -223,7 +250,15 @@ isequal(x1::Expression, x2::AbstractArray{<:Expression}) = false
 isequal(a1::AbstractArray{E}, a2::AbstractArray{E}) where {E<:Expression} = size(a1) == size(a2) && all( isequal(a1[i],a2[i]) for i ∈ eachindex(a1) )
 
 function isequal(x1::T, x2::T) where {T<:Expression}
-    isvariable(x1) && isvariable(x2) && return isequal(objectid(x1), objectid(x2))
-    !isvariable(x1) && !isvariable(x2) && return isequal(value(x1), value(x2)) && isequal(decomposition(x1), decomposition(x2))
-    false
+    if isvariable(x1) && isvariable(x2)
+        isequal(objectid(x1), objectid(x2))
+    elseif !isvariable(x1) && !isvariable(x2)
+        isequal(value(x1), value(x2)) && isequal(decomposition(x1), decomposition(x2))
+    elseif !isvariable(x1) && isvariable(x2)
+        isequal(decomposition(x1), selfdecomp(x2))
+    elseif isvariable(x1) && !isvariable(x2)
+        isequal(selfdecomp(x1), decomposition(x2))
+    else
+        false
+    end
 end
