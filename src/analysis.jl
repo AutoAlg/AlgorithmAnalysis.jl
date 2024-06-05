@@ -43,12 +43,6 @@ function certify(performance::Field, ρ::Number)
     
     # variables, constraints, and oracles associated with the performance measure
     vars, cons, orcs = variables_constraints_oracles(performance)
-
-    # # types of variables
-    # var_types = Set( typeof(v) for v ∈ vars )
-    
-    # # dictionary of variables of each type
-    # var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
     
     lifted_vars = Expressions()
     lifted_cons = Constraints()
@@ -73,9 +67,13 @@ function certify(performance::Field, ρ::Number)
             
         elseif T <: Field
             
+            F, Fp, xf, uf = stateupdate(nums)
+            
             union!(lifted_vars, vals)
             union!(lifted_cons, constraints(vals))
             
+        else
+            error("Unknown variable type $T")
         end
     end
     
