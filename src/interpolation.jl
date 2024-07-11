@@ -157,8 +157,8 @@ Quadratic form of a quadratic constraint.
 """
 quadraticform(p::PointwiseQuadraticConstraint) = p.M
 quadraticform(p::IncrementalQuadraticConstraint) = p.M
-quadraticform(p::SlopeRestricted) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
-quadraticform(p::SectorBounded) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SlopeRestricted) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SectorBounded) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
 
 """
     linearquadraticform(p)
@@ -177,19 +177,6 @@ linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p
 
 
 ############################################################################################
-# Add a property to an oracle only if its constraints are implemented
-function ∈(o::Oracle, p::Property{T}) where {T<:Oracle}
-    for s ∈ reverse(suboracles(o))
-        if s isa T
-            push!(properties(s), p)
-            return
-        end
-    end
-    error("The oracle of type $(typeof(o)) does not have a property of type $(typeof(p)).")
-end
-
-
-############################################################################################
 # Constraints
 
 """
@@ -200,11 +187,9 @@ All constraints for an oracle, or the constraints for an oracle to have a given 
 """
 function constraints end
 
-constraints(o::OracleOrWrapper) = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints()) ∪ mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+constraints(o::OracleOrWrapper) = mapreduce(p -> constraints(oracle(o),p), ∪, properties(o); init=Constraints()) ∪ mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
 
-constraints(s::Set{<:OracleOrWrapper}) = mapreduce(constraints , ∪, s; init=Constraints())
-
-# constraints(o::OracleOrWrapper, p::Property) = constraints(suboracle(o), p)
+constraints(o::Wrapper{<:Oracle}, p::Property) = constraints(oracle(o), p)
 
 # Operators
 
@@ -214,7 +199,7 @@ function constraints(o::AbstractOperator, p::AbstractPointwiseQuadraticConstrain
 end
 
 function constraints(o::AbstractOperator, p::AbstractIncrementalQuadraticConstraint)
-    Constraints( 0 ≤ [xi-xj; yi-yj]'*quadraticform(p)*[xi-xj; yi-yj] for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    Constraints( 0 ≤ [xᵢ-xⱼ; yᵢ-yⱼ]'*quadraticform(p)*[xᵢ-xⱼ; yᵢ-yⱼ] for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
 end
 
 triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
@@ -261,11 +246,11 @@ function constraints(o::AbstractLinearMap{X,Y}, ::Linear) where {F<:Field, X<:In
 end
 
 function constraints(o::AbstractLinearMap{X,X}, ::Symmetric) where {X<:InnerProductSpace}
-    Constraints( xi'*yj == yi'*xj for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    Constraints( xᵢ'*yⱼ == yᵢ'*xⱼ for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
 end
 
 function constraints(o::AbstractLinearMap{X,X}, ::SkewSymmetric) where {X<:InnerProductSpace}
-    Constraints( xi'*yj + yi'*xj == 0 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    Constraints( xᵢ'*yⱼ + yᵢ'*xⱼ == 0 for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
 end
 
 # Symmetric linear maps

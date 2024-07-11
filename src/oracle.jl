@@ -249,13 +249,9 @@ julia> isequal(A(x), A*x)  # true
 """
 function sample end
 
-sample(o::OracleOrWrapper, x, l::String = "") = (y=sample(relation(o), x, isempty(l) ? defaultlabel(oracle(o),x) : l); push!(x.oracles, oracle(o)); push!(y.oracles, oracle(o)); y)
+sample(o::OracleOrWrapper, x, l::String = "") = (y=sample(relation(o), x); label!(y, isempty(l) ? defaultlabel(oracle(o),x) : l); push!(x.oracles, oracle(o)); push!(y.oracles, oracle(o)); y)
 
 sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(0)
-
-defaultlabel(o::AbstractOperator, x) = "$(label(o))($(label(x)))"
-defaultlabel(o::ConstantMap, ::Any) = label(o)
-defaultlabel(o::AbstractLinearFunctional{X}, x::X) where {X<:InnerProductSpace} = isequal(x,o') ? "|"*label(x)*"|²" : "⟨"*label(o')*","*label(x)*"⟩"
 
 function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}}
     
@@ -265,7 +261,8 @@ function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerP
         
     # else if x has an empty decomposition, sample it directly
     elseif isempty(decomposition(x))
-        y = sample(relation(o), x, defaultlabel(o,x))
+        y = sample(relation(o), x)
+        label!(y, defaultlabel(o,x))
         push!(x.oracles, o)
         push!(y.oracles, o)
         y
@@ -274,10 +271,11 @@ function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerP
     else
         y = F(0)
         for (key,value) ∈ weights(selfdecomp(x))
-            y0 = sample(relation(o), key, defaultlabel(o, key))
-            y += value*y0
+            y0 = sample(relation(o), key)
+            label!(y0, defaultlabel(o, key))
             push!(key.oracles, o)
             push!(y0.oracles, o)
+            y += value*y0
         end
         y
     end

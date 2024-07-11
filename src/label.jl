@@ -59,6 +59,10 @@ defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
 defaultlabel(::Type{Gradient}, label::String) = "∇" * label
 defaultlabel(::Type{Hessian}, label::String) = "∇²" * label
 
+defaultlabel(o::AbstractOperator, x) = "$(label(o))($(label(x)))"
+defaultlabel(o::ConstantMap, ::Any) = label(o)
+defaultlabel(o::AbstractLinearFunctional{X}, x::X) where {X<:InnerProductSpace} = isequal(x,o') ? "|"*label(x)*"|²" : "⟨"*label(o')*","*label(x)*"⟩"
+
 
 ############################################################################################
 # Automatic labeling
