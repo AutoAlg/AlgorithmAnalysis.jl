@@ -24,15 +24,15 @@ module BlackBoxOptimization
 
 # abstract types
 export Constraint, Constraints, ConstraintSet
-export Expression, Expressions, Field, Reals, VectorSpace, NormedVectorSpace, InnerProductSpace, Subset
+export Variable, Expression, Expressions, Field, Reals, Subset
+export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
 export R, Rⁿ, Rᵐ
 
 # expression
-export GramMatrix
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
-export label, label!, getlabel, value, decomposition, selfdecomp, hasvalue, isvariable
-export previous, previous!, next, next!, update
-export @field, @vectorspace, @normedvectorspace, @innerproductspace, @autolabel
+export label, label!, getlabel, value, value!, decomposition, selfdecomp, hasvalue
+export isvariable, previous, previous!, next, next!, update
+export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
 # constraint
 export expression, set, add_constraint!
@@ -63,7 +63,7 @@ export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
 export LinearFunctional, ZeroFunctional
 
 # wrappers
-export Wrapper, LinearDecomposition, AffineDecomposition
+export Wrapper, Decomposition, LinearDecomposition
 export Transpose, AbstractDifferential, AbstractSubdifferential
 export Subdifferential, Gradient, Hessian
 export unwrap
@@ -93,7 +93,7 @@ export Co, Weakly, PropertyOrWrapper
 
 # solve
 export maximize, lift, project, variables, constraints, variables_constraints_oracles
-export transform
+export transform!
 
 # primitives
 export first_order_stationary_point
@@ -102,7 +102,8 @@ export first_order_stationary_point
 export hierarchy
 
 # analysis
-export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify, quadraticform, linearform, tr
+export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
+export quadraticform, linearform, tr, optvar, optcon, performance_estimation
 
 ############################################################################################
 # Import
@@ -127,6 +128,7 @@ import Base: length, Generator, iterate, size, push!, inv, pairs
 
 include("abstract.jl")
 include("wrapper.jl")
+include("decomposition.jl")
 include("expression.jl")
 include("constraint.jl")
 include("relation.jl")
@@ -138,7 +140,8 @@ include("label.jl")
 include("primitives.jl")
 include("algorithms.jl")
 include("hash.jl")
-
+include("analysis.jl")
+# include("solve.jl")
 
 ############################################################################################
 # Concrete types of expressions
@@ -166,8 +169,17 @@ A real inner product space.
 
 @innerproductspace X, R
 
-include("analysis.jl")
-include("solve.jl")
 
+convert(::Type{R}, x::Number) = R(x)
+
+promote_rule(::Type{R}, ::Type{Number}) = R
+
++(x::R, y::R) = LinearDecomposition{R}( Dict( R(1) => value(x) + value(y) ) )
++(x::Number, y::LinearDecomposition{R}) = LinearDecomposition{R}(Dict(R(1)=>x)) + y
++(x::LinearDecomposition{R}, y::Number) = y + x
+-(x::Number, y::LinearDecomposition{R}) = x + (-y)
+-(x::LinearDecomposition{R}, y::Number) = x + (-y)
+
+zero(::R) = F(0)
 
 end

@@ -27,11 +27,20 @@ inputs(r::Relation) = Set(first(p) for p ∈ pairs(r))
 outputs(r::Relation) = Set(last(p) for p ∈ pairs(r))
 
 # Vectors of inputs and outputs of a relation.
-inputs_outputs(r::Relation) = (v=collect(pairs(r)); ([first(p) for p ∈ v], [last(p) for p ∈ v]))
+function inputs_outputs(r::Relation)
+    v = collect(pairs(r))
+    [first(p) for p ∈ v], [last(p) for p ∈ v]
+end
 
 # Iterate over the pairs of a relation.
 iterate(r::Relation) = iterate(r,1)
-iterate(r::Relation, state::Int) = (state > length(r) ? nothing : ( collect(pairs(r))[state], state+1 ))
+function iterate(r::Relation, state::Int)
+    if state > length(r)
+        nothing
+    else
+        collect(pairs(r))[state], state+1
+    end
+end
 
 
 ############################################################################################
@@ -76,7 +85,8 @@ end
 # Construct a relation from a generator of pairs of points.
 SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
 
-# Evaluate a single-valued relation at a point in its domain. Returns a point in the codomain or `missing`.
+# Evaluate a single-valued relation at a point in its domain.
+# Returns a point in the codomain or `missing`.
 (r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(r.pairs, x, missing)
 
 

@@ -8,12 +8,21 @@ An abstract expression.
 
 An expression can be a constant (nonzero or zero), a variable (with known or unknown value), or a wrapper of other expressions.
 
-Some subtypes are [`Field`](@ref), [`VectorSpace`](@ref), and [`GramMatrix`](@ref).
+A subtype is [`AbstractVectorSpace`](@ref).
 """
-abstract type Expression end
+abstract type Variable end
 
 """
-    Field <: Expression
+    AbstractVectorSpace <: Expression
+
+An abstract vector space.
+
+Some subtypes are [`Field`](@ref) and [`VectorSpace`](@ref).
+"""
+abstract type AbstractVectorSpace <: Variable end
+
+"""
+    Field <: AbstractVectorSpace
 
 An abstract field.
 
@@ -21,7 +30,7 @@ An element of a field is a scalar. A scalar is an expression that can be an affi
 
 Use [`@field]`](@ref) to construct a field.
 """
-abstract type Field <: Expression end
+abstract type Field <: AbstractVectorSpace end
 
 """
     VectorSpace{F<:Field} <: Expression
@@ -30,7 +39,7 @@ An abstract vector space.
 
 A vector is an expression that can be a linear function of other vectors.
 """
-abstract type VectorSpace{F<:Field} <: Expression end
+abstract type VectorSpace{F<:Field} <: AbstractVectorSpace end
 
 """
     NormedVectorSpace{F<:Field} <: VectorSpace{F}
@@ -73,16 +82,23 @@ Any concrete subtype of `Oracle` must have the following fields:
 
 Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
 """
-abstract type Oracle end
+abstract type Oracle <: AbstractVectorSpace end
 
 """
-    Wrapper
+    Wrapper{T}
 
 Generic wrapper for an object of type `T`.
 
 Every concrete subtype must have a field `parent::T` that stores the object being wrapped.
 """
 abstract type Wrapper{T} end
+
+"""
+    Decomposition{T}
+
+Decomposition in terms of objects of type `T`.
+"""
+abstract type Decomposition{T} end
 
 
 ############################################################################################
@@ -100,6 +116,12 @@ abstract type AbstractDifferentiableFunctional{X} <: AbstractLocallyLipschitzFun
 abstract type AbstractTwiceDifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X} end
 abstract type AbstractInfinitelyDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X} end
 abstract type AbstractLinearFunctional{X} <: AbstractInfinitelyDifferentiableFunctional{X} end
+
+
+############################################################################################
+# Decompositions
+
+abstract type AbstractLinearDecomposition{T} <: Decomposition{T} end
 
 
 ############################################################################################
@@ -133,7 +155,7 @@ abstract type Property{T} end
 # Constants
 
 # A set of expressions
-const Expressions = Set{Expression}
+const Variables = Set{Variable}
 
 # A set of oracles
 const Oracles = Set{Oracle}
@@ -146,3 +168,26 @@ const Properties = Set{Property}
 
 # An oracle or a wrapper of an oracle
 const OracleOrWrapper = Union{Oracle, Wrapper{<:Oracle}}
+
+# A dictionary of associations between wrappers and oracles
+const Associations = Dict{Type{<:Wrapper}, Oracle}
+
+# An expression is a variable or a decomposition of variables
+const Expression = Union{Variable, Decomposition{<:Variable}}
+
+# A vector or a decomposition of vectors
+const VectorExpression = Union{AbstractVectorSpace, Decomposition{<:AbstractVectorSpace}}
+
+# A vector or a wrapper of a vector
+const VectorOrWrapper = Union{AbstractVectorSpace, Wrapper{<:AbstractVectorSpace}}
+
+const VectorWrapperDecomposition = Union{AbstractVectorSpace, Decomposition{<:AbstractVectorSpace}, Wrapper{<:AbstractVectorSpace}, Decomposition{<:Wrapper{<:AbstractVectorSpace}}}
+
+# A set of expressions
+const Expressions = Set{Expression}
+
+# A set of vector expressions
+const VectorExpressions = Set{VectorExpression}
+
+# The type of a next or previous state of type T
+const State{T} = Union{T, Decomposition{<:T}, Missing}
