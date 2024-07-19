@@ -1,5 +1,3 @@
-const Associations = Dict{Type{<:Wrapper}, Oracle}
-
 """
     Operator{X,Y}()
 
@@ -124,11 +122,15 @@ mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
-    dual::Union{X,Missing}
+    # dual::Union{X,Missing}
     
     # linear functionals are always the dual of a vector
-    LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), missing)  # [Linear()]
-    LinearFunctional{X}(x::X) where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), x)
+    # LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), missing)  # [Linear()]
+    # LinearFunctional{X}(x::X) where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), x)
+
+    function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
+        new{X}("", Properties(), SingleValuedRelation{X,F}())
+    end
 end
 
 mutable struct ZeroFunctional{X} <: AbstractLinearFunctional{X}
@@ -138,6 +140,9 @@ mutable struct ZeroFunctional{X} <: AbstractLinearFunctional{X}
     
     ZeroFunctional{X}() where {X} = new{X}("", Properties())  # [Linear()]
 end
+
+iszero(o::Oracle) = false
+iszero(o::ZeroFunctional) = true
 
 # function (::Type{T})(p::Pair) where {T<:Oracle}
 #     if T <: AbstractFunctional
@@ -232,10 +237,10 @@ iterate(o::OracleOrWrapper, state::Int) = iterate(samples(o), state)
 
 Sample an oracle (or its wrapper) at a point in its domain.
 
-If the relation is single-valued and it has already been sampled at `x`, then the corresponding
-point in the codomain is returned. Otherwise, a new point is sampled using `Y()`, and a
-default label is used for the sample. A label may be specified for the sampled point, or
-it defaults to an intuitive label.
+If the relation is single-valued and it has already been sampled at `x`, then the
+corresponding point in the codomain is returned. Otherwise, a new point is sampled using
+`Y()`, and a default label is used for the sample. A label may be specified for the sampled 
+point, or it defaults to an intuitive label.
 
 **Important:** Do not call `sample` directly. Instead, use `o(x)` to sample an oracle at a
 point. For linear maps, `o*x` may also be used to denote sampling.
@@ -249,48 +254,63 @@ julia> isequal(A(x), A*x)  # true
 """
 function sample end
 
-sample(o::OracleOrWrapper, x, l::String = "") = (y=sample(relation(o), x); label!(y, isempty(l) ? defaultlabel(oracle(o),x) : l); push!(x.oracles, oracle(o)); push!(y.oracles, oracle(o)); y)
+function sample(o::OracleOrWrapper, x, l::String = "")
+    if iszero(o) || iszero(x)
+        return codomain(o)(Zero())
+    end
+    y = sample(relation(o), x)
+    label!(y, isempty(l) ? defaultlabel(oracle(o),x) : l)
+    push!(x.oracles, oracle(o))
+    push!(y.oracles, oracle(o))
+    y
+end
 
 sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(0)
 
-function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}}
+# function sample(o::AbstractLinearFunctional{X}, x::X, label="") where {F<:Field, X<:InnerProductSpace{F}}
     
-    # if x is zero, then return the scalar zero
-    if iszero(x)
-        F(0)
-        
-    # else if x has an empty decomposition, sample it directly
-    elseif isempty(decomposition(x))
-        y = sample(relation(o), x)
-        label!(y, defaultlabel(o,x))
-        push!(x.oracles, o)
-        push!(y.oracles, o)
-        y
-        
-    # otherwise, sample each element of the decomposition
-    else
-        y = F(0)
-        for (key,value) ∈ weights(selfdecomp(x))
-            y0 = sample(relation(o), key)
-            label!(y0, defaultlabel(o, key))
-            push!(key.oracles, o)
-            push!(y0.oracles, o)
-            y += value*y0
-        end
-        y
-    end
-end
+#     if iszero(x) || iszero(o)
+#         F(0)
+#     else
+#         y = sample(relation(o), x)
+#         label!(y, isempty(label) ? defaultlabel(o,x) : label)
+#         push!(x.oracles, o)
+#         push!(y.oracles, o)
+#         y
+#     end
+# end
+
+# function sample(o::LinearDecomposition, x)
+#     y = Zero()
+#     for (key,value) ∈ weights(o)
+#         y0 = sample(relation(key), x)
+#         label!(y0, defaultlabel(key, x))
+#         push!(key.oracles, o)
+#         push!(y0.oracles, o)
+#         y += value*y0
+#     end
+#     y
+# end
+
+sample(w::Dual{X}, x::X) where {X<:VectorSpace} = sample(unwrap(w), x, defaultlabel(w,x))
+
 
 # Sample a linear function of linear functionals by taking a linear combination of samples of each functional
 function sample(o::LinearDecomposition{T}, x::X) where {F<:Field, X<:VectorSpace{F}, T<:AbstractLinearFunctional{X}}
     mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=F(0) )
 end
 
+function sample(o::LinearDecomposition, x)
+    mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=Zero() )
+end
+
 # Overload () to denote sampling
 (o::OracleOrWrapper)(x) = sample(o,x)
 
 # For linear maps, also use * to denote sampling
-*(o::Union{AbstractLinearMap,AbstractLinearFunctional,Wrapper{<:AbstractLinearMap},Wrapper{<:AbstractLinearFunctional}}, x) = sample(o,x)
+*(o::Union{AbstractLinearMap{T1,T2},AbstractLinearFunctional{T1},Wrapper{<:AbstractLinearMap{T1,T2}},Wrapper{<:AbstractLinearFunctional{T1}},Dual{<:T1}}, x::T1) where {T1<:AbstractVectorSpace,T2} = sample(o,x)
+
+# *(o::Dual{X}, x::X) where {X<:VectorSpace} = sample(unwrap(o),x)
 
 
 ############################################################################################
