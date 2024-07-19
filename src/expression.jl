@@ -202,7 +202,11 @@ function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
     else
         label = ""
     end
-    T(label, value, Constraints(), Oracles(), missing, missing)
+    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
+        first(keys(weights(value)))
+    else
+        T(label, value, Constraints(), Oracles(), missing, missing)
+    end
 end
 function (::Type{T})(value::VectorValue{T}) where {T<:VectorSpace}
     if isempty(value)
@@ -212,7 +216,11 @@ function (::Type{T})(value::VectorValue{T}) where {T<:VectorSpace}
     else
         label = ""
     end
-    T(label, value, Constraints(), Oracles(), missing, missing)
+    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
+        first(keys(weights(value)))
+    else
+        T(label, value, Constraints(), Oracles(), missing, missing)
+    end
 end
 
 

@@ -108,7 +108,7 @@ export hierarchy
 # analysis
 export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
 export quadraticform, linearform, tr, optvar, optcon, maximize
-export variable_dictionary
+export variable_dictionary, isimplementable
 
 ############################################################################################
 # Import
