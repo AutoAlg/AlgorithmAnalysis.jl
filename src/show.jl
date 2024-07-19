@@ -1,5 +1,7 @@
 ############################################################################################
-# Wrappers
+# Decompositions
+
+show(io::IO, ::EmptyDecomposition{T}) where {T} = print(io, "Empty decomposition in $(T)")
 
 function show(io::IO, x::LinearDecomposition)
     isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
@@ -38,45 +40,55 @@ end
 ############################################################################################
 # Expressions
 
-show(io::IO, e::Variable) = print(io, label(e))
-
-function show(io::IO, mime::MIME"text/plain", e::Variable)
-    if hasvalue(e)
+function show(io::IO, e::Expression)
+    if iszero(e)
+        print(io, "0")
+    elseif hasvalue(e)
         print(io, value(e))
     elseif !isempty(label(e))
         print(io, label(e))
     else
-        print(io, "Variable{$(typeof(e))}")
+        print(io, description(e))
     end
 end
 
-function show(io::IO, mime::MIME"text/plain", v::VectorSpace)
-    if iszero(v)
-        print(io, "\nZero vector in $(typeof(v))")
+elementname(::Type{<:VectorSpace}) = "vector"
+elementname(::Type{<:Field}) = "scalar"
+
+function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
+    if iszero(e)
+        print(io, "\nZero $(lowercase(elementname(T))) in $(typeof(e))")
+    elseif hasvalue(e)
+        print(io, value(e))
     else
-        print(io, "\nVector in $(typeof(v))")
-        print(io, "\n  Label: ", label(v))
-        print(io, "\n  Value: ", value(v))
+        print(io, "\n$(uppercasefirst(elementname(T))) in $(typeof(e))")
+        !isempty(label(e)) && print(io, "\n  Label: ", label(e))
+        hasvalue(e) && print(io, "\n  Value: ", value(e))
+        hasdecomposition(e) && print(io, "\n  Decomposition: ", decomposition(e))
+        !isempty(constraints(e)) && print(io, "\n  Constraints: ", join(constraints(e), ", "))
+        !isempty(oracles(e)) && print(io, "\n  Oracles: ", join(oracles(e), ", "))
+        !ismissing(next(e)) && print(io, "\n  Next: ", next(e))
+        !ismissing(previous(e)) && print(io, "\n  Previous: ", previous(e))
+        !isempty(associations(e)) && print(io, "\n  Associations: ", join(associations(e),", "))
     end
 end
 
-function show(io::IO, mime::MIME"text/plain", a::Field)
-    if iszero(a)
-        print(io, "\nZero scalar in $(typeof(a))")
-    else
-        print(io, "\nScalar in $(typeof(a))")
-        print(io, "\n  Label: ", label(a))
-        print(io, "\n  Value: ", evaluate(a))
-    end
-end
+# Variables
+# show(io::IO, v::Variable) = show(io, expression(v))
+# show(io::IO, mime::MIME"text/plain", v::Variable) = show(io, mime, expression(v))
+
+show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", last(p))
+
+# Associations
+# show(io::IO, a::Associations) = print(io, a...)
 
 
 ############################################################################################
 # Constraints
 
-show(io::IO, c::Equality) = print(io, "0 = $(c.x)")
-show(io::IO, c::Positive) = print(io, "0 ≤ $(c.x)")
-show(io::IO, c::Semidefinite) = print(io, "0 ⪯ $(c.x)")
+show(io::IO, c::Equality) = print(io, "0 = ", expression(c))
+show(io::IO, c::Positive) = print(io, "0 ≤ ", expression(c))
+show(io::IO, c::Semidefinite) = print(io, "0 ⪯ ", expression(c))
 
 function show(io::IO, mime::MIME"text/plain", C::Constraints)
     prune!(C)
@@ -132,16 +144,15 @@ function show(io::IO, mime::MIME"text/plain", o::Oracle)
     print(io, "\n  Description: $(description(o))")
     print(io, "\n  Label: $(label(o))")
     print(io, "\n  Properties: $(properties(o))")
-    print(io, "\n  Associations: ")
-    if isempty(associations(o))
-        print(io, "No associations")
-    else
-        for a ∈ associations(o)
-            print(io, "\n    $(first(a)) => $(last(a))")
-        end
-    end
+    !isempty(associations(o)) && print(io, "\n  Associations: ", join(associations(o),", "))
+    # print(io, "\n  Associations: ")
+    # if isempty(associations(o))
+    #     print(io, "No associations")
+    # else
+    #     for a ∈ associations(o)
+    #         print(io, "\n    $(first(a)) => $(last(a))")
+    #     end
+    # end
 end
 
-function show(io::IO, mime::MIME"text/plain", w::Wrapper)
-    show(io, mime, unwrap(w))
-end
+show(io::IO, mime::MIME"text/plain", w::Wrapper) = show(io, mime, unwrap(w))

@@ -187,13 +187,13 @@ All constraints for an oracle, or the constraints for an oracle to have a given 
 """
 function constraints end
 
+constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
+
 function constraints(o::OracleOrWrapper)
-    cons1 = mapreduce(p -> constraints(oracle(o),p), ∪, properties(o); init=Constraints())
+    cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
     cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
     cons1 ∪ cons2
 end
-
-constraints(o::Wrapper{<:Oracle}, p::Property) = constraints(oracle(o), p)
 
 # Operators
 

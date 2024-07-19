@@ -1,28 +1,23 @@
-"Set of variables in a constraint or set of constraints."
+# Set of variables in a constraint or set of constraints
 variables(c::Constraint) = variables(expression(c))
 
 function variables(o::OracleOrWrapper)
-    vars = variables(inputs(o) ∪ outputs(o))
+    exps = variables(inputs(o) ∪ outputs(o))
     for a ∈ values(associations(o))
-        union!(vars, variables(inputs(a) ∪ outputs(a)))
+        union!(vars, variables(unwrap(a)))
     end
-    vars
+    exps
 end
 
-# Set of variables and constraints that depend on a set of variables
-function variables(X::Union{AbstractArray,AbstractSet})
-    mapreduce(variables, ∪, X; init=Variables())
+function variables(X::Union{ArrayOrSet,Generator})
+    mapreduce(variables, ∪, X; init=Expressions())
 end
-function constraints(X::Union{AbstractArray,AbstractSet})
-    mapreduce(constraints, ∪, X; init=Constraints())
+function constraints(X::Union{ArrayOrSet,Generator})
+    prune!(mapreduce(constraints, ∪, X; init=Constraints()))
 end
-function oracles(X::Union{AbstractArray,AbstractSet})
+function oracles(X::Union{ArrayOrSet,Generator})
     mapreduce(oracles, ∪, X; init=Oracles())
 end
-
-variables(g::Generator) = variables(Set(x for x ∈ g))
-constraints(g::Generator) = constraints(Set(x for x ∈ g))
-oracles(g::Generator) = oracles(Set(x for x ∈ g))
 
 """
     variables_constraints_oracles
@@ -31,16 +26,16 @@ Recursively find all variables, constraints, and oracles associated with an expr
 """
 function variables_constraints_oracles end
 
-function variables_constraints_oracles(x::Expression)
+function variables_constraints_oracles(e::Expression)
     
-    vars = variables(x)
+    vars = variables(e)
     orcs = oracles(vars)
-    cons = prune!(constraints(vars) ∪ constraints(orcs))
+    cons = constraints(vars ∪ orcs)
     
     variables_constraints_oracles(vars, cons, orcs)
 end
 
-function variables_constraints_oracles(vars::Variables, cons::Constraints, orcs::Oracles)
+function variables_constraints_oracles(vars::Expressions, cons::Constraints, orcs::Oracles)
 
     count = 1
     
@@ -50,10 +45,10 @@ function variables_constraints_oracles(vars::Variables, cons::Constraints, orcs:
         orcs_new = oracles(vars)
 
         # get the constraints associated with the oracles
-        cons_new = prune!(constraints(orcs_new))
+        cons_new = constraints(orcs_new)
         
         # get the variables associated with the constraints and the oracles
-        vars_new = variables(cons) ∪ variables(orcs_new)
+        vars_new = variables(cons_new ∪ orcs_new)
 
         union!(vars_new, variables(filter(!ismissing, next.(vars_new))))
 
@@ -61,7 +56,7 @@ function variables_constraints_oracles(vars::Variables, cons::Constraints, orcs:
         if vars_new ⊆ vars && orcs_new ⊆ orcs && cons_new ⊆ cons
             break
         end
-        
+
         # otherwise, append the new information and repeat
         union!(vars, vars_new)
         union!(orcs, orcs_new)
@@ -81,9 +76,12 @@ function variables_constraints_oracles(vars::Variables, cons::Constraints, orcs:
     info(orcs)
     
     vars, cons, orcs
+
+    # optvars, optcons, orcs, vars
+    # 
 end
 
-function info(vars::Variables)
+function info(vars::Expressions)
 
     # types of variables
     var_types = Set( typeof(v) for v ∈ vars )
@@ -131,21 +129,17 @@ end
 
 function transform!(vars, cons, f)
 
-    # types of variables
-    var_types = Set( typeof(v) for v ∈ vars )
+    var_dict = variable_dictionary(vars)
 
-    # dictionary of variables of each type
-    var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
-
-    removed_vars = Variables()
+    removed_vars = Expressions()
 
     for (T,vals) ∈ var_dict
         if T <: InnerProductSpace
             vecs = collect(vals)
-            if isdisjoint( vecs, variables(cons) ∪ variables(f) )
+            if isdisjoint( vecs, expressions(cons) ∪ expressions(f) )
                 setdiff!( vars, vecs )
                 union!( removed_vars, vecs )
-                union!( vars, variables(vecs ⊗ vecs) )
+                union!( vars, expressions(vecs ⊗ vecs) )
                 push!( cons, vecs ⊗ vecs ⪰ 0 )
 
                 for v ∈ vecs, w ∈ vecs
@@ -154,7 +148,7 @@ function transform!(vars, cons, f)
                     end
                 end
                 
-                newvars = variables(vecs ⊗ vecs)
+                newvars = expressions(vecs ⊗ vecs)
                 con = (vecs ⊗ vecs ⪰ 0)
 
                 for newvar ∈ newvars
@@ -171,11 +165,13 @@ function transform!(vars, cons, f)
     removed_vars
 end
 
-function optvar(x::LinearDecomposition, optvar_dict::Dict)
-    mapreduce( p -> last(p) * get(optvar_dict, first(p), value(first(p))), +, weights(x) )
+function optvar(e::Expression, optvar_dict::Dict)
+    if hasdecomposition(e)
+        mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
+    else
+        optvar_dict[e]
+    end
 end
-
-optvar(v::Variable, optvar_dict::Dict) = optvar_dict[v]
 
 optvar(m::AbstractArray, optvar_dict::Dict) = [ optvar(a, optvar_dict) for a ∈ m ]
 
@@ -193,9 +189,19 @@ function optcon(model::JuMP.Model, con::Constraint, optvar_dict::Dict)
     end
 end
 
-function performance_estimation(performance)
-    
+function variable_dictionary(vars::Expressions)
+    Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ Set( typeof(v) for v ∈ vars ) )
+end
+
+function maximize(performance::Expression)
+
     @info "PERFORMANCE ESTIMATION"
+
+    if !isa(performance, R)
+        error("The performance measure must be a real number in $R")
+    end
+
+    @info "Maximizing the performance measure $performance"
 
     # variables, constraints, and oracles associated with the performance measure
     vars, cons, orcs = variables_constraints_oracles(performance)
@@ -254,7 +260,7 @@ function performance_estimation(performance)
     for (T,vals) ∈ var_dict
         if T <: InnerProductSpace
             vecs = collect(vals)
-            if isempty( vecs ∩ ( variables(cons) ∪ variables(performance) ) )
+            if isempty( vecs ∩ ( expressions(cons) ∪ expressions(performance) ) )
                 G = vecs ⊗ vecs
                 Gval = [ value(g) for g ∈ G ]
                 E = la.eigen(Gval)
@@ -284,7 +290,7 @@ end
 function stateupdate(vars)
     x  = collect(v for v ∈ vars if !ismissing(next(v)))
     x⁺ = next(x)
-    u  = collect(setdiff(variables(x⁺), variables(x)))
+    u  = collect(setdiff(expressions(x⁺), expressions(x)))
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
@@ -418,7 +424,7 @@ eye(n) = Matrix{Float64}(la.I, n, n)
 tr(A) = sum(la.diag(A))
 
 function linearform(p::Pair)
-    A = Float64[ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
+    A = Float64[ get(weights(y), x, 0) for y ∈ last(p), x ∈ first(p) ]
     if !isequal(last(p), A*first(p))
         error("The expression $(last(p)) is not a linear form in the variable $(first(p))")
     end

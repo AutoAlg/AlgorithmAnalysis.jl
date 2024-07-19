@@ -24,8 +24,9 @@ module BlackBoxOptimization
 
 # abstract types
 export Constraint, Constraints, ConstraintSet
-export Variable, Expression, Expressions, Field, Reals, Subset
+export Variable, Variables, Expression, Expressions, Field, Reals, Subset
 export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
+export ScalarValue, VectorValue
 export R, Rⁿ, Rᵐ
 
 # expression
@@ -63,15 +64,18 @@ export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
 export LinearFunctional, ZeroFunctional
 
 # wrappers
-export Wrapper, Decomposition, LinearDecomposition
+export Wrapper, unwrap
 export Transpose, AbstractDifferential, AbstractSubdifferential
 export Subdifferential, Gradient, Hessian
-export unwrap
+
+# decompositions
+export Decomposition, EmptyDecomposition, LinearDecomposition
 
 # interpolation
 export FunctionClass, OperatorClass
-export Convex, SmoothStronglyConvex, ConvexIndicator, StronglyConvex, Smooth, QuadraticGrowth
-export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive, Lipschitz
+export Convex, SmoothStronglyConvex, ConvexIndicator, StronglyConvex, Smooth
+export QuadraticGrowth, Lipschitz
+export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive
 export StronglyMonotone, MaxSingularValue
 export interpolation_conditions, triplets, Triplets
 
@@ -103,7 +107,8 @@ export hierarchy
 
 # analysis
 export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
-export quadraticform, linearform, tr, optvar, optcon, performance_estimation
+export quadraticform, linearform, tr, optvar, optcon, maximize
+export variable_dictionary
 
 ############################################################################################
 # Import
@@ -140,46 +145,8 @@ include("label.jl")
 include("primitives.jl")
 include("algorithms.jl")
 include("hash.jl")
+include("algebra.jl")
+include("reals.jl")
 include("analysis.jl")
-# include("solve.jl")
-
-############################################################################################
-# Concrete types of expressions
-
-"""
-    R <: Field
-
-The field of real numbers.
-"""
-@field R
-
-"""
-    Rⁿ <: InnerProductSpace
-
-A real inner product space.
-"""
-@innerproductspace Rⁿ, R
-
-"""
-    Rᵐ <: InnerProductSpace
-
-A real inner product space.
-"""
-@innerproductspace Rᵐ, R
-
-@innerproductspace X, R
-
-
-convert(::Type{R}, x::Number) = R(x)
-
-promote_rule(::Type{R}, ::Type{Number}) = R
-
-+(x::R, y::R) = LinearDecomposition{R}( Dict( R(1) => value(x) + value(y) ) )
-+(x::Number, y::LinearDecomposition{R}) = LinearDecomposition{R}(Dict(R(1)=>x)) + y
-+(x::LinearDecomposition{R}, y::Number) = y + x
--(x::Number, y::LinearDecomposition{R}) = x + (-y)
--(x::LinearDecomposition{R}, y::Number) = x + (-y)
-
-zero(::R) = F(0)
 
 end

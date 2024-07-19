@@ -21,10 +21,6 @@ end
 expression(c::Constraint) = error("expression not implemented for constraint $(typeof(c)).")
 set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
 
-function isequal(lhs::Constraint, rhs::Constraint)
-    isequal( set(lhs), set(rhs) ) && isequal( expression(lhs), expression(rhs) )
-end
-
 struct Satisfied <: Constraint end
 struct Unsatisfied <: Constraint end
 
