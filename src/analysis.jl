@@ -450,3 +450,108 @@ function quadraticform(p::Pair)
     Q
 end
 
+
+
+
+
+function analysis(currentState, nextState)
+    currentVariables, nextVariables = Set(), Set()
+    for i in range(1, length(currentState))
+        currentVariables = union(currentVariables, keys(selfdecomp(currentState[i]).weights))
+        nextVariables = union(nextVariables, keys(selfdecomp(nextState[i]).weights))
+    end
+    algorithmInputs = collect(union(setdiff(currentVariables, nextVariables), setdiff(nextVariables, currentVariables)))
+    
+    A = zeros(length(currentState),length(currentState))
+    B = zeros(length(currentState), length(algorithmInputs))
+    C = zeros(length(algorithmInputs), length(currentState))
+    for i in range(1, length(nextState))
+        decomp = selfdecomp(nextState[i]).weights
+        for j in range(1, length(currentState))
+            A[i, j] = get(decomp, currentState[j], 0)
+        end
+        for j in range(1, length(algorithmInputs))
+            B[i, j] = get(decomp, algorithmInputs[j], 0)
+        end
+    end
+    for i in range(1, length(algorithmInputs))
+        decomp = selfdecomp(algorithmInputs[i]).weights
+        for j in range(1, length(currentState))
+            C[i, j] = get(decomp, currentState[j], 0)
+        end
+    end 
+    return A, B, C, algorithmInputs
+end
+
+function createFunctionValues(currentState, nextState, f)
+    return [f(s) for s in currentState[1:length(currentState)-1]], [f(s) for s in nextState[1:length(nextState)-1]]
+end
+
+function createMatrix(expression::Expression, vectors, scalars)
+    #Create matrix M
+    dict = weights(selfdecomp(expression)) 
+    Q = zeros(length(vectors), length(vectors))
+    for i in range(1,length(vectors))
+        for j in range(1,length(vectors))
+            Q[i,j] = get(dict, vectors[i]'*vectors[j], 0)
+        end
+    end
+    q = zeros(length(scalars))
+    for i in range(1,length(scalars))
+        q[i] = get(dict, scalars[i], 0)
+    end
+    return Q, q
+end
+
+function solve(A,B,M,m,Q,q,fcs,fns,rho)
+    # state dimension
+    n = size(A,1); #number of states
+    nn = size(B,2) #number of inputs
+    P = cvx.Variable(n,n);#Variable(nn, nn); #P
+    p = cvx.Variable(n,1)
+
+    numberOfConstraints = length(M)
+    liftingDimension = length(fcs)
+
+    λ1 = cvx.Variable(numberOfConstraints, 1); #lambda1
+    λ2 = cvx.Variable(numberOfConstraints, 1); #lamnda2
+
+    μ1 = cvx.Variable(numberOfConstraints, 1); #lambda1
+    μ2 = cvx.Variable(numberOfConstraints, 1); #lamnda2
+
+    Π1 = zeros(n+nn, n+nn)
+    Π2 = zeros(n+nn, n+nn)
+
+    π1 = zeros(size(m,1), size(m,2))
+    π2 = zeros(size(m,1), size(m,2))
+    
+    problem = cvx.satisfy();
+    for i in range(start = 1, stop = length(M))
+        Π1 = Π1 + λ1[i]*M[i]
+        Π2 = Π2 + λ2[i]*M[i]
+        problem.constraints += (λ1[i] >= 0)
+        problem.constraints += (λ2[i] >= 0)
+    end
+
+    for i in range(start = 1, stop = length(m))
+        π1 = π1 + μ1[i]*m[i]
+        π2 = π2 + μ2[i]*m[i]
+        problem.constraints += (μ1[i] >= 0)
+        problem.constraints += (μ2[i] >= 0)
+    end
+
+    #decrease conditions
+    # problem.constraints += P in :SDP
+    # problem.constraints += LinearAlgebra.tr(P) >= 1
+    problem.constraints += (-[A B]'P*[A B] + rho^2*[LinearAlgebra.I zeros(n,nn)]'*P*[LinearAlgebra.I zeros(n,nn)] - Π1) in :SDP;
+    problem.constraints += -p'*fns + rho^2*p'*fcs + π1
+    
+    problem.constraints += [P zeros(n,nn); zeros(m, n+nn)] - Q - Π2 in :SDP
+    problem.constraints += p - q - π2 in :SDP
+
+    cvx.solve!(problem, SCS.Optimizer, silent_solver = true);
+    return problem.status
+end
+
+createConstraintMatrix(constraint::Constraint, vectors, scalars) = createMatrix(expression(constraint), vectors, scalars)
+createConstraintMatrix(cons::Constraints, vectors, scalars) = [createConstraintMatrix(constraint, vectors, scalars) for constraint in prune!(cons)]
