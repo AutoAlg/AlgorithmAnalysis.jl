@@ -32,7 +32,7 @@ export R, Rⁿ, Rᵐ
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
 export label, label!, getlabel, value, value!, decomposition, selfdecomp, hasvalue
-export isvariable, previous, previous!, next, next!, update
+export isvariable, hasdecomposition, previous, previous!, next, next!, update
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
 # constraint
@@ -77,7 +77,7 @@ export Convex, SmoothStronglyConvex, ConvexIndicator, StronglyConvex, Smooth
 export QuadraticGrowth, Lipschitz
 export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive
 export StronglyMonotone, MaxSingularValue
-export interpolation_conditions, triplets, Triplets
+export triplets, Triplets, interpolate
 
 # properties
 export Property, Properties
@@ -108,7 +108,7 @@ export hierarchy
 # analysis
 export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
 export quadraticform, linearform, tr, optvar, optcon, maximize
-export variable_dictionary, isimplementable
+export variable_dictionary, optimization_variable_dictionary, isimplementable
 
 ############################################################################################
 # Import

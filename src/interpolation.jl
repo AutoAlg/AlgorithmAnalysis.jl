@@ -265,6 +265,42 @@ function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) wher
 end
 
 
+function allvecs(o::AbstractLinearFunctional)
+    vecs = inputs(o)
+    while true
+        vecs_new = inputs( filter( x -> x isa AbstractLinearFunctional, oracles(vecs) ) )
+        if vecs_new ⊆ vecs
+            break
+        end
+        union!( vecs, vecs_new )
+    end
+    vecs
+end
+
+function constraints(o::AbstractLinearFunctional, ::Linear)
+    vecs = collect(allvecs(o))
+    Constraints([ vecs ⊗ vecs ⪰ 0 ])
+end
+
+interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for oracle $o"
+interpolate(w::Wrapper) = interpolate(unwrap(w))
+
+function interpolate(o::AbstractLinearFunctional)
+    vecs = collect(allvecs(o))
+    # factor Gram matrix to set the value of each vector
+    G = value(vecs ⊗ vecs)
+    E = la.eigen(G)
+    Λ = E.values
+    if any(Λ .≤ 0)
+        @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
+        Λ = abs.(Λ)
+    end
+    for i = 1:length(vecs)
+        value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
+    end
+end
+
+
 # ConvexIndicator{D} = Curvature{0,∞} and BoundedRadius{∞,0} and BoundedDiameter{D,∞}
 # WeakStrongConvexity{μ,xs,fs,gs} = WeakCurvature{μ,∞,xs,fs,gs}
 # RestrictedSecant{μ,xs,ys} = WeaklyMonotone{μ,∞,xs,ys}

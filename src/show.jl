@@ -42,7 +42,7 @@ end
 
 function show(io::IO, e::Expression)
     if iszero(e)
-        print(io, "0")
+        print(io, "𝟎")
     elseif hasvalue(e)
         print(io, value(e))
     elseif !isempty(label(e))
@@ -58,8 +58,8 @@ elementname(::Type{<:Field}) = "scalar"
 function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     if iszero(e)
         print(io, "\nZero $(lowercase(elementname(T))) in $(typeof(e))")
-    elseif hasvalue(e)
-        print(io, value(e))
+    # elseif hasvalue(e)
+    #     print(io, value(e))
     else
         print(io, "\n$(uppercasefirst(elementname(T))) in $(typeof(e))")
         !isempty(label(e)) && print(io, "\n  Label: ", label(e))
@@ -106,13 +106,13 @@ end
 ############################################################################################
 # Relation
 
+description(::SingleValuedRelation) = "Single-valued relation"
+description(::MultiValuedRelation) = "Multi-valued relation"
+description(::ConstantRelation) = "Constant relation"
+
 function show(io::IO, r::Relation)
-    if isempty(samples(r))
-        print(io, "\nEmpty relation on $(domain(r)) x $(codomain(r))")
-    else
-        print(io, "\nRelation on $(domain(r)) x $(codomain(r))")
-        foreach(p -> print(io, "\n  ", first(p), " ↦  ", last(p)), collect(samples(r)))
-    end
+    print(io, "\n$(description(r)) on $(domain(r)) x $(codomain(r))")
+    foreach(p -> print(io, "\n  ", first(p), " → ", last(p)), collect(samples(r)))
 end
 
 

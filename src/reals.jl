@@ -35,3 +35,5 @@ promote_rule(::Type{R}, ::Type{<:Number}) = R
 -(x::R, y::Number) = x + (-y)
 
 zero(::R) = R(0)
+
+iszero(e::R) = e.value isa Zero || (e.value isa Number && iszero(e.value))

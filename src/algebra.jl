@@ -60,6 +60,7 @@ function *(a::Number, e::T) where {T<:AbstractVectorSpace}
     hasvalue(e) ? T( a*value(e) ) : T( a*selfdecomp(e) )
 end
 
+
 +(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = +(promote(e1,e2)...)
 -(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = e1 + (-e2)
 -(e::AbstractVectorSpace) = -1*e

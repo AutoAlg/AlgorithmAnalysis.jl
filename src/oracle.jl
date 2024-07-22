@@ -124,7 +124,7 @@ mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
     relation::SingleValuedRelation{X,<:Field}
 
     function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
-        new{X}("LinearFunctional{$X}", Properties(), SingleValuedRelation{X,F}())
+        new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
     end
 end
 
@@ -251,14 +251,16 @@ julia> isequal(A(x), A*x)  # true
 """
 function sample end
 
-function sample(o::OracleOrWrapper, x, l::String = "")
+sample(w::Wrapper, x, l::String = "") = sample(unwrap(w), x, l)
+
+function sample(o::Oracle, x, l::String = "")
     if iszero(o) || iszero(x)
         return codomain(o)(Zero())
     end
     y = sample(relation(o), x)
-    label!(y, isempty(l) ? defaultlabel(unwrap(o),x) : l)
-    push!(x.oracles, unwrap(o))
-    push!(y.oracles, unwrap(o))
+    label!(y, isempty(l) ? defaultlabel(o,x) : l)
+    push!(x.oracles, o)
+    push!(y.oracles, o)
     y
 end
 

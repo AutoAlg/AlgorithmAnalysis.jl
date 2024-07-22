@@ -58,7 +58,7 @@ prune(x::LinearDecomposition{T}) where {T} = isempty(weights(x)) ? T(Zero()) : x
 value(x::LinearDecomposition) = mapreduce( p->last(p)*value(first(p)), +, weights(x); init=Zero() )
 
 function variables(x::LinearDecomposition)
-    Expressions( union([variables(v) for v ∈ keys(weights(x)) if !hasvalue(v)]...) )
+    mapreduce( v -> !hasvalue(v) ? variables(v) : Expressions(), ∪, keys(weights(x)); init=Expressions())
 end
 
 function constant(x::LinearDecomposition)

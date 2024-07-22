@@ -87,7 +87,9 @@ SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
 
 # Evaluate a single-valued relation at a point in its domain.
 # Returns a point in the codomain or `missing`.
-(r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(r.pairs, x, missing)
+#
+# WARNING: must use Dict(pairs(r)) instead of r.pairs to avoid odd behavior after setting the value of the keys
+(r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(Dict(pairs(r)), x, missing)
 
 
 ############################################################################################
@@ -148,7 +150,7 @@ function sample(r::SingleValuedRelation{X,Y}, x::X, label::String = "") where {X
     end
 end
 
-sample(r::ConstantRelation{X,Y}, x::X) where {X,Y} = r.output
+sample(r::ConstantRelation{X,Y}, ::X) where {X,Y} = r.output
 
 
 ############################################################################################

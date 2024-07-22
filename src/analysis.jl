@@ -31,10 +31,6 @@ function variables_constraints_oracles(e::Expression)
     vars = variables(e)
     orcs = oracles(vars)
     cons = constraints(vars ∪ orcs)
-
-    optvars = filter( v -> v isa R, vars )
-    optcons = cons
-    vecs = setdiff( vars, optvars )
     
     variables_constraints_oracles(vars, cons, orcs)
 end
@@ -45,16 +41,16 @@ function variables_constraints_oracles(vars::Expressions, cons::Constraints, orc
     
     while true
         
+        # get the variables associated with the constraints and the oracles
+        vars_new = variables(cons ∪ orcs)
+
+        # get the constraints associated with the oracles
+        cons_new = constraints(vars ∪ orcs)
+
         # get the oracles associated with the variables
         orcs_new = oracles(vars)
 
-        # get the constraints associated with the oracles
-        cons_new = constraints(orcs_new)
-        
-        # get the variables associated with the constraints and the oracles
-        vars_new = variables(cons_new ∪ orcs_new)
-
-        union!(vars_new, variables(filter(!ismissing, next.(vars_new))))
+        union!( vars_new, variables(filter(!ismissing, next.(vars_new))) )
 
         # if there are no new variables, constraints, or oracles, then exit
         if vars_new ⊆ vars && orcs_new ⊆ orcs && cons_new ⊆ cons
@@ -62,13 +58,13 @@ function variables_constraints_oracles(vars::Expressions, cons::Constraints, orc
         end
 
         # otherwise, append the new information and repeat
-        union!(vars, vars_new)
-        union!(orcs, orcs_new)
-        union!(cons, cons_new)
+        union!( vars, vars_new )
+        union!( orcs, orcs_new )
+        union!( cons, cons_new )
         
         # check for an infinite loop
         if count > 10
-            error("Recursion limit reached while finding variables, constraints, and oracles")
+            error("Iteration limit reached while finding variables, constraints, and oracles")
         end
         
         count += 1
@@ -167,11 +163,22 @@ function transform!(vars, cons, f)
 end
 
 isimplementable(e::Expression) = e isa R
-isimplementable(c::Constraint) = expression(c) isa Union{R, AbstractSet{<:R}, AbstractArray{<:R}}
+isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
+
+isimplementable(X::Union{ArrayOrSet,Generator}) = all( isimplementable(x) for x ∈ X )
 
 function optvar(e::Expression, optvar_dict::Dict)
     if hasdecomposition(e)
-        mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
+        # mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
+        x = 0
+        for (key,val) ∈ weights(e)
+            if haskey(optvar_dict, key)
+                x += val * optvar_dict[key]
+            else
+                x += val * value(key)
+            end
+        end
+        x
     else
         optvar_dict[e]
     end
@@ -197,7 +204,7 @@ function variable_dictionary(vars::Expressions)
     Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ Set( typeof(v) for v ∈ vars ) )
 end
 
-function optimization_variable_dictionary(vars::Expressions)
+function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions)
     optvar_dict = Dict{R, JuMP.VariableRef}()
     for var ∈ vars
         if var isa R
@@ -214,7 +221,7 @@ function maximize(performance::Expression)
     @info "PERFORMANCE ESTIMATION"
 
     if !isa(performance, R)
-        error("The performance measure must be a real number in $R")
+        error("The performance measure must be a real number in $R.")
     end
 
     @info "Maximizing the performance measure $performance"
@@ -222,8 +229,15 @@ function maximize(performance::Expression)
     # variables, constraints, and oracles associated with the performance measure
     vars, cons, orcs = variables_constraints_oracles(performance)
 
+    if !isimplementable(cons ∪ variables(cons))
+        error("Analysis is not implementable! All constraints and associated variables must be implementable.")
+    end
+
+    # optimization variables
+    optvars = filter( isimplementable, vars )
+
     # transformed variables and constraints
-    removed_vars = transform!(vars, cons, performance)
+    # removed_vars = transform!(vars, cons, performance)
 
     # optimization problem
     model = JuMP.Model(SCS.Optimizer)
@@ -233,7 +247,7 @@ function maximize(performance::Expression)
     @info "Setting up the optimization problem"
 
     # optimization variables
-    optvar_dict = optimization_variable_dictionary(vars)
+    optvar_dict = optimization_variable_dictionary(model, optvars)
 
     @info "  ✓ variables"
 
@@ -256,34 +270,37 @@ function maximize(performance::Expression)
     # set the value of each variable
     foreach( p -> value!(first(p), JuMP.value(last(p))), optvar_dict )
 
+    # interpolate each oracle
+    foreach( interpolate, orcs )
+
     # add the removed variables back in
-    union!(vars, removed_vars)
+    # union!(vars, removed_vars)
 
-    # types of variables
-    var_types = Set( typeof(v) for v ∈ vars )
+    # # types of variables
+    # var_types = Set( typeof(v) for v ∈ vars )
 
-    # dictionary of variables of each type
-    var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
+    # # dictionary of variables of each type
+    # var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
 
-    # factor Gram matrices to set the value of each vector
-    for (T,vals) ∈ var_dict
-        if T <: InnerProductSpace
-            vecs = collect(vals)
-            if isempty( vecs ∩ ( expressions(cons) ∪ expressions(performance) ) )
-                G = vecs ⊗ vecs
-                Gval = [ value(g) for g ∈ G ]
-                E = la.eigen(Gval)
-                Λ = E.values
-                if any(Λ .≤ 0)
-                    @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
-                    Λ = abs.(Λ)
-                end
-                for i = 1:length(vecs)
-                    value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
-                end
-            end
-        end
-    end
+    # # factor Gram matrices to set the value of each vector
+    # for (T,vals) ∈ var_dict
+    #     if T <: InnerProductSpace
+    #         vecs = collect(vals)
+    #         if isempty( vecs ∩ ( variables(cons) ∪ variables(performance) ) )
+    #             G = vecs ⊗ vecs
+    #             Gval = [ value(g) for g ∈ G ]
+    #             E = la.eigen(Gval)
+    #             Λ = E.values
+    #             if any(Λ .≤ 0)
+    #                 @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
+    #                 Λ = abs.(Λ)
+    #             end
+    #             for i = 1:length(vecs)
+    #                 value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
+    #             end
+    #         end
+    #     end
+    # end
 
     @info "Objective value: $(evaluate(performance))"
 
