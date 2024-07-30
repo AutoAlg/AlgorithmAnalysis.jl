@@ -187,13 +187,13 @@ All constraints for an oracle, or the constraints for an oracle to have a given 
 """
 function constraints end
 
+constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
+
 function constraints(o::OracleOrWrapper)
-    cons1 = mapreduce(p -> constraints(oracle(o),p), ∪, properties(o); init=Constraints())
+    cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
     cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
     cons1 ∪ cons2
 end
-
-constraints(o::Wrapper{<:Oracle}, p::Property) = constraints(oracle(o), p)
 
 # Operators
 
@@ -262,6 +262,42 @@ end
 function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace, μ, L}
     x, y = inputs_outputs(o)
     Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
+end
+
+
+function allvecs(o::AbstractLinearFunctional)
+    vecs = inputs(o)
+    while true
+        vecs_new = inputs( filter( x -> x isa AbstractLinearFunctional, oracles(vecs) ) )
+        if vecs_new ⊆ vecs
+            break
+        end
+        union!( vecs, vecs_new )
+    end
+    vecs
+end
+
+function constraints(o::AbstractLinearFunctional, ::Linear)
+    vecs = collect(allvecs(o))
+    Constraints([ vecs ⊗ vecs ⪰ 0 ])
+end
+
+interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for oracle $o"
+interpolate(w::Wrapper) = interpolate(unwrap(w))
+
+function interpolate(o::AbstractLinearFunctional)
+    vecs = collect(allvecs(o))
+    # factor Gram matrix to set the value of each vector
+    G = value(vecs ⊗ vecs)
+    E = la.eigen(G)
+    Λ = E.values
+    if any(Λ .≤ 0)
+        @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
+        Λ = abs.(Λ)
+    end
+    for i = 1:length(vecs)
+        value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
+    end
 end
 
 

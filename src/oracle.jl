@@ -10,7 +10,7 @@ mutable struct Operator{X,Y} <: AbstractOperator{X,Y}
     properties::Properties
     relation::MultiValuedRelation{X,Y}
     
-    Operator{X,Y}() where {X,Y} = new{X,Y}("", Properties(), MultiValuedRelation{X,Y}())
+    Operator{X,Y}() where {X,Y} = new{X,Y}("Operator{$X,$Y}", Properties(), MultiValuedRelation{X,Y}())
 end
 
 """
@@ -25,7 +25,7 @@ mutable struct Map{X,Y} <: AbstractFunction{X,Y}
     properties::Properties
     relation::SingleValuedRelation{X,Y}
     
-    Map{X,Y}() where {X,Y} = new{X,Y}("", Properties(), SingleValuedRelation{X,Y}())
+    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}())
 end
 
 """
@@ -40,7 +40,7 @@ mutable struct ConstantMap{X,Y} <: AbstractFunction{X,Y}
     properties::Properties
     relation::ConstantRelation{X,Y}
     
-    ConstantMap{X,Y}(value = missing) where {X,Y} = new{X,Y}("", Properties(), ConstantRelation{X,Y}(value))
+    ConstantMap{X,Y}(value = missing) where {X,Y} = new{X,Y}("ConstantMap{$X,$Y}", Properties(), ConstantRelation{X,Y}(value))
 end
 
 """
@@ -52,7 +52,7 @@ mutable struct LinearMap{X,Y} <: AbstractLinearMap{X,Y}
     relation::SingleValuedRelation{X,Y}
     associations::Associations
     
-    LinearMap{X,Y}() where {X,Y} = new{X,Y}("", Properties([Linear()]), SingleValuedRelation{X,Y}(), Dict(Transpose => Map{Y,X}()))
+    LinearMap{X,Y}() where {X,Y} = new{X,Y}("LinearMap{$X,$Y}", Properties([Linear()]), SingleValuedRelation{X,Y}(), Dict(Transpose => Map{Y,X}()))
 end
 
 mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
@@ -60,7 +60,7 @@ mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
     properties::Properties
     relation::SingleValuedRelation{X,X}
     
-    SymmetricLinearMap{X}() where {X} = new{X}("", Properties([Symmetric()]), SingleValuedRelation{X,X}())
+    SymmetricLinearMap{X}() where {X} = new{X}("SymmetricLinearMap{$X}", Properties([Symmetric()]), SingleValuedRelation{X,X}())
 end
 
 mutable struct SkewSymmetricLinearMap{X} <: AbstractSkewSymmetricLinearMap{X}
@@ -68,7 +68,7 @@ mutable struct SkewSymmetricLinearMap{X} <: AbstractSkewSymmetricLinearMap{X}
     properties::Properties
     relation::SingleValuedRelation{X,X}
     
-    SkewSymmetricLinearMap{X}() where {X} = new{X}("", Properties([SkewSymmetric()]), SingleValuedRelation{X,X}())
+    SkewSymmetricLinearMap{X}() where {X} = new{X}("SkewSymmetricLinearMap{$X}", Properties([SkewSymmetric()]), SingleValuedRelation{X,X}())
 end
 
 """
@@ -79,7 +79,7 @@ mutable struct Functional{X} <: AbstractFunctional{X}
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
     
-    Functional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}())
+    Functional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("Functional{$X}", Properties(), SingleValuedRelation{X,F}())
 end
 
 mutable struct SubdifferentiableFunctional{X} <: AbstractSubdifferentiableFunctional{X}
@@ -88,7 +88,7 @@ mutable struct SubdifferentiableFunctional{X} <: AbstractSubdifferentiableFuncti
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    SubdifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), Dict(Subdifferential => Operator{X,X}()))
+    SubdifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("SubdifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Subdifferential => Operator{X,X}()))
 end
 
 mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X}
@@ -97,7 +97,7 @@ mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+    DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
 end
 
 mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
@@ -106,7 +106,7 @@ mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFu
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    TwiceDifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}(), Hessian => Map{X,SymmetricLinearMap{X}}()))
+    TwiceDifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("TwiceDifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}(), Hessian => Map{X,SymmetricLinearMap{X}}()))
 end
 
 mutable struct QuadraticFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
@@ -115,21 +115,16 @@ mutable struct QuadraticFunctional{X} <: AbstractTwiceDifferentiableFunctional{X
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    QuadraticFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => LinearMap{X,X}(), Hessian => SymmetricLinearMap{X}()))
+    QuadraticFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("QuadraticFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => LinearMap{X,X}(), Hessian => SymmetricLinearMap{X}()))
 end
 
 mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
-    # dual::Union{X,Missing}
-    
-    # linear functionals are always the dual of a vector
-    # LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), missing)  # [Linear()]
-    # LinearFunctional{X}(x::X) where {F<:Field, X<:VectorSpace{F}} = new{X}("", Properties(), SingleValuedRelation{X,F}(), x)
 
     function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
-        new{X}("", Properties(), SingleValuedRelation{X,F}())
+        new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
     end
 end
 
@@ -138,7 +133,7 @@ mutable struct ZeroFunctional{X} <: AbstractLinearFunctional{X}
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
     
-    ZeroFunctional{X}() where {X} = new{X}("", Properties())  # [Linear()]
+    ZeroFunctional{X}() where {X} = new{X}("ZeroFunctional{$X}", Properties())  # [Linear()]
 end
 
 iszero(o::Oracle) = false
@@ -173,22 +168,24 @@ julia> A = LinearOperator{Rⁿ}()
 julia> oracle(A') == A.transpose  # true
 ```
 """
-oracle(o::Oracle) = o
-oracle(w::Wrapper{<:Oracle}) = unwrap(w)
+# oracle(o::Oracle) = o
+# oracle(w::Wrapper{<:Oracle}) = unwrap(w)
 
 """
     relation(o)
 
 The relation associated with an oracle (or its wrapper).
 """
-relation(o) = oracle(o).relation
+relation(o::OracleOrWrapper) = unwrap(o).relation
 
 """
     associations(o)
 
 Get the set of oracles associated with the oracle `o`.
 """
-associations(o::OracleOrWrapper) = hasproperty(oracle(o), :associations) ? oracle(o).associations : Associations()
+function associations(o::OracleOrWrapper)
+    hasproperty(unwrap(o), :associations) ? unwrap(o).associations : Associations()
+end
 
 """
     samples(o)
@@ -254,20 +251,50 @@ julia> isequal(A(x), A*x)  # true
 """
 function sample end
 
-function sample(o::OracleOrWrapper, x, l::String = "")
+sample(w::Wrapper, x, l::String = "") = sample(unwrap(w), x, l)
+
+function sample(o::Oracle, x, l::String = "")
     if iszero(o) || iszero(x)
         return codomain(o)(Zero())
     end
     y = sample(relation(o), x)
-    label!(y, isempty(l) ? defaultlabel(oracle(o),x) : l)
-    push!(x.oracles, oracle(o))
-    push!(y.oracles, oracle(o))
+    label!(y, isempty(l) ? defaultlabel(o,x) : l)
+    push!(x.oracles, o)
+    push!(y.oracles, o)
     y
 end
 
-sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(0)
+sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(Zero())
 
-# function sample(o::AbstractLinearFunctional{X}, x::X, label="") where {F<:Field, X<:InnerProductSpace{F}}
+function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
+
+    # if x is zero, then return the scalar zero
+    if iszero(o) || iszero(x)
+        F(Zero())
+        
+    # else if x has an empty decomposition, sample it directly
+    elseif isempty(decomposition(x))
+        y = sample(relation(o), x)
+        label!(y, defaultlabel(o,x))
+        push!(x.oracles, o)
+        push!(y.oracles, o)
+        y
+        
+    # otherwise, sample each element of the decomposition
+    else
+        y = F(Zero())
+        for (key,value) ∈ weights(selfdecomp(x))
+            y0 = sample(relation(o), key)
+            label!(y0, defaultlabel(o, key))
+            push!(key.oracles, o)
+            push!(y0.oracles, o)
+            y += value*y0
+        end
+        y
+    end
+end
+
+# function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}}
     
 #     if iszero(x) || iszero(o)
 #         F(0)
@@ -292,31 +319,44 @@ sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(0
 #     y
 # end
 
-sample(w::Dual{X}, x::X) where {X<:VectorSpace} = sample(unwrap(w), x, defaultlabel(w,x))
-
-
 # Sample a linear function of linear functionals by taking a linear combination of samples of each functional
-function sample(o::LinearDecomposition{T}, x::X) where {F<:Field, X<:VectorSpace{F}, T<:AbstractLinearFunctional{X}}
-    mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=F(0) )
-end
+# function sample(o::LinearDecomposition{T}, x::X) where {F<:Field, X<:VectorSpace{F}, T<:AbstractLinearFunctional{X}}
+#     mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=F(0) )
+# end
 
-function sample(o::LinearDecomposition, x)
-    mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=Zero() )
-end
+# function sample(o::LinearDecomposition, x)
+#     mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=Zero() )
+# end
 
 # Overload () to denote sampling
 (o::OracleOrWrapper)(x) = sample(o,x)
 
 # For linear maps, also use * to denote sampling
-*(o::Union{AbstractLinearMap{T1,T2},AbstractLinearFunctional{T1},Wrapper{<:AbstractLinearMap{T1,T2}},Wrapper{<:AbstractLinearFunctional{T1}},Dual{<:T1}}, x::T1) where {T1<:AbstractVectorSpace,T2} = sample(o,x)
+*(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},Dual}, x) = sample(o,x)
 
-# *(o::Dual{X}, x::X) where {X<:VectorSpace} = sample(unwrap(o),x)
+function *(o::Dual{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
+
+    if iszero(o) || iszero(x)
+        F(Zero())
+    else
+        y = F(Zero())
+        for (key1,val1) ∈ weights(selfdecomp(o')), (key2,val2) ∈ weights(selfdecomp(x))
+            orc = unwrap(key1')
+            y0 = sample(relation(orc), key2)
+            label!(y0, defaultlabel(key1', key2))
+            push!(key2.oracles, orc)
+            push!(y0.oracles, orc)
+            y += val1 * val2 * y0
+        end
+        y
+    end
+end
 
 
 ############################################################################################
 # Properties
 
-properties(o::OracleOrWrapper) = oracle(o).properties
+properties(o::OracleOrWrapper) = unwrap(o).properties
 
 ∈(o::OracleOrWrapper, property::Property) = push!(properties(o), property)
 ∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties)
@@ -325,8 +365,8 @@ properties(o::OracleOrWrapper) = oracle(o).properties
 ############################################################################################
 # Inputs / outputs
 
-inputs(o::OracleOrWrapper) = Set(first(p) for p ∈ oracle(o))
-outputs(o::OracleOrWrapper) = Set(last(p) for p ∈ oracle(o))
+inputs(o::OracleOrWrapper) = Set(first(p) for p ∈ unwrap(o))
+outputs(o::OracleOrWrapper) = Set(last(p) for p ∈ unwrap(o))
 
 inputs(s::Set{<:OracleOrWrapper}) = mapreduce(inputs, ∪, s)
 outputs(s::Set{<:OracleOrWrapper}) = mapreduce(outputs, ∪, s)
@@ -335,10 +375,13 @@ domain(::AbstractOperator{X,Y}) where {X,Y} = X
 codomain(::AbstractOperator{X,Y}) where {X,Y} = Y
 codomain(::AbstractFunctional{X}) where {F<:Field, X<:VectorSpace{F}} = F
 
-inputs_outputs(o::OracleOrWrapper) = (pairs=collect(samples(o)); ([first(p) for p ∈ pairs], [last(p) for p ∈ pairs]))
+function inputs_outputs(o::OracleOrWrapper)
+    pairs = collect(samples(o))
+    ([first(p) for p ∈ pairs], [last(p) for p ∈ pairs])
+end
 
-domain(w::Wrapper{<:Oracle}) = domain(oracle(w))
-codomain(w::Wrapper{<:Oracle}) = codomain(oracle(w))
+domain(w::Wrapper{<:Oracle}) = domain(unwrap(w))
+codomain(w::Wrapper{<:Oracle}) = codomain(unwrap(w))
 
 
 ############################################################################################

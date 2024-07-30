@@ -37,10 +37,39 @@ julia> label(y)        # "f(x)"
 """
 function label! end
 
-
 label(x::Union{Expression,Oracle}) = x.label
-label(w::Wrapper{<:Oracle}) = label(oracle(w))
 label(w::Wrapper) = label(unwrap(w))
+
+description(e::Expression) = (isempty(label(e)) ? description(decomposition(e)) : label(e))
+
+function description(d::LinearDecomposition)
+    isempty(d) && return "(empty)"
+    str = ""
+    first = true
+    for (key, value) ∈ weights(d)
+        if first
+            first = false
+            if value == 1
+                str *= string(key)
+            elseif value == -1
+                str *= "-" * string(key)
+            else
+                str *= string(value) * " " * string(key)
+            end
+        else
+            if value == 1
+                str *= " + " * string(key)
+            elseif value == -1
+                str *= " - " * string(key)
+            elseif value ≥ 0
+                str *= " + " * string(value) * " " * string(key)
+            else
+                str *= " - " * string(-value) * " " * string(key)
+            end
+        end
+    end
+    str
+end
 
 ############################################################################################
 # Expressions
