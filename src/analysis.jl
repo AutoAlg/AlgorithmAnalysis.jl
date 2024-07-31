@@ -123,45 +123,6 @@ function info(orcs::Oracles)
     end
 end
 
-
-function transform!(vars, cons, f)
-
-    var_dict = variable_dictionary(vars)
-
-    removed_vars = Expressions()
-
-    for (T,vals) ∈ var_dict
-        if T <: InnerProductSpace
-            vecs = collect(vals)
-            if isdisjoint( vecs, variables(cons) ∪ variables(f) )
-                setdiff!( vars, vecs )
-                union!( removed_vars, vecs )
-                union!( vars, variables(vecs ⊗ vecs) )
-                push!( cons, vecs ⊗ vecs ⪰ 0 )
-
-                for v ∈ vecs, w ∈ vecs
-                    if !ismissing(next(v)) && !ismissing(next(w))
-                        update!( v'*w => next(v)'*next(w) )
-                    end
-                end
-                
-                newvars = variables(vecs ⊗ vecs)
-                con = (vecs ⊗ vecs ⪰ 0)
-
-                for newvar ∈ newvars
-                    add_constraint!(newvar, con)
-                end
-            end
-        end
-    end
-
-    @info "Transformed problem"
-    info(vars)
-    info(cons)
-
-    removed_vars
-end
-
 isimplementable(e::Expression) = e isa R
 isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
 
@@ -216,6 +177,29 @@ function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions)
     optvar_dict
 end
 
+function multiplier(model::JuMP.Model, con::ConeConstraint)
+    K = cone(con)
+    sz = size(con)
+    if sz == (1,1)
+        var = JuMP.@variable(model)
+    else
+        var = JuMP.@variable(model, [1:sz[1],1:sz[2]])
+    end
+
+    if con isa Equality
+        # no constraints
+    elseif con isa Positive
+        JuMP.@constraint(model, var .≥ 0 )
+    elseif con isa Semidefinite
+        JuMP.@constraint(model, var .== var' )
+        JuMP.@constraint(model, 0 ≤ var, JuMP.PSDCone() )
+    else
+        error("Optimization with constraint $con not implemented")
+    end
+
+    var
+end
+
 function maximize(performance::Expression)
 
     @info "PERFORMANCE ESTIMATION"
@@ -235,9 +219,6 @@ function maximize(performance::Expression)
 
     # optimization variables
     optvars = filter( isimplementable, vars )
-
-    # transformed variables and constraints
-    # removed_vars = transform!(vars, cons, performance)
 
     # optimization problem
     model = JuMP.Model(SCS.Optimizer)
@@ -273,35 +254,6 @@ function maximize(performance::Expression)
     # interpolate each oracle
     foreach( interpolate, orcs )
 
-    # add the removed variables back in
-    # union!(vars, removed_vars)
-
-    # # types of variables
-    # var_types = Set( typeof(v) for v ∈ vars )
-
-    # # dictionary of variables of each type
-    # var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
-
-    # # factor Gram matrices to set the value of each vector
-    # for (T,vals) ∈ var_dict
-    #     if T <: InnerProductSpace
-    #         vecs = collect(vals)
-    #         if isempty( vecs ∩ ( variables(cons) ∪ variables(performance) ) )
-    #             G = vecs ⊗ vecs
-    #             Gval = [ value(g) for g ∈ G ]
-    #             E = la.eigen(Gval)
-    #             Λ = E.values
-    #             if any(Λ .≤ 0)
-    #                 @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
-    #                 Λ = abs.(Λ)
-    #             end
-    #             for i = 1:length(vecs)
-    #                 value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
-    #             end
-    #         end
-    #     end
-    # end
-
     @info "Objective value: $(evaluate(performance))"
 
     @info "Analysis complete! Use `evaluate()` to obtain the value of any expression in the algorithm."
@@ -309,72 +261,75 @@ end
 
 
 function stateupdate(vars)
-    x  = collect(v for v ∈ vars if !ismissing(next(v)))
+    x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
     x⁺ = next(x)
-    u  = collect(setdiff(expressions(x⁺), expressions(x)))
+    u  = collect(setdiff(variables(x⁺), variables(x)))
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
     X, X⁺, x, u
 end
 
-# function certify(performance::Field, ρ::Number)
+function certify(performance::Expression, ρ::Number)
     
-#     # variables, constraints, and oracles associated with the performance measure
-#     vars, cons, orcs = variables_constraints_oracles(performance)
+    if !isa(performance, R)
+        error("The performance measure must be a real number in $R.")
+    end
     
-#     lifted_vars = Expressions()
-#     lifted_cons = Constraints()
-    
-#     # for each type of variable...
-#     for T ∈ Set( typeof(v) for v ∈ vars )
-        
-#         # get the variables of that type
-#         vals = Set{T}( v for v ∈ vars if v isa T )
-        
-#         if T <: InnerProductSpace
-            
-#             X, Xp, x, u = stateupdate(vals)
-            
-#             G = T[x; u] ⊗ T[x; u]
-            
-#             Q = linearform(G, performance)
-            
-#             push!(lifted_cons, G ⪰ 0)
-#             push!(lifted_vars, G)
-#             setdiff!(lifted_vars, [a for a ∈ decomposition(G)])
-            
-#         elseif T <: Field
-            
-#             F, Fp, xf, uf = stateupdate(vals)
-            
-#             union!(lifted_vars, vals)
-#             union!(lifted_cons, constraints(vals))
-            
-#         else
-#             error("Unknown variable type $T")
-#         end
-#     end
-    
-#     # the constraints can couple the subspaces...
-#     # ℳ = [ linearform(G, expression(c)) for c in prune!(lifted_cons) ]
-    
-#     lifted_vars, lifted_cons
-    
-#     # nums = Set( v for v ∈ vars if v isa Field )
-#     # vecs = Set( v for v ∈ vars if v isa VectorSpace )
-    
-#     # # state update
-#     # X, Xp, x, u = stateupdate(vecs)
-    
-#     # G = [x; u] ⊗ [x; u]
-    
-#     # Q = linearform(G, performance)
-    
-#     # ℳ = [ linearform(G, expression(c)) for c in prune!(cons) ]
-    
-#     # feas = solve(X,Xp,Q,ℳ,ρ) == MOI.OPTIMAL
-# end
+    # variables, constraints, and oracles associated with the performance measure
+    vars, cons, orcs = variables_constraints_oracles(performance)
+
+    # order the variables
+    vars = collect(vars)
+
+    X, X⁺, x, u = stateupdate(vars)
+
+    # optimization problem
+    model = JuMP.Model(SCS.Optimizer)
+
+    JuMP.set_silent(model)
+
+    # optimization variables
+    JuMP.@variable(model, P[1:length(x)])
+
+    # Lyapunov function
+    V = X'*P
+    V⁺ = X⁺'*P
+    𝒫 = vec(linearform( [x; u] => performance ))
+
+    L1 = 𝒫 - V
+    L2 = V⁺ - ρ*V
+
+    # optimization constraints
+    for con ∈ cons
+
+        λ = multiplier(model, con)
+        μ = multiplier(model, con)
+
+        e = expression(con)
+
+        if e isa Expression
+            M = vec(linearform( [x; u] => λ * e ))
+            N = vec(linearform( [x; u] => μ * e ))
+        elseif e isa Vector
+            M = vec(linearform( [x; u] => λ' * e ))
+            N = vec(linearform( [x; u] => μ' * e ))
+        elseif e isa Matrix
+            M = vec(linearform( [x; u] => la.tr(λ * e) ))
+            N = vec(linearform( [x; u] => la.tr(μ * e) ))
+        end
+
+        L1 += M
+        L2 += N
+    end
+
+    JuMP.@constraint(model, L1 .== 0 )
+    JuMP.@constraint(model, L2 .== 0 )
+
+    JuMP.optimize!(model)
+
+    JuMP.termination_status(model) == JuMP.OPTIMAL
+end
 
 # function solve(X,Xp,Q,ℳ,ρ)
     
@@ -412,11 +367,10 @@ end
 # tr(A) = sum(la.diag(A))
 
 function linearform(p::Pair)
-    A = Float64[ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
-    @show A
-    if !isequal(last(p), A*first(p))
-        error("The expression $(last(p)) is not a linear form in the variable $(first(p))")
-    end
+    A = [ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
+    # if !isequal(last(p), A*first(p))
+    #     error("The expression $(last(p)) is not a linear form in the variable $(first(p))")
+    # end
     A
 end
 
@@ -481,81 +435,9 @@ function rate(performance::Expression)
     @info "Finding the rate of convergence of performance measure $performance"
 
     bsmin( ρ -> certify(performance,ρ), 0, 1 )
-
-    @info "Termination status: $(JuMP.termination_status(model))"
-
-    @info "Assigning values to original variables"
-
-    # set the value of each variable
-    foreach( p -> value!(first(p), JuMP.value(last(p))), optvar_dict )
-
-    # add the removed variables back in
-    union!(vars, removed_vars)
-
-    # types of variables
-    var_types = Set( typeof(v) for v ∈ vars )
-
-    # dictionary of variables of each type
-    var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
-
-    # factor Gram matrices to set the value of each vector
-    for (T,vals) ∈ var_dict
-        if T <: InnerProductSpace
-            vecs = collect(vals)
-            if isempty( vecs ∩ ( expressions(cons) ∪ expressions(performance) ) )
-                G = vecs ⊗ vecs
-                Gval = [ value(g) for g ∈ G ]
-                E = la.eigen(Gval)
-                Λ = E.values
-                if any(Λ .≤ 0)
-                    @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
-                    Λ = abs.(Λ)
-                end
-                for i = 1:length(vecs)
-                    value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
-                end
-            end
-        end
-    end
-
-    @info "Objective value: $(evaluate(performance))"
-
-    @info "Analysis complete! Use `evaluate()` to obtain the value of any expression in the algorithm."
 end
 
-function certify(performance::R, ρ::Number)
-    
-    # variables, constraints, and oracles associated with the performance measure
-    vars, cons, orcs = variables_constraints_oracles(performance)
 
-    # transformed variables and constraints
-    removed_vars = transform!(vars, cons, performance)
-
-    # optimization problem
-    model = JuMP.Model(SCS.Optimizer)
-
-    JuMP.set_silent(model)
-
-    # optimization variables
-    # optvar_dict = Dict{R, JuMP.VariableRef}()
-    # for var ∈ vars
-    #     if var isa R
-    #         optvar_dict[var] = JuMP.@variable(model)
-    #     else
-    #         error("Optimization with variable $var not implemented")
-    #     end
-    # end
-
-    # optimization objective
-    # JuMP.@objective(model, Max, optvar(performance, optvar_dict))
-
-    # optimization constraints
-    # foreach( con -> optcon(model, con, optvar_dict), cons )
-
-    JuMP.optimize!(model)
-
-    JuMP.termination_status(model) == :OPTIMAL
-end
 
 function analysis(currentState, nextState)
     currentVariables, nextVariables = Set(), Set()

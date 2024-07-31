@@ -23,7 +23,7 @@
 
 # Decompositions
 +(::EmptyDecomposition{T}, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
-*(::Number, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
+*(::Any, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
 
 function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
     dict = mergewith(+, weights(x1), weights(x2))
@@ -34,8 +34,8 @@ function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
     end
     LinearDecomposition{T}(dict)
 end
-function *(a::Number, x::LinearDecomposition{T}) where {T}
-    new_weights = Dict{T,Number}(keys(weights(x)) .=> map(x->a*x, values(weights(x))))
+function *(a::DecompositionValue, x::LinearDecomposition{T}) where {T}
+    new_weights = Dict{T,DecompositionValue}(keys(weights(x)) .=> map(x->a*x, values(weights(x))))
     LinearDecomposition{T}( new_weights )
 end
 # +(x1::AffineDecomposition{T}, x2::AffineDecomposition{T}) where {T} = AffineDecomposition{T}( linear(x1) + linear(x2), constant(x1) + constant(x2) )
@@ -56,7 +56,7 @@ function +(e1::T, e2::T) where {T<:AbstractVectorSpace}
     end
 end
 
-function *(a::Number, e::T) where {T<:AbstractVectorSpace}
+function *(a::DecompositionValue, e::T) where {T<:AbstractVectorSpace}
     hasvalue(e) ? T( a*value(e) ) : T( a*selfdecomp(e) )
 end
 
@@ -64,17 +64,14 @@ end
 +(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = +(promote(e1,e2)...)
 -(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = e1 + (-e2)
 -(e::AbstractVectorSpace) = -1*e
-*(e::AbstractVectorSpace, a::Number) = a*e
-/(e::AbstractVectorSpace, a::Number) = (1/a)*e
+*(e::AbstractVectorSpace, a::Any) = a*e
+/(e::AbstractVectorSpace, a::Any) = (1/a)*e
 
 # Scalars with numbers
 # +(a1::F, a2::Number) where {F<:Field} = F( value(a1) + a2, selfdecomp(a1) + a2 )
 # +(a1::Number, a2::Field) = +(promote(a1,a2)...)
 # -(a1::Field, a2::Number) = a1 + (-a2)
 # -(a1::Number, a2::Field) = a1 + (-a2)
-
-
-
 
 
 

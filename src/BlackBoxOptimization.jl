@@ -38,7 +38,7 @@ export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 # constraint
 export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
-export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual
+export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
 export ⪯, ⪰
 
 # relation
@@ -108,7 +108,7 @@ export hierarchy
 # analysis
 export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
 export quadraticform, linearform, tr, optvar, optcon, maximize
-export variable_dictionary, optimization_variable_dictionary, isimplementable
+export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
 
 ############################################################################################
 # Import

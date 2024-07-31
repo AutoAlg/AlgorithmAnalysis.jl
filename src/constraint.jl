@@ -21,6 +21,8 @@ end
 expression(c::Constraint) = error("expression not implemented for constraint $(typeof(c)).")
 set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
 
+size(c::Constraint) = size(expression(c))
+
 struct Satisfied <: Constraint end
 struct Unsatisfied <: Constraint end
 
@@ -56,6 +58,8 @@ const Equality = ConeConstraint{ZeroSet}
 expression(c::ConeConstraint) = c.x
 
 set(::ConeConstraint{K}) where {K<:Cone} = K
+
+cone(c::ConeConstraint) = set(c)
 
 ==(lhs::ConEx, rhs::ConEx) = Equality(lhs-rhs)
 ==(lhs::ConEx, rhs) = Equality(lhs-rhs)

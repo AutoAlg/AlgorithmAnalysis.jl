@@ -3,6 +3,7 @@
 # The zero expression
 
 zero(::T) where {T<:Expression} = T(Zero())
+zero(::Type{T}) where {T<:Expression} = T(Zero())
 
 convert(::Type{T}, ::Zero) where {T<:Expression} = T(Zero())
 
@@ -184,6 +185,12 @@ end
 
 weights(e::Expression) = weights(decomposition(e))
 
+size(e::Expression) = (1,1)
+length(e::Expression) = 1
+
+iterate(e::Expression) = iterate(e,1)
+iterate(e::Expression, state::Int) = (state > length(e) ? nothing : (e, state+1))
+
 
 ############################################################################################
 # Constructors
@@ -244,7 +251,14 @@ end
 ############################################################################################
 # Evaluate
 
-evaluate(e::Expression) = (hasvalue(e) ? value(e) : missing)
-# evaluate(v::Variable) = evaluate(expression(v))
+function evaluate(e::Expression)
+    if hasvalue(e)
+        value(e)
+    elseif hasdecomposition(e)
+        evaluate(decomposition(e))
+    else
+        missing
+    end
+end
 evaluate(x::LinearDecomposition) = mapreduce(p -> last(p)*evaluate(first(p)), +, weights(x))
 evaluate(a::AbstractArray{<:Expression}) = [ evaluate(e) for e ∈ a ]

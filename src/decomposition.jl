@@ -26,14 +26,14 @@ Decomposition of an expression as a linear function of other expressions.
 """
 mutable struct LinearDecomposition{T} <: AbstractLinearDecomposition{T}
     label::String
-    weights::Dict{T,Number}
+    weights::Dict{T, DecompositionValue}
 
-    LinearDecomposition{T}() where {T} = new{T}("",Dict{T,Number}())
+    LinearDecomposition{T}() where {T} = new{T}("",Dict{T,DecompositionValue}())
 
-    LinearDecomposition(x::T) where {T} = new{T}("",Dict{T,Number}(x=>1))
+    LinearDecomposition(x::T) where {T} = new{T}("",Dict{T,DecompositionValue}(x=>1))
 
-    function LinearDecomposition{T}(weights::Dict{<:T,<:Number}) where {T}
-        new{T}( "", Dict{T,Number}(weights) )
+    function LinearDecomposition{T}(weights::Dict{<:T,<:DecompositionValue}) where {T}
+        new{T}( "", Dict{T,DecompositionValue}(weights) )
     end
 end
 

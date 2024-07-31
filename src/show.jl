@@ -73,10 +73,6 @@ function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     end
 end
 
-# Variables
-# show(io::IO, v::Variable) = show(io, expression(v))
-# show(io::IO, mime::MIME"text/plain", v::Variable) = show(io, mime, expression(v))
-
 show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", last(p))
 
 # Associations

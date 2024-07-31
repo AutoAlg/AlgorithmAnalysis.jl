@@ -139,8 +139,11 @@ struct SmoothStronglyConvex <: AbstractTwoPointLinearQuadraticConstraint
     b::Real
 end
 
-struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end  # fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
-struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end           # fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
+# fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
+struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end
+
+# fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
+struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end
 
 
 """
@@ -279,10 +282,15 @@ end
 
 function constraints(o::AbstractLinearFunctional, ::Linear)
     vecs = collect(allvecs(o))
+    for v ∈ vecs, w ∈ vecs
+        if !ismissing(next(v)) && !ismissing(next(w))
+            update!( v'*w => next(v)'*next(w) )
+        end
+    end
     Constraints([ vecs ⊗ vecs ⪰ 0 ])
 end
 
-interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for oracle $o"
+interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for $o"
 interpolate(w::Wrapper) = interpolate(unwrap(w))
 
 function interpolate(o::AbstractLinearFunctional)

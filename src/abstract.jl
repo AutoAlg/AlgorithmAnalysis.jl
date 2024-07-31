@@ -199,3 +199,5 @@ const ScalarValue{T} = Union{Number,Decomposition{T},Missing}
 const VectorValue{T} = Union{Vector,Zero,Decomposition{T},Missing}
 
 const ArrayOrSet{T} = Union{AbstractArray{<:T}, AbstractSet{<:T}}
+
+const DecompositionValue = Union{Number, JuMP.VariableRef, JuMP.AffExpr}
