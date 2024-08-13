@@ -7,42 +7,6 @@ zero(::Type{T}) where {T<:Expression} = T(Zero())
 
 convert(::Type{T}, ::Zero) where {T<:Expression} = T(Zero())
 
-# +(x::VectorExpression, ::Zero) = x
-# +(::Zero, x::VectorExpression) = x
-# -(x::VectorExpression, ::Zero) = x
-# -(::Zero, x::VectorExpression) = -x
-# *(::Any, ::Zero) = Zero()
-# *(::Zero, ::Any) = Zero()
-# *(::VectorExpression, ::Zero) = Zero()
-# *(::Zero, ::VectorExpression) = Zero()
-# *(::Zero, ::LinearDecomposition) = Zero()
-# /(::Any, ::Zero) = NaN
-# /(::Zero, ::Any) = Zero()
-# /(::VectorExpression, ::Zero) = NaN
-# /(::Zero, ::VectorExpression) = Zero()
-
-############################################################################################
-# Variable
-
-# mutable struct Variable{T} <: Expression
-#     e::T
-
-#     function Variable(e)
-#         if e isa Expression && isempty(decomposition(e))
-#             new{typeof(e)}(e)
-#         else
-#             error("A variable must be an expression with an empty decomposition")
-#         end
-#     end
-# end
-
-# const Variables = Set{Variable}
-
-# convert(::Type{Variable}, e::Expression) = Variable(e)
-# convert(::Type{Expression}, v::Variable) = Expression(v)
-
-# expression(v::Variable) = v.e
-
 
 ############################################################################################
 # Macro definitions of concrete expression types
@@ -56,7 +20,6 @@ macro field(s::Symbol)
             constraints::Constraints
             oracles::Oracles
             next::State{$(esc(s))}
-            previous::State{$(esc(s))}
         end
     end
 end
@@ -73,7 +36,6 @@ macro vectorspace(ex::Expr)
             constraints::Constraints
             oracles::Oracles
             next::State{$(esc(ex.args[1]))}
-            previous::State{$(esc(ex.args[1]))}
         end
     end
 end
@@ -90,7 +52,6 @@ macro normedvectorspace(ex::Expr)
             constraints::Constraints
             oracles::Oracles
             next::State{$(esc(ex.args[1]))}
-            previous::State{$(esc(ex.args[1]))}
         end
     end
 end
@@ -107,14 +68,52 @@ macro innerproductspace(ex::Expr)
             constraints::Constraints
             oracles::Oracles
             next::State{$(esc(ex.args[1]))}
-            previous::State{$(esc(ex.args[1]))}
             associations::Associations
 
-            function $(esc(ex.args[1]))(label::String, value::VectorValue, constraints::Constraints, oracles::Oracles, next::State, previous::State)
+            function $(esc(ex.args[1]))(label::String, value::VectorValue, constraints::Constraints, oracles::Oracles, next::State)
                 associations = Dict(Dual => LinearFunctional{$(esc(ex.args[1]))}())
-                new(label, value, constraints, oracles, next, previous, associations)
+                new(label, value, constraints, oracles, next, associations)
             end
         end
+    end
+end
+
+
+############################################################################################
+# Constructors
+
+# label
+function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
+    T(label, missing, Constraints(), Oracles(), missing)
+end
+
+# value
+function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
+    if isempty(value)
+        label = "Variable{$T}"
+    elseif iszero(value)
+        label = "0"
+    else
+        label = ""
+    end
+    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
+        first(keys(weights(value)))
+    else
+        T(label, value, Constraints(), Oracles(), missing)
+    end
+end
+function (::Type{T})(value::VectorValue{T}) where {T<:VectorSpace}
+    if isempty(value)
+        label = "Variable{$T}"
+    elseif iszero(value)
+        label = "0"
+    else
+        label = ""
+    end
+    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
+        first(keys(weights(value)))
+    else
+        T(label, value, Constraints(), Oracles(), missing)
     end
 end
 
@@ -173,79 +172,13 @@ end
 next!(x::T, y::State{T}) where {T<:Expression} = x.next = y
 next(x::Expression) = x.next
 next(a::AbstractArray{<:Expression}) = [ next(x) for x ∈ a ]
-previous!(x::T, y::State{T}) where {T<:Expression} = x.previous = y
-previous(x::Expression) = x.previous
-previous(a::AbstractArray{<:Expression}) = [ previous(x) for x ∈ a ]
 
 function update!(p::Pair{T, <:State{T}}) where {T}
     next!(first(p), last(p))
-    # previous!(last(p), first(p))
     nothing
 end
 
 weights(e::Expression) = weights(decomposition(e))
-
-size(e::Expression) = (1,1)
-length(e::Expression) = 1
-
-iterate(e::Expression) = iterate(e,1)
-iterate(e::Expression, state::Int) = (state > length(e) ? nothing : (e, state+1))
-
-
-############################################################################################
-# Constructors
-
-# label
-function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
-    T(label, missing, Constraints(), Oracles(), missing, missing)
-end
-
-# value
-function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
-    if isempty(value)
-        label = "Variable{$T}"
-    elseif iszero(value)
-        label = "0"
-    else
-        label = ""
-    end
-    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
-        first(keys(weights(value)))
-    else
-        T(label, value, Constraints(), Oracles(), missing, missing)
-    end
-end
-function (::Type{T})(value::VectorValue{T}) where {T<:VectorSpace}
-    if isempty(value)
-        label = "Variable{$T}"
-    elseif iszero(value)
-        label = "0"
-    else
-        label = ""
-    end
-    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
-        first(keys(weights(value)))
-    else
-        T(label, value, Constraints(), Oracles(), missing, missing)
-    end
-end
-
-
-# value and decomposition (at least one of which must be empty)
-# function (::Type{T})(value, decomposition::Decomposition{T}) where {T<:AbstractVectorSpace}
-#     if isempty(decomposition)
-#         T(value)
-#     elseif ismissing(value)
-#         T(decomposition)
-#     else
-#         error("In an expression, the value must be missing or the decomposition empty; the value is $value and the decomposition is $decomposition")
-#     end
-# end
-
-# zero
-# function (::Type{T})(::Zero) where {T<:AbstractVectorSpace}
-#     T("0", Zero(), Constraints(), Oracles(), missing, missing)
-# end
 
 
 ############################################################################################

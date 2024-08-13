@@ -82,7 +82,7 @@ Any concrete subtype of `Oracle` must have the following fields:
 
 Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
 """
-abstract type Oracle end
+abstract type Oracle <: Expression end
 
 """
     Wrapper{T}

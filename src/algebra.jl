@@ -1,24 +1,4 @@
 ############################################################################################
-# CONVERSION AND PROMOTION
-
-# promote_rule(::Type{LinearDecomposition{T}}, ::Type{T}) where {T} = LinearDecomposition{T}
-
-# convert(::Type{LinearDecomposition{T}}, x::T) where {T} = LinearDecomposition{T}(x)
-
-# +(x::Decomposition, y::Decomposition) = +(promote(x,y)...)
-# +(x::Decomposition, y) = +(promote(x,y)...)
-# +(x, y::Decomposition) = +(promote(x,y)...)
-# -(x::Decomposition, y::Decomposition) = +(promote(x,y)...)
-# -(x::Decomposition, y) = +(promote(x,y)...)
-# -(x, y::Decomposition) = +(promote(x,y)...)
-# +(x::VectorWrapperDecomposition, y::VectorWrapperDecomposition) = +(promote(x,y)...)
-# -(x::VectorWrapperDecomposition, y::VectorWrapperDecomposition) = -(promote(x,y)...)
-# *(x::VectorWrapperDecomposition, y::VectorWrapperDecomposition) = *(promote(x,y)...)
-# /(x::VectorWrapperDecomposition, y::VectorWrapperDecomposition) = /(promote(x,y)...)
-
-
-
-############################################################################################
 # ALGEBRA
 
 # Decompositions
