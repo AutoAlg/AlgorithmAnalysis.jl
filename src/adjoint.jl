@@ -31,27 +31,35 @@ julia> y = Rⁿ();  (x+y)'  # linear functional z ↦ ⟨x,z⟩ + ⟨y,z⟩
 """
 function adjoint end
 
-adjoint(o::Oracle) = error("Oracle $o does not have an associated operator o'. To specify a related operator, specialize `adjoint` for this oracle type.")
-adjoint(o::AbstractDifferential) = error("Differential $o does not have an associated operator o'. To specify a related operator, specialize `adjoint' for this differential type.")
+function adjoint(o::Oracle)
+    error("Oracle type $(typeof(o)) does not have an associated operator o'. To specify a related operator, specialize `adjoint` for this oracle type.")
+end
+
 adjoint(o::AbstractLinearMap) = Transpose{typeof(o)}(o)
 adjoint(o::Transpose{<:AbstractLinearMap}) = o.parent
 adjoint(o::AbstractSymmetricLinearMap) = o
 adjoint(o::AbstractSkewSymmetricLinearMap) = LinearDecomposition{typeof(o)}(Dict(o => -1))
 adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
 adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
-adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional}) = Hessian{typeof(o.parent)}(o.parent)
-adjoint(o::LinearDecomposition{<:Oracle}) = mapreduce( p -> last(p) * first(p)', +, weights(o) )
-adjoint(o::AbstractLinearFunctional) = o.dual
-adjoint(::ZeroFunctional{X}) where {X} = X(Zero())
-adjoint(a::F) where {F<:Field} = a
-adjoint(G::GramMatrix) = G
 
-function adjoint(x::X) where {F<:Field, X<:InnerProductSpace{F}}
+function adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional})
+    Hessian{typeof(o.parent)}(o.parent)
+end
+
+function adjoint(x::LinearDecomposition)
+    mapreduce( p -> last(p) * first(p)', +, weights(x); init=Zero() )
+end
+
+adjoint(o::Dual{<:InnerProductSpace}) = o.parent
+adjoint(::ZeroFunctional{X}) where {X} = X(Zero())
+adjoint(a::Field) = a
+
+function adjoint(x::X) where {X<:InnerProductSpace}
     if iszero(x)
         ZeroFunctional{X}()
-    elseif isvariable(x)
-        x.dual
     else
-        mapreduce( p -> p.second * p.first', +, weights(decomposition(x)) )
+        Dual{typeof(x)}(x)
     end
 end
+
+adjoint(K::Type{<:Cone}) = dual(K)

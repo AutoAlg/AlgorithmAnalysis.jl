@@ -1,7 +1,7 @@
 function maximize(performance::R; optimizer=SCS.Optimizer)
 
-    # variables and constraints associated with the objective
-    vars, cons = variables_constraints(performance)
+    # variables and constraints associated with the performance measure
+    vars, cons, _ = variables_constraints_oracles(performance)
 
     # construct the lifted transformation
     t = transform(vars, cons)
@@ -23,70 +23,28 @@ function maximize(performance::R; optimizer=SCS.Optimizer)
     problem.optval
 end
 
-"""
-    variables_constraints
-
-Recursively find all variables and constraints associated with a real scalar expression.
-"""
-function variables_constraints end
-
-function variables_constraints(x::Expression)
-    vars = variables(x)
-    cons = constraints(vars) ∪ constraints(oracles(vars))
-    
-    vars, cons
-    # (vars ∪ variables(vars), cons ∪ constraints(cons))
-end
-
-# function variables_constraints(x::R)
-
-#     scalars = variables(x)
-#     vectors = Set(o' for o ∈ oracles(scalars))
-#     orcs = oracles(vectors ∪ scalars)
-#     cons = constraints(outputs(orcs))
-
-#     count = 0
-
-#     while true
-
-#         # get the variables associated with those constraints
-#         vars_new = variables(cons)
-
-#         # get the constraints associated with those variables
-#         cons_new = constraints(vars_new)
-
-#         # if no new variables or constraints are found, then exit
-#         if vars_new ⊆ vars && cons_new ⊆ cons
-#             break
-
-#         # otherwise, append the new variables and constraints and repeat
-#         else
-#             vars = vars ∪ vars_new
-#             cons = cons ∪ cons_new
-#         end
-
-#         if count > 10
-#             @warn "Limit reached before all variables and constraints were found."
-#             break
-#         else
-#             count += 1
-#         end
-#     end
-#     vars, cons
-# end
-
-"Set of constraints that depend on a set of variables."
-constraints(vars::Set{<:Expression}) = mapreduce(constraints, ∪, vars; init=Constraints())
-
-"Set of variables in a constraint or set of constraints."
-variables(c::ConeConstraint) = variables(expression(c))
-variables(cons::Set{<:Constraint}) = mapreduce(variables, ∪, cons; init=Expressions())
-variables(A::AbstractArray{<:Expression}) = mapreduce(variables, ∪, A)
-
 function transform(vars, cons)
+    
+    # types of variables
+    var_types = Set( typeof(v) for v ∈ vars )
 
-    scalars = collect(filter(x -> x isa R, vars))
-    points  = collect(filter(x -> x isa Rⁿ, vars))
+    # dictionary mapping variable types to the associated variables
+    var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
+
+    # lifted variables and constraints
+    lifted_vars = vars
+    lifted_cons = cons
+
+    for (T,vals) ∈ var_dict
+        if T <: InnerProductSpace
+            v = collect(vals)
+            push!(lifted_cons, v ⊗ v ⪰ 0)
+            setdiff!(lifted_vars, v)
+        end
+    end
+
+    scalars = collect(v for v ∈ vars if v isa R)
+    points  = collect(v for v ∈ vars if v isa Rⁿ)
 
     X = (points, scalars)
 

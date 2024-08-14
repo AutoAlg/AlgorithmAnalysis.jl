@@ -139,8 +139,11 @@ struct SmoothStronglyConvex <: AbstractTwoPointLinearQuadraticConstraint
     b::Real
 end
 
-struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end  # fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
-struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end           # fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
+# fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
+struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end
+
+# fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
+struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end
 
 
 """
@@ -157,8 +160,8 @@ Quadratic form of a quadratic constraint.
 """
 quadraticform(p::PointwiseQuadraticConstraint) = p.M
 quadraticform(p::IncrementalQuadraticConstraint) = p.M
-quadraticform(p::SlopeRestricted) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
-quadraticform(p::SectorBounded) = [-2*p.a/p.b 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SlopeRestricted) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SectorBounded) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
 
 """
     linearquadraticform(p)
@@ -177,19 +180,6 @@ linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p
 
 
 ############################################################################################
-# Add a property to an oracle only if its constraints are implemented
-function ∈(o::Oracle, p::Property{T}) where {T<:Oracle}
-    for s ∈ reverse(suboracles(o))
-        if s isa T
-            push!(properties(s), p)
-            return
-        end
-    end
-    error("The oracle of type $(typeof(o)) does not have a property of type $(typeof(p)).")
-end
-
-
-############################################################################################
 # Constraints
 
 """
@@ -200,11 +190,13 @@ All constraints for an oracle, or the constraints for an oracle to have a given 
 """
 function constraints end
 
-constraints(o::OracleOrWrapper) = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints()) ∪ mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
 
-constraints(s::Set{<:OracleOrWrapper}) = mapreduce(constraints , ∪, s; init=Constraints())
-
-# constraints(o::OracleOrWrapper, p::Property) = constraints(suboracle(o), p)
+function constraints(o::OracleOrWrapper)
+    cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
+    cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+    cons1 ∪ cons2
+end
 
 # Operators
 
@@ -214,7 +206,7 @@ function constraints(o::AbstractOperator, p::AbstractPointwiseQuadraticConstrain
 end
 
 function constraints(o::AbstractOperator, p::AbstractIncrementalQuadraticConstraint)
-    Constraints( 0 ≤ [xi-xj; yi-yj]'*quadraticform(p)*[xi-xj; yi-yj] for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    Constraints( 0 ≤ [xᵢ-xⱼ; yᵢ-yⱼ]'*quadraticform(p)*[xᵢ-xⱼ; yᵢ-yⱼ] for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
 end
 
 triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
@@ -261,11 +253,11 @@ function constraints(o::AbstractLinearMap{X,Y}, ::Linear) where {F<:Field, X<:In
 end
 
 function constraints(o::AbstractLinearMap{X,X}, ::Symmetric) where {X<:InnerProductSpace}
-    Constraints( xi'*yj == yi'*xj for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    Constraints( xᵢ'*yⱼ == yᵢ'*xⱼ for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
 end
 
 function constraints(o::AbstractLinearMap{X,X}, ::SkewSymmetric) where {X<:InnerProductSpace}
-    Constraints( xi'*yj + yi'*xj == 0 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    Constraints( xᵢ'*yⱼ + yᵢ'*xⱼ == 0 for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
 end
 
 # Symmetric linear maps
@@ -273,6 +265,47 @@ end
 function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace, μ, L}
     x, y = inputs_outputs(o)
     Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
+end
+
+
+function allvecs(o::AbstractLinearFunctional)
+    vecs = inputs(o)
+    while true
+        vecs_new = inputs( filter( x -> x isa AbstractLinearFunctional, oracles(vecs) ) )
+        if vecs_new ⊆ vecs
+            break
+        end
+        union!( vecs, vecs_new )
+    end
+    vecs
+end
+
+function constraints(o::AbstractLinearFunctional, ::Linear)
+    vecs = collect(allvecs(o))
+    for v ∈ vecs, w ∈ vecs
+        if !ismissing(next(v)) && !ismissing(next(w))
+            update!( v'*w => next(v)'*next(w) )
+        end
+    end
+    Constraints([ vecs ⊗ vecs ⪰ 0 ])
+end
+
+interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for $o"
+interpolate(w::Wrapper) = interpolate(unwrap(w))
+
+function interpolate(o::AbstractLinearFunctional)
+    vecs = collect(allvecs(o))
+    # factor Gram matrix to set the value of each vector
+    G = value(vecs ⊗ vecs)
+    E = la.eigen(G)
+    Λ = E.values
+    if any(Λ .≤ 0)
+        @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
+        Λ = abs.(Λ)
+    end
+    for i = 1:length(vecs)
+        value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
+    end
 end
 
 
