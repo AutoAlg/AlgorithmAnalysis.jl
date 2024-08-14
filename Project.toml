@@ -17,7 +17,7 @@ Zeros = "bd1ec220-6eb4-527a-9b49-e79c3db6233b"
 
 [compat]
 AbstractTrees = "0.4"
-Convex = "0.15"
+Convex = "0.15, 0.16"
 Documenter = "1"
 JuMP = "1"
 Revise = "3"
