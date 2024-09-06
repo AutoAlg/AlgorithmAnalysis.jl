@@ -68,14 +68,9 @@ function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
         !isempty(constraints(e)) && print(io, "\n  Constraints: ", join(constraints(e), ", "))
         !isempty(oracles(e)) && print(io, "\n  Oracles: ", join(oracles(e), ", "))
         !ismissing(next(e)) && print(io, "\n  Next: ", next(e))
-        !ismissing(previous(e)) && print(io, "\n  Previous: ", previous(e))
         !isempty(associations(e)) && print(io, "\n  Associations: ", join(associations(e),", "))
     end
 end
-
-# Variables
-# show(io::IO, v::Variable) = show(io, expression(v))
-# show(io::IO, mime::MIME"text/plain", v::Variable) = show(io, mime, expression(v))
 
 show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", last(p))
 

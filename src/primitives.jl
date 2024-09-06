@@ -4,12 +4,11 @@
 
 function first_order_stationary_point(o::AbstractLocallyLipschitzFunctional{X}) where {F<:Field, X<:VectorSpace{F}}
   x, f, g = X(), F(), X(Zero())
-  push!(relation(o), x => f)
   push!(relation(o'), x => g)
   next!(x, x)
   next!(f, f)
   next!(g, g)
-  x, f, g
+  x
 end
 
 # function first_order_stationary_point(o::DifferentiableFunction{X,F}) where {X,F}

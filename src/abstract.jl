@@ -82,7 +82,7 @@ Any concrete subtype of `Oracle` must have the following fields:
 
 Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
 """
-abstract type Oracle end
+abstract type Oracle <: Expression end
 
 """
     Wrapper{T}
@@ -199,3 +199,5 @@ const ScalarValue{T} = Union{Number,Decomposition{T},Missing}
 const VectorValue{T} = Union{Vector,Zero,Decomposition{T},Missing}
 
 const ArrayOrSet{T} = Union{AbstractArray{<:T}, AbstractSet{<:T}}
+
+const DecompositionValue = Union{Number, JuMP.VariableRef, JuMP.AffExpr}

@@ -1,22 +1,5 @@
-# Organizations: Mathematics > JuliaOptAlg - Automated and assisted analysis of optimization algorithms in Julia
-#   - VectorSpaces.jl (see VectorInterface.jl)
-#   - BlackBoxOracles.jl
-#   - OptimizationAlgorithms.jl
-#   - PerformanceEstimation.jl
-#   - LyapunovAnalysis.jl
-module BlackBoxOptimization
 
-# TODO
-# - constraints with ±Inf
-# - clean up show methods
-# - more interpolation conditions
-# - interpolation conditions inherent to function classes (e.g., linear, quadratic)
-# - algorithms
-# - performance measures
-# - PEP
-# - Lyapunov analysis
-# - benchmarking
-# - documentation
+module AlgorithmAnalysis
 
 
 ############################################################################################
@@ -38,7 +21,7 @@ export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 # constraint
 export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
-export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual
+export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
 export ⪯, ⪰
 
 # relation
@@ -108,7 +91,7 @@ export hierarchy
 # analysis
 export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
 export quadraticform, linearform, tr, optvar, optcon, maximize
-export variable_dictionary, optimization_variable_dictionary, isimplementable
+export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
 
 ############################################################################################
 # Import
