@@ -50,6 +50,6 @@ end
 
 zero(::R) = R(0)
 
-zero(::Type{JuMP.GenericAffExpr}) = JuMP.AffExpr(0)
+zero(::Type{JuMP.GenericAffExpr{_A, JuMP.VariableRef} where _A}) = JuMP.AffExpr(0)
 
 iszero(e::R) = e.value isa Zero || (e.value isa Number && iszero(e.value))

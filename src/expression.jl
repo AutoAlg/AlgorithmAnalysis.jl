@@ -180,6 +180,11 @@ end
 
 weights(e::Expression) = weights(decomposition(e))
 
+size(e::Expression) = (1,1)
+length(e::Expression) = 1
+
+iterate(e::Expression) = iterate(e,1)
+iterate(e::Expression, state::Int) = (state > length(e) ? nothing : (e, state+1))
 
 ############################################################################################
 # Evaluate
