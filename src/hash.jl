@@ -33,6 +33,8 @@ end
 ############################################################################################
 # IsEqual
 
+isequal(::Expression, ::Expression) = false
+
 function isequal(x1::T, x2::T) where {T<:Expression}
     if !ismissing(x1.value) && !ismissing(x2.value)
         isequal(x1.value, x2.value)

@@ -19,7 +19,7 @@ global_logger(ConsoleLogger(stderr, Logging.Info))
 
     # objective function
     f = DifferentiableFunctional{Rⁿ}()
-    xs, fs, gs = first_order_stationary_point(f)
+    xs = first_order_stationary_point(f)
     f' ∈ SectorBounded(m, L, xs, gs)
 
     # algorithm
