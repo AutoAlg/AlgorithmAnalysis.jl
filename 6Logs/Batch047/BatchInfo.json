@@ -1,0 +1,10 @@
+{
+    "Batch ID": "Batch047",
+    "Runs Per Batch": 5,
+    "Language": "Julia",
+    "Compute Media": "CPU",
+    "Concurrency Mode": "Single-Core",
+    "Threads Used": 1,
+    "Algorithm Type": "Gradient Descent",
+    "Number of Steps": 47
+}

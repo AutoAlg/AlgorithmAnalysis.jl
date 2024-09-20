@@ -1,0 +1,29 @@
+[ Info: PERFORMANCE ESTIMATION
+[ Info: Maximizing the performance measure performance
+[ Info: Algorithmic objects
+[ Info:  ⋅ Variables
+[ Info:    ⋅ 7 variables in Rⁿ
+[ Info:    ⋅ 49 variables in R
+[ Info:  ⋅ Constraints
+[ Info:    ⋅ 4 Semidefinite
+[ Info:    ⋅ 6 Positive
+[ Info:  ⋅ Oracles
+[ Info:    ⋅ 7 LinearFunctional{Rⁿ}
+[ Info:    ⋅ 1 Map{Rⁿ, Rⁿ}
+[ Info: Setting up the optimization problem
+[ Info:   ✓ variables
+[ Info:   ✓ objective
+[ Info:   ✓ constraints
+[ Info: Termination status: OPTIMAL
+[ Info: Assigning values to original variables
+┌ Warning: Interpolating oracle not implemented for ∇f
+└ @ AlgorithmAnalysis S:\Research Material\CSE\MU\Project\1Code\AlgorithmAnalysis.jl\1CPU\src\interpolation.jl:293
+[ Info: Objective value: 0.13443915135177023
+[ Info: Analysis complete! Use `evaluate()` to obtain the value of any expression in the algorithm.
+------ BENCHMARKING RESULTS ------
+Setup Time: 1.4069316 seconds
+Algorithm Computation Time: 11.8522559 seconds
+Optimization Time: 2.8059718 seconds
+RAM Usage: 0.088948 MB
+Threads Used: 1
+----- END OF RESULTS -----
