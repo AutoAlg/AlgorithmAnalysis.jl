@@ -33,6 +33,8 @@ end
 ############################################################################################
 # IsEqual
 
+isequal(::Expression, ::Any) = false
+isequal(::Any, ::Expression) = false
 isequal(::Expression, ::Expression) = false
 
 function isequal(x1::T, x2::T) where {T<:Expression}

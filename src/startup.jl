@@ -8,6 +8,7 @@ using Logging
 
 m,L = 1,10
 α = 2/(L+m)
+ρ = (L-m)/(L+m)
 n = 3
 
 global_logger(ConsoleLogger(stderr, Logging.Info))
@@ -30,7 +31,8 @@ global_logger(ConsoleLogger(stderr, Logging.Info))
     x[1] = Rⁿ()
 
     # constraint on initial condition
-    (x[1]-xs)^2 ≤ 1
+    # (scale so that the maximum performance should be one to avoid numerical issues)
+    (x[1]-xs)^2 ≤ ρ^(-2n)
 
     # algorithm
     for k = 1:n
