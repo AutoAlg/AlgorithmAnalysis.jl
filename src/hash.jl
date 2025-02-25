@@ -63,3 +63,7 @@ function isequal(lhs::Constraint, rhs::Constraint)
 end
 isequal(::Satisfied, ::Satisfied) = true
 isequal(::Unsatisfied, ::Unsatisfied) = true
+isequal(::Satisfied, ::Constraint) = false
+isequal(::Unsatisfied, ::Constraint) = false
+isequal(::Constraint, ::Satisfied) = false
+isequal(::Constraint, ::Unsatisfied) = false

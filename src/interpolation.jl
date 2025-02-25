@@ -170,7 +170,7 @@ Linear--quadratic form of a constraint.
 """
 linearquadraticform(p::TwoPointLinearQuadraticConstraint) = (p.m, p.M)
 linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
-
+# linearquadraticform(p::SmoothStronglyConvex) = ([0; 0], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
 
 
 ############################################################################################
@@ -192,11 +192,20 @@ function constraints end
 
 constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
 
-function constraints(o::OracleOrWrapper)
-    cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
-    cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
-    cons1 ∪ cons2
+function constraints(o::OracleOrWrapper, checked)
+    if o ∈ checked
+        return Constraints()
+    else
+        push!(checked, o)
+        cons = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
+        # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+        for a in values(associations(o))
+            union!(cons, constraints(a, checked))
+        end    
+        cons
+    end
 end
+constraints(o::OracleOrWrapper) = constraints(o, Set())
 
 # Operators
 
@@ -267,7 +276,6 @@ function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) wher
     Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
 end
 
-
 function allvecs(o::AbstractLinearFunctional)
     vecs = inputs(o)
     while true
@@ -287,7 +295,35 @@ function constraints(o::AbstractLinearFunctional, ::Linear)
             update!( v'*w => next(v)'*next(w) )
         end
     end
-    Constraints([ vecs ⊗ vecs ⪰ 0 ])
+    # Constraints([ vecs ⊗ vecs ⪰ 0 ])
+    # Gram(vecs)
+    Constraints([ Gram(vecs) ⪰ 0 ])
+end
+
+function gram end
+# gram(o::Wrapper, p::Property) = gram(unwrap(o), p)
+# function gram(o::OracleOrWrapper, checked)
+#     if o ∈ checked
+#         return Set()
+#     else
+#         push!(checked, o)
+#         cons = mapreduce(p -> gram(o,p), ∪, properties(o); init=Set())
+#         # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+#         for a in values(associations(o))
+#             union!(cons, gram(a, checked))
+#         end    
+#         cons
+#     end
+# end
+gram(o::OracleOrWrapper) = gram(unwrap(o))
+function gram(o::AbstractLinearFunctional)
+    vecs = collect(allvecs(o))
+    for v ∈ vecs, w ∈ vecs
+        if !ismissing(next(v)) && !ismissing(next(w))
+            update!( v'*w => next(v)'*next(w) )
+        end
+    end
+    Gram(vecs)
 end
 
 interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for $o"

@@ -23,6 +23,7 @@ export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
 export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
 export ⪯, ⪰
+export Gram, evaluate, ⊂, ⊆, prune_grams, gram_to_constraint
 
 # relation
 export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
@@ -48,8 +49,8 @@ export LinearFunctional, ZeroFunctional
 
 # wrappers
 export Wrapper, unwrap
-export Transpose, AbstractDifferential, AbstractSubdifferential
-export Subdifferential, Gradient, Hessian
+export Transpose, AbstractDifferential, AbstractSubdifferential, TransposeOf
+export Subdifferential, Gradient, Hessian, GradientOf
 
 # decompositions
 export Decomposition, EmptyDecomposition, LinearDecomposition
@@ -60,7 +61,7 @@ export Convex, SmoothStronglyConvex, ConvexIndicator, StronglyConvex, Smooth
 export QuadraticGrowth, Lipschitz
 export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive
 export StronglyMonotone, MaxSingularValue
-export triplets, Triplets, interpolate
+export triplets, Triplets, interpolate, allvecs, gram
 
 # properties
 export Property, Properties
@@ -89,7 +90,7 @@ export first_order_stationary_point
 export hierarchy
 
 # analysis
-export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
+export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify, certifyTMM, grams
 export quadraticform, linearform, tr, optvar, optcon, maximize
 export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
 
@@ -105,7 +106,7 @@ import AbstractTrees
 import Zeros: Zero
 import MathOptInterface as MOI
 
-import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩
+import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊂, ⊆
 import Base: isempty, iszero, isequal
 import Base: promote_rule, convert, show, zero, zeros, adjoint
 import Base: length, Generator, iterate, size, push!, inv, pairs

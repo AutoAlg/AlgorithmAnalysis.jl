@@ -2,22 +2,63 @@
 variables(c::Constraint) = variables(expression(c))
 
 function variables(o::OracleOrWrapper)
-    exps = variables(inputs(o) ∪ outputs(o))
-    for a ∈ values(associations(o))
-        union!(vars, variables(unwrap(a)))
-    end
-    exps
+    # if !(typeof(unwrap(o)) <: AbstractLinearFunctional)
+    vars = variables(inputs(o) ∪ outputs(o))
+    # else
+    #     vars = variables(outputs(o))
+    # end
+    # for a ∈ values(associations(o))
+    for a ∈ associations(o)
+        if first(a) != GradientOf
+            union!(vars, variables(unwrap(last(a))))
+        end
+    end        
+    vars
 end
 
 function variables(X::Union{ArrayOrSet,Generator})
     mapreduce(variables, ∪, X; init=Expressions())
 end
+# function constraints(X::Union{ArrayOrSet,Generator})
+#     cons = Constraints()
+#     for c ∈ X
+#         if length(associations(c))>0 && (first(first(associations(c))) == GradientOf || first(associations(c)) == GradientOf || first(first(associations(c))) == Gradient || first(associations(c)) == Gradient)
+#         else
+#             union!(cons, constraints(c))
+#         end
+#     end        
+#     prune!(cons)
+#     # prune!(mapreduce(constraints, ∪, X; init=Constraints()))
+# end
 function constraints(X::Union{ArrayOrSet,Generator})
     prune!(mapreduce(constraints, ∪, X; init=Constraints()))
 end
+
 function oracles(X::Union{ArrayOrSet,Generator})
     mapreduce(oracles, ∪, X; init=Oracles())
 end
+
+# function grams(s::Set, X::Union{ArrayOrSet,Generator})
+#     for i in X
+#         push!(s, gram(i))
+#     end
+#     s
+# end
+# function push!(s::Set, g::Gram)
+#     push = true
+#     for i in s
+#         if grams_compare(g, i)
+#             delete!(s,i)
+#         end
+#         if grams_compare(i, g)
+#             push = false
+#         end
+#     end
+#     if push
+#         push!(s, g)
+#     end
+#     s
+# end
 
 """
     variables_constraints_oracles
@@ -36,11 +77,9 @@ function variables_constraints_oracles(e::Expression)
 end
 
 function variables_constraints_oracles(vars::Expressions, cons::Constraints, orcs::Oracles)
-
     count = 1
-    
     while true
-        
+    
         # get the variables associated with the constraints and the oracles
         vars_new = variables(cons ∪ orcs)
 
@@ -53,14 +92,32 @@ function variables_constraints_oracles(vars::Expressions, cons::Constraints, orc
         union!( vars_new, variables(filter(!ismissing, next.(vars_new))) )
 
         # if there are no new variables, constraints, or oracles, then exit
-        if vars_new ⊆ vars && orcs_new ⊆ orcs && cons_new ⊆ cons
-            break
+        if vars_new ⊆ vars && orcs_new ⊆ orcs# && cons_new ⊆ cons
+            non_grams_new = Constraints()
+            subset_or_equal = 0
+            for coni in cons_new
+                if expression(coni) isa Gram
+                    subset_or_equal += 1
+                    for conj in cons
+                        if expression(conj) isa Gram && issetequal(expression(conj).vecs, expression(coni).vecs)
+                            subset_or_equal -= 1
+                            break
+                        end
+                    end
+                else
+                    push!(non_grams_new, coni)
+                end
+            end
+            if subset_or_equal == 0 && non_grams_new ⊆ cons
+                break
+            end
         end
 
         # otherwise, append the new information and repeat
         union!( vars, vars_new )
         union!( orcs, orcs_new )
         union!( cons, cons_new )
+
         
         # check for an infinite loop
         if count > 10
@@ -69,11 +126,13 @@ function variables_constraints_oracles(vars::Expressions, cons::Constraints, orc
         
         count += 1
     end
-
-    @info "Algorithmic objects"
-    info(vars)
+    # info(cons)
+    cons = prune!(cons)
+    cons = prune_grams(cons)
+    # @info "Algorithmic objects"
+    # info(vars)
     info(cons)
-    info(orcs)
+    # info(orcs)
     
     vars, cons, orcs
 end
@@ -105,6 +164,9 @@ function info(cons::Constraints)
     for con_type ∈ con_types
         @info "   ⋅ $(length(con_dict[con_type])) $(con_type)"
         @debug "     ⋅ $(con_dict[con_type])"
+    end
+    if length(get(con_dict, Semidefinite, Set())) > 1
+        @info "$(get(con_dict, Semidefinite, Set()))"
     end
 end
 
@@ -262,52 +324,63 @@ end
 
 function stateupdate(vars)
     x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
+    newvars = collect(v for v ∈ vars if v isa R)
     x⁺ = next(x)
-    u  = collect(setdiff(variables(x⁺), variables(x)))
+    # u  = collect(setdiff(variables(x⁺), variables(vars)))
+    u  = collect(setdiff(variables(newvars), variables(x)))
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
     X, X⁺, x, u
 end
+# function certifyTMM(performance::Expression, ρ::Number, q0s, qs1, q01)
+#     if !isa(performance, R)
+#         error("The performance measure must be a real number in $R.")
+#     end
+#     vars, cons, orcs = variables_constraints_oracles(performance)
+#     vars = collect(vars)
+#     X, X⁺, x, u = stateupdate(vars)
 
+#     model = JuMP.Model(SCS.Optimizer)
+#     JuMP.set_silent(model)
+#     # optimization variables
+#     JuMP.@variable(model, P[1:length([x;u])])
+#     L1 = vec(linearform([x;u] => 10*performance+q0s))*P
+#     L2 = vec(linearform([x;u] => -((1-ρ^2)*qs1 + ρ^2*q01)))*P
+
+#     JuMP.@constraint(model, L1 .== 0 )
+#     JuMP.@constraint(model, L2 .== 0 )
+#     JuMP.optimize!(model)
+#     JuMP.termination_status(model) == JuMP.OPTIMAL
+# end
 function certify(performance::Expression, ρ::Number)
-    
     if !isa(performance, R)
         error("The performance measure must be a real number in $R.")
     end
-    
     # variables, constraints, and oracles associated with the performance measure
     vars, cons, orcs = variables_constraints_oracles(performance)
-
     # order the variables
     vars = collect(vars)
-
-    X, X⁺, x, u = stateupdate(vars)
-
+    X, X⁺, x, u = stateupdate(vars) 
     # optimization problem
     model = JuMP.Model(SCS.Optimizer)
-
     JuMP.set_silent(model)
-
     # optimization variables
     JuMP.@variable(model, P[1:length(x)])
-
     # Lyapunov function
     V = X'*P
     V⁺ = X⁺'*P
     𝒫 = vec(linearform( [x; u] => performance ))
-
     L1 = 𝒫 - V
-    L2 = V⁺ - ρ*V
-
+    L2 = V⁺ - ρ^2*V
     # optimization constraints
     for con ∈ cons
-
         λ = multiplier(model, con)
         μ = multiplier(model, con)
-
         e = expression(con)
-
+        if e isa Gram
+            e = evaluate(e)
+        end
         if e isa Expression
             M = vec(linearform( [x; u] => λ * e ))
             N = vec(linearform( [x; u] => μ * e ))
@@ -318,11 +391,9 @@ function certify(performance::Expression, ρ::Number)
             M = vec(linearform( [x; u] => la.tr(λ * e) ))
             N = vec(linearform( [x; u] => la.tr(μ * e) ))
         end
-
         L1 += M
         L2 += N
     end
-
     JuMP.@constraint(model, L1 .== 0 )
     JuMP.@constraint(model, L2 .== 0 )
 

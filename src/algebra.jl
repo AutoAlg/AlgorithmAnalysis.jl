@@ -5,6 +5,20 @@
 +(::EmptyDecomposition{T}, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
 *(::Any, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
 
+function +(x1::Gram, x2::Number)
+    if x2 == 0
+        return x1
+    else
+        return missing
+    end
+end
+function -(x1::Gram, x2::Gram)
+    if issetequal(x1.vecs, x2.vecs)
+        return 0
+    else
+        return missing
+    end
+end
 function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
     dict = mergewith(+, weights(x1), weights(x2))
     for (key,value) ∈ dict
@@ -40,7 +54,7 @@ function *(a::DecompositionValue, e::T) where {T<:AbstractVectorSpace}
     hasvalue(e) ? T( a*value(e) ) : T( a*selfdecomp(e) )
 end
 
-
+-(e1::Gram, e2::Number) = e1 + (-e2)
 +(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = +(promote(e1,e2)...)
 -(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = e1 + (-e2)
 -(e::AbstractVectorSpace) = -1*e

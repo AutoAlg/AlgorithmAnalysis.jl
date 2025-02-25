@@ -64,7 +64,9 @@ Concrete subtypes should provide methods for `expression`, `set`, `∈`, `isequa
 """
 abstract type Constraint end
 
+# abstract type Gram end
 """
+
     ConstraintSet
 
 An abstract set for use in a [`Constraint`](@ref).
@@ -162,6 +164,9 @@ const Oracles = Set{Oracle}
 
 # A set of constraints
 const Constraints = Set{Constraint}
+
+# A set of gram matrices
+# const Grams = Set{Gram}
 
 # A set of properties
 const Properties = Set{Property}

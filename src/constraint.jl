@@ -8,6 +8,18 @@ const ConEx = Union{Expression,AbstractArray{<:Expression}}
 "Add a constraint to all variables in an expression."
 function add_constraint!(x::ConEx, c::Constraint)
     map(v -> push!(constraints(v), c), collect(variables(x)))
+    for o in oracles(variables(x))
+        inputs, outputs = inputs_outputs(o)
+        for e in inputs ∪ outputs
+            push!(constraints(e), c)
+        end
+    end
+    # for o in oracles(x)
+    #     push!(constraints(o), c)
+    #     for a in associations(o)
+    #         push!(constraints(last(a)), c)
+    #     end
+    # end
 end
 
 
@@ -131,4 +143,14 @@ check(x, ::Type{PositiveSemidefiniteCone}) = (hasvalue(x) && evaluate(x) ⪰ 0)
 
 Prune a set of constraints by removing any constraints that are satisfied.
 """
-prune!(s::Constraints) = setdiff!(s, Set([Satisfied()]))
+function gram_to_constraint(s::Constraints)
+    filtered = Constraints()
+    for c in s
+        if expression(c) isa Gram
+            push!(filtered, ConeConstraint{cone(c)}(evaluate(expression(c))))
+        else
+            push!(filtered, c)
+        end
+    end
+    filtered
+end

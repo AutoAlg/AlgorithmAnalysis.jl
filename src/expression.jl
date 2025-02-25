@@ -153,6 +153,8 @@ end
 function variables(e::Expression)
     if hasdecomposition(e)
         variables(decomposition(e))
+    elseif e isa Gram
+        Set(e.vecs)
     elseif isvariable(e)
         Expressions([e])
     else
@@ -170,7 +172,92 @@ end
 
 # update
 next!(x::T, y::State{T}) where {T<:Expression} = x.next = y
-next(x::Expression) = x.next
+function next(f::AbstractFunction)
+    if f isa LinearFunctional
+        io = inputs_outputs(f)
+        index = findfirst(ex -> ex === f, io[2])
+        if index === nothing
+            return missing
+        end
+        nextx = next(io[1][index])
+        if nextx === missing
+            return missing
+        end
+        for i in eachindex(io[2])
+            if nextx === io[1][i] || (hasdecomposition(nextx) && hasdecomposition(io[1][i]) && abs(sum(collect(values(weights(nextx - io[1][i]))))) < 1e-10)
+                return nextio[2][i]
+            end
+        end
+        return missing
+    else
+        return f
+    end
+end
+function next(f::Oracle)
+    return f
+end
+function next(f::Wrapper{<:Oracle})
+    return f
+end
+function next(d:: Dual{})
+    return d'.next'
+end
+function next(x::Expression)
+    if x.next !== missing #|| (!hasdecomposition(x) && isa(x, R))
+        return x.next
+    end
+    if !hasdecomposition(x)
+        orc = nothing
+        if length(oracles(x)) == 0
+            return missing
+        elseif length(oracles(x)) == 1
+            orc = first(oracles(x))
+        else
+            for o in oracles(x)
+                io = inputs_outputs(o)
+                index = findfirst(ex -> ex === x, io[2])
+                if index !== nothing  
+                    orc = o
+                end
+            end
+        end
+        if orc == nothing
+            return missing
+        end
+        io = inputs_outputs(orc)
+        index = findfirst(ex -> ex === x, io[2])
+        nextx = next(io[1][index])
+        # if hasfield(typeof(orc), :next) || typeof(orc) == Dual{Rⁿ} || typeof(orc) == LinearFunctional{Rⁿ}
+        #     nextoracle = next(orc)
+        # else
+        #     nextoracle = orc
+        # end
+        nextoracle = next(orc)
+        if nextoracle === missing || nextx === missing
+            return missing
+        end
+        nextio = inputs_outputs(nextoracle)
+        for i in eachindex(nextio[1])
+            if nextx === nextio[1][i] || iszero(nextx - nextio[1][i]) || (hasdecomposition(nextx) && hasdecomposition(nextio[1][i]) && abs(sum(collect(values(weights(nextx - nextio[1][i]))))) < 1e-10)
+                if hasfield(typeof(x), :next)
+                    next!(x, nextio[2][i])
+                end
+                return nextio[2][i]
+            end
+        end
+        return missing
+    else
+        nextx = zero(x)
+        for i in collect(keys(weights(decomposition(x))))
+            if i.next === missing
+                return missing
+            end
+            nextx = nextx + weights(decomposition(x))[i] * i.next
+        end
+        next!(x, nextx)
+        return nextx
+    end   
+end
 next(a::AbstractArray{<:Expression}) = [ next(x) for x ∈ a ]
 
 function update!(p::Pair{T, <:State{T}}) where {T}
@@ -200,3 +287,64 @@ function evaluate(e::Expression)
 end
 evaluate(x::LinearDecomposition) = mapreduce(p -> last(p)*evaluate(first(p)), +, weights(x))
 evaluate(a::AbstractArray{<:Expression}) = [ evaluate(e) for e ∈ a ]
+
+# Gram expression
+struct Gram <: Expression
+    label:: String 
+    vecs :: Vector{V} where {F<:Field, V<:InnerProductSpace{F}}
+    value:: Missing
+    constraints::Constraints
+    oracles::Oracles
+    next::State{Zero}
+    function Gram(vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}})
+        new("Variable{}", vecs, missing, Constraints(), Oracles(), missing)
+    end
+end
+
+function evaluate(g::Gram)
+    return g.vecs ⊗ g.vecs
+end
+
+size(g::Gram) = size(evaluate(g))
+
+function ⊂(g1::Gram, g2::Gram) # strict subset
+    v1, v2 = Set(g1.vecs), Set(g2.vecs)
+    return isempty(setdiff(v1, v2)) && !isempty(setdiff(v2, v1))
+end
+
+function ⊆(g1::Gram, g2::Gram) # subset or equal
+    v1, v2 = Set(g1.vecs), Set(g2.vecs)
+    return isempty(setdiff(v1, v2))
+end
+
+prune!(s::Constraints) = setdiff!(s, Set([Satisfied()]))
+function prune_grams(s::Constraints)
+    pruned = Constraints()
+    for c in s
+        if expression(c) isa Gram
+            to_remove = Constraints()  # Store constraints to remove
+            should_add = true
+            for existing_c in pruned
+                if expression(existing_c) isa Gram
+                    if expression(existing_c) ⊂ expression(c) # Existing is a strict subset → Mark it for removal
+                        push!(to_remove, existing_c)
+                    end
+                    if expression(c) ⊆ expression(existing_c)  # New one is a subset of existing
+                        should_add = false  # Don't add the new one
+                        break
+                    end
+                end
+            end
+            for r in to_remove # Remove outdated constraints
+                delete!(pruned, r)
+            end
+            if should_add # Add the new constraint if it is not a subset of any existing one
+                push!(pruned, c)
+            end
+        else
+            push!(pruned, c)  # Keep non-Gram constraints
+        end
+    end
+    # pruned = gram_to_constraint(pruned)
+    return pruned
+end

@@ -24,8 +24,9 @@ mutable struct Map{X,Y} <: AbstractFunction{X,Y}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,Y}
+    associations::Associations
     
-    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}())
+    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}(), Associations())
 end
 
 """
@@ -97,7 +98,12 @@ mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+    function DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
+        f = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+        push!(unwrap(f').associations, GradientOf => f)
+        f
+    end
+    # DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
 end
 
 mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
@@ -124,7 +130,9 @@ mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
     relation::SingleValuedRelation{X,<:Field}
 
     function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
-        new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
+        f = new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
+        # push!(unwrap(f').associations, TransposeOf => f) # new
+        f #new
     end
 end
 
@@ -132,7 +140,7 @@ mutable struct ZeroFunctional{X} <: AbstractLinearFunctional{X}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
-    
+
     ZeroFunctional{X}() where {X} = new{X}("ZeroFunctional{$X}", Properties())  # [Linear()]
 end
 
@@ -267,31 +275,38 @@ end
 sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(Zero())
 
 function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
-
     # if x is zero, then return the scalar zero
-    if iszero(o) || iszero(x)
-        F(Zero())
-        
+    if (iszero(o) || iszero(x))
+        y = F(Zero())
     # else if x has an empty decomposition, sample it directly
     elseif isempty(decomposition(x))
-        y = sample(relation(o), x)
-        label!(y, defaultlabel(o,x))
+        if hash(o') > hash(x)
+            y = sample(relation(o), x)
+            label!(y, defaultlabel(o,x))
+        else
+            y = sample(relation(x), o)
+            label!(y, defaultlabel(x,o))
+        end
         push!(x.oracles, o)
         push!(y.oracles, o)
-        y
-        
     # otherwise, sample each element of the decomposition
     else
         y = F(Zero())
         for (key,value) ∈ weights(selfdecomp(x))
-            y0 = sample(relation(o), key)
-            label!(y0, defaultlabel(o, key))
+            if hash(o') > hash(key)
+                y0 = sample(relation(o), key)
+                label!(y0, defaultlabel(o, key))
+                y += value*y0
+            else
+                y0 = sample(key, relation(o))
+                label!(y0, defaultlabel(key, o))
+                y += value*y0
+            end
             push!(key.oracles, o)
             push!(y0.oracles, o)
-            y += value*y0
         end
-        y
     end
+    y
 end
 
 # function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}}
@@ -335,18 +350,27 @@ end
 *(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},Dual}, x) = sample(o,x)
 
 function *(o::Dual{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
-
     if iszero(o) || iszero(x)
         F(Zero())
     else
         y = F(Zero())
         for (key1,val1) ∈ weights(selfdecomp(o')), (key2,val2) ∈ weights(selfdecomp(x))
-            orc = unwrap(key1')
-            y0 = sample(relation(orc), key2)
-            label!(y0, defaultlabel(key1', key2))
-            push!(key2.oracles, orc)
-            push!(y0.oracles, orc)
-            y += val1 * val2 * y0
+            # Inner product ordering done by hash
+            if hash(key2) < hash(key1)
+                orc = unwrap(key2')
+                y0 = sample(relation(orc), key1)
+                label!(y0, defaultlabel(key2', key1))
+                push!(key1.oracles, orc)
+                push!(y0.oracles, orc)
+                y += val1 * val2 * y0
+            else
+                orc = unwrap(key1')
+                y0 = sample(relation(orc), key2)
+                label!(y0, defaultlabel(key1', key2))
+                push!(key2.oracles, orc)
+                push!(y0.oracles, orc)
+                y += val1 * val2 * y0
+            end
         end
         y
     end

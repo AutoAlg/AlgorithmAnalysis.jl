@@ -86,7 +86,17 @@ end
 ############################################################################################
 # Oracles
 
-label!(o::Oracle, label::String) = (o.label=label; map(p -> label!(last(p), defaultlabel(first(p), label)), collect(associations(o))); nothing)
+# label!(o::Oracle, label::String) = (o.label=label; map(p -> label!(last(p), defaultlabel(first(p), label)), collect(associations(o))); nothing)
+function label!(o::Oracle, label::String)
+    o.label = label
+    for a ∈ associations(o)
+        if hasmethod(defaultlabel, (Type{first(a)}, String))
+        # if applicable(defaultlabel, first(a), label)
+            label!(last(a), defaultlabel(first(a), label))
+        end
+    end
+    nothing
+end
 
 defaultlabel(::Type{Transpose}, label::String) = label * "*"
 defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
