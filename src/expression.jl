@@ -216,12 +216,12 @@ function next(x::Expression)
             for o in oracles(x)
                 io = inputs_outputs(o)
                 index = findfirst(ex -> ex === x, io[2])
-                if index !== nothing  
+                if !isnothing(index)  
                     orc = o
                 end
             end
         end
-        if orc == nothing
+        if isnothing(orc)
             return missing
         end
         io = inputs_outputs(orc)
@@ -297,7 +297,7 @@ struct Gram <: Expression
     oracles::Oracles
     next::State{Zero}
     function Gram(vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}})
-        new("Variable{}", vecs, missing, Constraints(), Oracles(), missing)
+        new("", vecs, missing, Constraints(), Oracles(), missing)
     end
 end
 

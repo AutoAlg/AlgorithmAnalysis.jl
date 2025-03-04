@@ -33,8 +33,14 @@ end
 ############################################################################################
 # IsEqual
 
+isequal(x1::Expression, x2::Expression) = false
+isequal(x1::Expression, x2::Any) = false
+isequal(x1::Any, x2::Expression) = false
+
 function isequal(x1::T, x2::T) where {T<:Expression}
-    if !ismissing(x1.value) && !ismissing(x2.value)
+    if !isdefined(x1, :value) || !isdefined(x2, :value)
+        false 
+    elseif !ismissing(x1.value) && !ismissing(x2.value)
         isequal(x1.value, x2.value)
     elseif ismissing(x1.value) && ismissing(x2.value)
         x1 ≡ x2

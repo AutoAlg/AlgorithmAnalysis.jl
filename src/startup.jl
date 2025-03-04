@@ -120,4 +120,4 @@ reference_curve = 1 .- 1 ./ sqrt.(condition_numbers_fine)
 
 # Plot results
 scatter(condition_numbers_sampled, results, xscale=:log10, xlabel="Condition Number (L/m)", ylabel="TMM(m, L)", title="TMM Results", label="TMM(m, L)", marker=:circle, markersize=5)
-# plot!(condition_numbers_fine, reference_curve, label="1 - 1/sqrt(L/m)", linewidth=2)
+plot!(condition_numbers_fine, reference_curve, label="1 - 1/sqrt(L/m)", linewidth=2)

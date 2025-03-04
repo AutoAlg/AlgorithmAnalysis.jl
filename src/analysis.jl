@@ -131,7 +131,7 @@ function variables_constraints_oracles(vars::Expressions, cons::Constraints, orc
     cons = prune_grams(cons)
     # @info "Algorithmic objects"
     # info(vars)
-    info(cons)
+    # info(cons)
     # info(orcs)
     
     vars, cons, orcs
@@ -324,10 +324,10 @@ end
 
 function stateupdate(vars)
     x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
-    newvars = collect(v for v ∈ vars if v isa R)
+    real_vars = collect(v for v ∈ vars if v isa R)
     x⁺ = next(x)
     # u  = collect(setdiff(variables(x⁺), variables(vars)))
-    u  = collect(setdiff(variables(newvars), variables(x)))
+    u  = collect(setdiff(variables(real_vars), variables(x)))
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
@@ -496,18 +496,28 @@ function bsmin( f, a, b, tol=1e-5 )
 end
 
 function rate(performance::Expression)
-
     @info "CONTROL ANALYSIS"
-
     if !isa(performance, R)
         error("The performance measure must be a real number in $R")
     end
-
     @info "Finding the rate of convergence of performance measure $performance"
-
     bsmin( ρ -> certify(performance,ρ), 0, 1 )
 end
 
+function rate(performance::Expression, tracker)
+    # @info "CONTROL ANALYSIS"
+    if !isa(performance, R)
+        error("The performance measure must be a real number in $R")
+    end
+    @info "Finding the rate of convergence of performance measure $performance"
+    if tracker > 0 && !certify(performance, tracker)
+        @info "Searching for ρ between $tracker and 1"
+        bsmin( ρ -> certify(performance,ρ), tracker, 1 )
+    else
+        @info "Searching for ρ between 0 and 1"
+        bsmin( ρ -> certify(performance,ρ), 0, 1 )
+    end
+end
 
 
 function analysis(currentState, nextState)
