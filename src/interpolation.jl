@@ -256,6 +256,18 @@ function constraints(r1::Relation{X,X}, r2::Relation{X,X}, ::Monotone{a,b}) wher
 end
 
 # Linear maps
+function constraints(o::AbstractLinearMap{X,Y}, ::Linear) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
+    Constraints( x'*v == y'*u for (x,y) ∈ o, (u,v) ∈ o' )
+end
+# Linear operators, L interpolable
+function constraints(o::AbstractLinearMap{X,Y}, ::Linear, L) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
+    # Constraints( y'*y - L^2*(x'*x) ⪯ 0 for (x,y) ∈ o)
+    # Constraints( v'*v - L^2*(u'*u) ⪯ 0 for (u,v) ∈ o')
+    x, y = inputs_outputs(o)
+    u, v = inputs_outputs(o')
+    Constraints([y⊗y - L^2*(x⊗x) ⪯ 0, v⊗v - L^2*(u⊗u) ⪯ 0])
+    # Constraints([v⊗v - L^2*(u⊗u) ⪯ 0])
+end 
 
 function constraints(o::AbstractLinearMap{X,Y}, ::Linear) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
     Constraints( x'*v == y'*u for (x,y) ∈ o, (u,v) ∈ o' )

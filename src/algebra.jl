@@ -54,6 +54,7 @@ function *(a::DecompositionValue, e::T) where {T<:AbstractVectorSpace}
     hasvalue(e) ? T( a*value(e) ) : T( a*selfdecomp(e) )
 end
 
+-(e1::AbstractVectorSpace, e2::Zero) = e1
 -(e1::Gram, e2::Number) = e1 + (-e2)
 +(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = +(promote(e1,e2)...)
 -(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = e1 + (-e2)

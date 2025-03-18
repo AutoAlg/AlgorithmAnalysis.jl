@@ -5,10 +5,197 @@ using Revise
 using AlgorithmAnalysis
 using Logging
 using Plots
+using LaTeXStrings
+import JuMP
+import SCS
+import LinearAlgebra as la
 
-m,L = 1,11
+m,L = 1,2 # Kf = 2
+σl, σu = 1,1 # kA = 1
+kA = σu/σl
+
+# Primal Dual # 1
+# c = 2*L*σu^3/(m^2 * σl^2)
+# αx = 2/(m+L)
+# αl = m/((m+L)*(σu^2/m + c*σu))
+# μ = 0
+# γ = 0
+# Primal Dual # 2
+αx = kA ≤ sqrt(2) ? 1/(2*L) : (1-kA^(-2))/L
+αl = kA ≤ sqrt(2) ? (m/4)*(2/(σu^2) + (1/(σl^2))) : m/(σu^2)
+μ = 0
+γ = 1
+@algorithm begin
+    Σ = SymmetricLinearMap{Rⁿ}()
+    Σ ∈ Eigenvalues{σl^2, σu^2}()
+    ps, ups = Rⁿ(), Rⁿ(); 
+    qs, uqs = Rᵐ(), Rᵐ(); 
+    vs = Rⁿ() 
+
+    ps == Zero(); uqs == Zero();  Σ*ps == Zero()
+    vs - ups == Zero()
+
+    v0 = Rⁿ(); v0 == Zero()
+    f0, f1, fs = R(), R(), R()
+    p0, up0, up1 = Rⁿ(), Rⁿ(), Rⁿ()
+    q0, uq0, uq1 = Rᵐ(), Rᵐ(), Rᵐ()
+    
+    p1 = p0 - αx*up0 + αx*(v0 - μ*(Σ*p0))
+    q1 = q0 - αx*uq0
+
+    v1 = v0 - αl*(Σ*(p0 + γ*(p1-p0)))
+    p2 = p1 - αx*up1 + αx*(v1 - μ*(Σ*p1))
+    q2 = q1 - αx*uq1
+    
+    up0 => up1; uq0 => uq1; ups => ups; uqs => uqs; f0 => f1; fs => fs
+    
+    # v2 = v1 - αl*(Σ*(p1)) #+ γ*(p2-p1)))
+    # p3 = p2 - αx*fp'(p2) + αx*(v2 - μ*(Σ*p2))
+    # q3 = q2 - αx*fq'(q2)
+
+    p0 => p1; p1 => p2; #p2 => p3
+    q0 => q1; q1 => q2; #q2 => q3
+    v0 => v1; #v1 => v2 
+    vs => vs; ps => ps; qs => qs;
+    
+    # ps == Zero()
+    # αx*(fp'(ps) - vs + μ*(Σ*ps)) == Zero()
+    # αl*(Σ*(ps)) == Zero()#+ γ*(ps-ps))) == Zero()
+
+    # performance = evaluate(Gram([p3-ps, v2-vs]))
+    # performance = (p2-ps)^2# + (v1-vs)^2 + (q2-qs)^2
+    # performance = ((p2-ps)^2+(q2-qs)^2)
+    performance = (v1-vs)^2
+end
+# Interpolation conditions
+interpolated_points = [(f0, [p0; q0], [up0; uq0]), (f1, [p1; q1], [up1; uq1]), (fs, [ps; qs], [ups; uqs])]
+for (fᵢ,xᵢ,uᵢ) in interpolated_points, (fⱼ,xⱼ,uⱼ) in interpolated_points
+    fᵢ - fⱼ - uⱼ'*(xᵢ-xⱼ) ≥ 1/(2*(1-m/L))*(((uᵢ - uⱼ)'*(uᵢ - uⱼ)) + m*((xᵢ - xⱼ)'*(xᵢ - xⱼ)) - 2*m*((uⱼ - uᵢ)'*(xⱼ - xᵢ))/L)/L
+end
+# f0 - f1 - [up1; uq1]'*([p0; q0] - [p1; q1]) ≥ 1/(2*(1-m/L))*((([up0; uq0] - [up1; uq1])'*([up0; uq0] - [up1; uq1])) + m*(([p0; q0] - [p1; q1])'*([p0; q0] - [p1; q1])) - 2*m*(([up1; uq1] - [up0; uq0])'*([p1; q1] - [p0; q0]))/L)/L
+# f1 - f0 - [up0; uq0]'*([p1; q1] - [p0; q0]) ≥ 1/(2*(1-m/L))*((([up1; uq1] - [up0; uq0])'*([up1; uq1] - [up0; uq0])) + m*(([p1; q1] - [p0; q0])'*([p1; q1] - [p0; q0])) - 2*m*(([up0; uq0] - [up1; uq1])'*([p0; q0] - [p1; q1]))/L)/L
+# @show certify(performance, 0.995)
+@show rate(performance, 0.96)
+
+# @algorithm begin
+#     f = DifferentiableFunctional{Rⁿ}()
+#     f ∈ SmoothStronglyConvex(m, L)
+#     A = LinearMap{Rⁿ, Rᵐ}()
+#     xs = Rⁿ()
+#     x0 = Rⁿ()
+#     ls = Rᵐ()
+#     l0 = Rᵐ()
+#     b = A*xs
+#     # x1 = x0 - αx*(f'(x0) + A'*l0 + μ*(A'*(A*x0 - b)))
+#     x1 = x0 - αx*(f'(x0) + A'*l0)
+#     # l1 = l0 + αl*(A*(x0 + γ*(x1-x0))-b)
+#     l1 = l0 + αl*(A*x0-b)
+#     # x2 = x1 - αx*(f'(x1) + A'*l1 + μ*(A'*(A*x1 - b)))
+#     x2 = x1 - αx*(f'(x1) + A'*l1)
+#     # l2 = l1 + αl*(A*(x1 + γ*(x2-x1))-b)
+#     l2 = l1 + αl*(A*x1-b)
+#     # x3 = x2 - αx*(f'(x2) + A'*l2 + μ*(A'*(A*x2 - b)))
+#     x3 = x2 - αx*(f'(x2) + A'*l2)
+
+#     x0 => x1
+#     x1 => x2
+#     x2 => x3
+#     l0 => l1
+#     l1 => l2
+
+#     (f'(xs) + A'*ls) == Zero()
+#     performance = Gram([x0-xs, x1-xs, x2-xs, l0-ls, l1-ls])
+# end
+# certify(performance, 0.98, kA, A)
+# @show rate(performance, 0.96)
+# ρ = 0.98
+# vars, cons, orcs = variables_constraints_oracles(performance)
+# linear_cons = constraints(A, first(properties(A)), L)
+# union!( cons, linear_cons )
+# constraints(A, first(properties(A)), L)
+# vars = collect(vars)
+# X, X⁺, x, u = stateupdate(vars)
+# # optimization problem
+# model = JuMP.Model(SCS.Optimizer)
+# JuMP.set_silent(model)
+# # optimization variables
+# JuMP.@variable(model, P[1:length(x)])
+# # Lyapunov function
+# V = X'*P
+# V⁺ = X⁺'*P
+# 𝒫 = vec(linearform( [x; u] => performance ))
+# L1 = 𝒫 - V
+# L2 = V⁺ - ρ^2*V
+# # optimization constraints
+# for con ∈ cons
+#     λ = multiplier(model, con)
+#     μ = multiplier(model, con)
+#     e = expression(con)
+#     if e isa Gram
+#         e = evaluate(e)
+#     end
+#     if e isa Expression
+#         M = vec(linearform( [x; u] => λ * e ))
+#         N = vec(linearform( [x; u] => μ * e ))
+#     elseif e isa Vector
+#         M = vec(linearform( [x; u] => λ' * e ))
+#         N = vec(linearform( [x; u] => μ' * e ))
+#     elseif e isa Matrix
+#         M = vec(linearform( [x; u] => la.tr(λ * e) ))
+#         N = vec(linearform( [x; u] => la.tr(μ * e) ))
+#     end
+#     L1 += M
+#     L2 += N
+# end
+# JuMP.@constraint(model, L1 .== 0 )
+# JuMP.@constraint(model, L2 .== 0 )
+
+# JuMP.optimize!(model)
+
+# JuMP.termination_status(model) == JuMP.OPTIMAL
+
+# FG
+function FG(m, L, prev_rate = 0)
+    α = 4/(3*L+m); β=(sqrt(3*L+1)-2)/(sqrt(3*L+1)+2)
+    @algorithm begin
+        f = DifferentiableFunctional{Rⁿ}()
+        xs = first_order_stationary_point(f)
+        f ∈ SmoothStronglyConvex(m, L)
+        x0 = Rⁿ()
+        x1 = Rⁿ()
+        y1 = x1 + β*(x1 - x0)
+        x2 = y1 - α*f'(y1)
+        y2 = x2 + β*(x2 - x1)
+        x3 = y2 - α*f'(y2)
+        x0 => x1
+        x1 => x2
+        x2 => x3
+        # y1 => y2  
+        performance = (y1-xs)^2
+    end
+# ρ = 0.8
+# vars, cons, orcs = variables_constraints_oracles(performance)
+# order the variables
+# vars = collect(vars)
+# X, X⁺, x, u = stateupdate(vars) 
+# # optimization problem
+# model = JuMP.Model(SCS.Optimizer)
+# JuMP.set_silent(model)
+# # optimization variables
+# JuMP.@variable(model, P[1:length(x)])
+# # Lyapunov function
+# V = X'*P
+# V⁺ = X⁺'*P
+# 𝒫 = vec(linearform( [x; u] => performance ))
+# L1 = 𝒫 - V
+# L2 = V⁺ - ρ^2*V
+# certify(performance, 0.81)
+# maximize(performance)
+@show rate(performance, prev_rate)
+end
+
 # # TMM
-function TMM(m, L)
+function TMM(m, L, prev_rate=0)
     k = L/m
     rho = 1 - 1/(sqrt(k))
     α = (1 + rho)/L
@@ -42,10 +229,10 @@ function TMM(m, L)
     end
     # certifyTMM(performance, 0.9, q1s, qs1, q01)
     # @show certify(performance, 0.9)
-    @show rate(performance)
+    @show rate(performance, prev_rate)
 end
 # HB
-function HB(m, L)
+function HB(m, L, prev_rate=0)
     α = 4/((sqrt(L)+sqrt(m))^2)
     β=((sqrt(L/m)-1)/(sqrt(L/m)+1))^2
     @algorithm begin
@@ -65,33 +252,10 @@ function HB(m, L)
     end
     # certify(performance, 0.9)
     # maximize(performance)
-    @show rate(performance)
-end
-# FG
-function FG(m, L)
-    α = 4/(3*L+m); β=(sqrt(3*L+1)-2)/(sqrt(3*L+1)+2)
-    @algorithm begin
-        f = DifferentiableFunctional{Rⁿ}()
-        xs = first_order_stationary_point(f)
-        f ∈ SmoothStronglyConvex(m, L)
-        x0 = Rⁿ()
-        x1 = Rⁿ()
-        y1 = x1 + β*(x1 - x0)
-        x2 = y1 - α*f'(y1)
-        y2 = x2 +  β*(x2 - x1)
-        x3 = y2 - α*f'(y2)
-        x0 => x1
-        x1 => x2
-        x2 => x3
-        y1 => y2  
-        performance = (x0-xs)^2
-    end
-    # certify(performance, 0.81)
-    # maximize(performance)
-    @show rate(performance)
+    @show rate(performance, prev_rate)
 end
 # GD
-function GD(m, L)
+function GD(m, L, prev_rate=0)
     α = 2/(L+m)
     @algorithm begin
         f = DifferentiableFunctional{Rⁿ}()
@@ -103,21 +267,38 @@ function GD(m, L)
         x0 => x1
         performance = (x0-xs)^2
     end
-    @show rate(performance)
+    @show rate(performance, prev_rate)
 end
+# m = 1
+# # Evaluate TMM at 12 logarithmically spaced points between 1 and 100
+# L_sampled = exp10.(range(log10(1), log10(100), length=6))
+# condition_numbers_sampled = L_sampled ./ m
+# # Find the guaranteed convergence rate depending on condition number
+# prev_rate = 0 # Remembers the last returned rate
+# results = []
+# for L in L_sampled
+#     length(results) == 0 ? prev_rate = 0 : prev_rate = results[end]
+#     push!(results, FG(m, L, prev_rate))
+# end
+# # results = [FG(m, L) for L in L_sampled]
+# # Set up tick positions: whole numbers 1 to 10 and multiples of 10 from 10 to 100.
+# tick_positions = (union(collect(1:10), collect(10:10:100)))
+# # Define labels: Only powers of 10 (1, 10, 100) labeled as 10⁰, 10¹, 10²
+# tick_labels = Dict(1 => L"10^0", 10 => L"10^1", 100 => L"10^2")
+# formatted_labels = [get(tick_labels, x, "") for x in tick_positions]
+# # Plot data and the reference function
+# scatter(condition_numbers_sampled, results,
+#     xscale=:log10,
+#     xlabel="Condition Number (L/m)",
+#     ylabel="FG(m, L)",
+#     title="FG Results",
+#     label="FG(m,L)",
+#     markersize=5,
+#     xticks=(tick_positions, formatted_labels)
+# )
 
-# Benchmarking Plots
-
-m = 1
-L_sampled = exp10.(range(log10(1), log10(100), length=24))  # 12 logarithmically spaced points
-# L_fine = exp10.(range(log10(1), log10(100), length=1000))  # 1000 logarithmically spaced points for smooth curve
-condition_numbers_sampled = L_sampled ./ m  # L/m values where function is evaluated
-# condition_numbers_fine = L_fine ./ m  # L/m values for smooth reference curve
-results = [FG(m, L) for L in L_sampled]  # Evaluate TMM at selected L values
-
-# Reference function 1 - 1/sqrt(condition_numbers)
-reference_curve = 1 .- 1 ./ sqrt.(condition_numbers_fine)
-
-# Plot results
-scatter(condition_numbers_sampled, results, xscale=:log10, xlabel="Condition Number (L/m)", ylabel="TMM(m, L)", title="TMM Results", label="TMM(m, L)", marker=:circle, markersize=5)
-plot!(condition_numbers_fine, reference_curve, label="1 - 1/sqrt(L/m)", linewidth=2)
+# (Only for TMM) Smooth reference curve using 1000 points for plotting purposes
+# L_fine = exp10.(range(log10(1), log10(100), length=1000))
+# condition_numbers_fine = L_fine ./ m
+# reference_curve = 1 .- 1 ./ sqrt.(condition_numbers_fine)
+# plot!(condition_numbers_fine, reference_curve, label="FG theoretical", linewidth=2)

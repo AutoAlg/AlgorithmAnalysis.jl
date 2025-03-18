@@ -347,7 +347,7 @@ end
 (o::OracleOrWrapper)(x) = sample(o,x)
 
 # For linear maps, also use * to denote sampling
-*(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},Dual}, x) = sample(o,x)
+*(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},OrWrapper{AbstractSymmetricLinearMap},Dual}, x) = sample(o,x)
 
 function *(o::Dual{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
     if iszero(o) || iszero(x)

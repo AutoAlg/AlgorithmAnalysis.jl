@@ -210,7 +210,7 @@ function next(x::Expression)
         orc = nothing
         if length(oracles(x)) == 0
             return missing
-        elseif length(oracles(x)) == 1
+        elseif length(oracles(x)) == 1 && !isnothing(findfirst(ex -> ex === x, inputs_outputs(first(oracles(x)))[2]))
             orc = first(oracles(x))
         else
             for o in oracles(x)

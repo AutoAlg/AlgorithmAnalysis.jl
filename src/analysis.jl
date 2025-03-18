@@ -79,7 +79,6 @@ end
 function variables_constraints_oracles(vars::Expressions, cons::Constraints, orcs::Oracles)
     count = 1
     while true
-    
         # get the variables associated with the constraints and the oracles
         vars_new = variables(cons ∪ orcs)
 
@@ -351,6 +350,49 @@ end
 #     JuMP.@constraint(model, L1 .== 0 )
 #     JuMP.@constraint(model, L2 .== 0 )
 #     JuMP.optimize!(model)
+#     JuMP.termination_status(model) == JuMP.OPTIMAL
+# end
+# function certify(performance::Expression, ρ::Number, L::Number, A::Oracle)
+#     vars, cons, orcs = variables_constraints_oracles(performance)
+#     vars = collect(vars)
+#     X, X⁺, x, u = stateupdate(vars)
+#     # optimization problem
+#     model = JuMP.Model(SCS.Optimizer)
+#     JuMP.set_silent(model)
+#     # optimization variables
+#     JuMP.@variable(model, P[1:length(x)])
+#     # Lyapunov function
+#     V = X'*P
+#     V⁺ = X⁺'*P
+#     𝒫 = vec(linearform( [x; u] => performance ))
+#     L1 = 𝒫 - V
+#     L2 = V⁺ - ρ^2*V
+#     # optimization constraints
+#     for con ∈ cons
+#         λ = multiplier(model, con)
+#         μ = multiplier(model, con)
+#         e = expression(con)
+#         if e isa Gram
+#             e = evaluate(e)
+#         end
+#         if e isa Expression
+#             M = vec(linearform( [x; u] => λ * e ))
+#             N = vec(linearform( [x; u] => μ * e ))
+#         elseif e isa Vector
+#             M = vec(linearform( [x; u] => λ' * e ))
+#             N = vec(linearform( [x; u] => μ' * e ))
+#         elseif e isa Matrix
+#             M = vec(linearform( [x; u] => la.tr(λ * e) ))
+#             N = vec(linearform( [x; u] => la.tr(μ * e) ))
+#         end
+#         L1 += M
+#         L2 += N
+#     end
+#     JuMP.@constraint(model, L1 .== 0 )
+#     JuMP.@constraint(model, L2 .== 0 )
+
+#     JuMP.optimize!(model)
+
 #     JuMP.termination_status(model) == JuMP.OPTIMAL
 # end
 function certify(performance::Expression, ρ::Number)
