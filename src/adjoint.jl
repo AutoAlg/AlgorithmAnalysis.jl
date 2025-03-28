@@ -1,14 +1,13 @@
 """
     adjoint(x)
 
-Adjoint of an oracle, vector, or wrapper of those types.
+Adjoint of an object.
 
 The adjoint function is used because it is automatically called by the notation `x'`.
 The semantics of the adjoint depend on the type of object (and may not correspond to the
 standard notion of adjoint).
 
-- For an oracle, the adjoint is used to access its related operators. The related operators
-  available depends on the type of oracle.
+- For an operator, the adjoint is used to access its related operators. The related operators available depend on the type of operator.
     - the adjoint of a linear operator is its transpose
     - the adjoint of a subdifferentiable function is its subdifferential
     - the adjoint of a differentiable function is its gradient
@@ -31,35 +30,35 @@ julia> y = Rⁿ();  (x+y)'  # linear functional z ↦ ⟨x,z⟩ + ⟨y,z⟩
 """
 function adjoint end
 
-function adjoint(o::Oracle)
-    error("Oracle type $(typeof(o)) does not have an associated operator o'. To specify a related operator, specialize `adjoint` for this oracle type.")
+function adjoint(o::Element)
+    error("Objects of type $(typeof(o)) do not have an associated operator o'. To specify a related operator, specialize `adjoint` for this object type.")
 end
 
-adjoint(o::AbstractLinearMap) = Transpose{typeof(o)}(o)
-adjoint(o::Transpose{<:AbstractLinearMap}) = o.parent
-adjoint(o::AbstractSymmetricLinearMap) = o
-adjoint(o::AbstractSkewSymmetricLinearMap) = LinearDecomposition{typeof(o)}(Dict(o => -1))
-adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
-adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
+# adjoint(o::AbstractLinearMap) = Transpose{typeof(o)}(o)
+# adjoint(o::Transpose{<:AbstractLinearMap}) = o.parent
+# adjoint(o::AbstractSymmetricLinearMap) = o
+# adjoint(o::AbstractSkewSymmetricLinearMap) = Negation{typeof(o)}(o)
+# adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
+# adjoint(o::AbstractDifferentiableFunctional) = associations(o)[Gradient]
 
-function adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional})
-    Hessian{typeof(o.parent)}(o.parent)
-end
+# function adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional})
+#     Hessian{typeof(o.parent)}(o.parent)
+# end
 
-function adjoint(x::LinearDecomposition)
-    mapreduce( p -> last(p) * first(p)', +, weights(x); init=Zero() )
-end
+adjoint(x::Element{<:Functional}) = instance(space(x)).gradient
+adjoint(x::Element{<:Field}) = x
+adjoint(x::Element{<:VectorSpace}) = instance(space(x)).dual(x)
 
-adjoint(o::Dual{<:InnerProductSpace}) = o.parent
-adjoint(::ZeroFunctional{X}) where {X} = X(Zero())
-adjoint(a::Field) = a
+# adjoint(x::Zero) = Zero{LinearFunctional{space(x)}}()
 
-function adjoint(x::X) where {X<:InnerProductSpace}
-    if iszero(x)
-        ZeroFunctional{X}()
-    else
-        Dual{typeof(x)}(x)
-    end
-end
+# dual cones
+# adjoint(::Type{PositiveSemidefiniteCone}) = PositiveSemidefiniteCone
+# adjoint(::Type{PositiveOrthant}) = PositiveOrthant
+# adjoint(::Type{ZeroSet}) = Any
 
-adjoint(K::Type{<:Cone}) = dual(K)
+# dual space
+# adjoint(::Type{T}) where {T} = LinearFunctional{T}
+adjoint(::Type{<:LinearFunctional{X}}) where X = X
+adjoint(::Type{T}) where {T<:Field} = T
+adjoint(::Type{T}) where {T<:VectorSpace} = LinearFunctional{T}
+

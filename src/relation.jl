@@ -1,13 +1,3 @@
-"""
-    Relation{X,Y}
-
-A relation is a subset of the product space X × Y.
-"""
-abstract type Relation{X,Y} end
-
-# A set of relations.
-const Relations = Set{Relation}
-
 # Domain of a relation.
 domain(::Relation{X,Y}) where {X,Y} = X
 
@@ -47,11 +37,11 @@ end
 # Multi-valued relation
 
 "A relation is a subset of the Cartesian product of its domain `X` and codomain `Y`."
-mutable struct MultiValuedRelation{X,Y}
-  pairs::Set{Pair{X,Y}}
+mutable struct MultiValuedRelation{X,Y} <: Relation{X,Y}
+  pairs::Set{Pair{<:X,<:Y}}
 
   # Construct an empty multi-valued relation.
-  MultiValuedRelation{X,Y}() where {X,Y} = new(Set{Pair{X,Y}}())
+  MultiValuedRelation{X,Y}() where {X,Y} = new(Set{Pair{<:X,<:Y}}())
 
   # Construct a multi-valued relation from a set of input-output pairs.
   MultiValuedRelation(s::Set{Pair{X,Y}}) where {X,Y} = new{X,Y}(s)
@@ -72,24 +62,27 @@ MultiValuedRelation(g::Generator) = MultiValuedRelation(Set(p for p ∈ g))
 
 "A single-valued relation (also known as a function) is a relation in which there is a unique element of the codomain associated with each element of the domain."
 mutable struct SingleValuedRelation{X,Y} <: Relation{X,Y}
-    pairs::Dict{X,Y}
+    pairs::Dict{Element{<:X},Element{<:Y}}
 
     # Construct an empty relation.
-    SingleValuedRelation{X,Y}() where {X,Y} = new(Dict{X,Y}())
+    SingleValuedRelation{X,Y}() where {X,Y} = new(Dict{Element{<:X},Element{<:Y}}())
 
     # Construct a relation from a set of input-output pairs.
-    SingleValuedRelation(d::Dict{X,Y}) where {X,Y} = new{X,Y}(d)
-    SingleValuedRelation{X,Y}(d::Dict{X,Y}) where {X,Y} = new(d)
+    SingleValuedRelation(d::Dict{<:Element{<:X},<:Element{<:Y}}) where {X,Y} = new{X,Y}(d)
+    SingleValuedRelation{X,Y}(d::Dict) where {X,Y} = new(d)
 end
 
 # Construct a relation from a generator of pairs of points.
 SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
+SingleValuedRelation{X,Y}(g::Generator) where {X,Y} = SingleValuedRelation{X,Y}(Dict(p for p ∈ g))
 
 # Evaluate a single-valued relation at a point in its domain.
 # Returns a point in the codomain or `missing`.
 #
-# WARNING: must use Dict(pairs(r)) instead of r.pairs to avoid odd behavior after setting the value of the keys
-(r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(Dict(pairs(r)), x, missing)
+# WARNING: must use Dict(pairs(r)) instead of r.pairs to avoid odd behavior after setting the value of the keys # get(Dict(pairs(r)), convert(Element{X}, x), missing)
+(r::SingleValuedRelation{X,Y})(x) where {X,Y} = get(r.pairs, x, missing)
+    # get(Dict(pairs(r)), x, missing)
+
 
 
 ############################################################################################
@@ -101,8 +94,9 @@ mutable struct ConstantRelation{X,Y} <: Relation{X,Y}
     output::Y
 
     # Construct an empty relation.
-    ConstantRelation{X,Y}() where {X,Y} = new(Dict{X,Y}())
-    ConstantRelation{X,Y}(::Missing) where {X,Y} = new(Dict{X,Y}())
+    ConstantRelation{X,Y}() where {X,Y} = new(Set{X}(), Y())
+    ConstantRelation{X,Y}(::Missing) where {X,Y} = new(Set{X}(), Y())
+    ConstantRelation{X,Y}(y::Y) where {X,Y} = new(Set{X}(), y)
 
     # Construct a relation from a set of input-output pairs.
     ConstantRelation(x::Set{X}, y::Y) where {X,Y} = new{X,Y}(x, y)
@@ -114,19 +108,33 @@ end
 
 
 ############################################################################################
+# Empty relation
+
+struct EmptyRelation{X,Y} <: Relation{X,Y}
+    EmptyRelation() = new{Any,Any}()
+end
+
+(::EmptyRelation)(::Any) = error("Cannot sample the empty relation")
+
+
+############################################################################################
 # push!
 
-push!(r::MultiValuedRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = push!(r.pairs, p)
-push!(r::SingleValuedRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = push!(r.pairs, p)
-push!(r::ConstantRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = isequal(r.output, last(p)) ? r.output : error("Cannot add the point $(last(p)) to the constant relation $r")
+push!(r::MultiValuedRelation{X,Y}, p::Pair{<:X,<:Y}) where {X,Y} = push!(r.pairs, p)
+push!(r::SingleValuedRelation{X,Y}, p::Pair{<:Element{<:X},<:Element{<:Y}}) where {X,Y} = push!(r.pairs, p)
+push!(r::ConstantRelation{X,Y}, p::Pair{<:X,<:Y}) where {X,Y} = isequal(r.output, last(p)) ? r.output : error("Cannot add the point $(last(p)) to the constant relation $r")
 
 
 ############################################################################################
 # pairs / samples
 
+pairs(::EmptyRelation) = Dict()
 pairs(r::MultiValuedRelation) = r.pairs
-pairs(r::SingleValuedRelation{X,Y}) where {X,Y} = Set{Pair{X,Y}}(first(p) => last(p) for p ∈ collect(r.pairs))
 pairs(r::ConstantRelation{X,Y}) where {X,Y} = Set{Pair{X,Y}}(x => r.output for x ∈ r.inputs)
+
+function pairs(r::SingleValuedRelation{X,Y}) where {X,Y}
+    Set{Pair{<:Element{<:X},<:Element{<:Y}}}(first(p) => last(p) for p ∈ collect(r.pairs))
+end
 
 samples(r::Relation) = pairs(r)
 
@@ -134,30 +142,32 @@ samples(r::Relation) = pairs(r)
 ############################################################################################
 # sample
 
-function sample(r::MultiValuedRelation{X,Y}, x::X, label::String = "") where {X,Y}
-    y = codomain(r)(label)
+function sample(r::MultiValuedRelation{<:X,Y}, x::Element{<:X}, label::String = "") where {X,Y}
+    y = Element{space(Y)}()
+    label!(y, label)
     push!(r, x => y)
     y
 end
 
-function sample(r::SingleValuedRelation{X,Y}, x::X, label::String = "") where {X, Y}
+function sample(r::SingleValuedRelation{X,Y}, x::Element{<:X}, label::String = "") where {X,Y}
     if x ∈ inputs(r)
         r(x)
     else
-        y = codomain(r)(label)
+        y = Element{Y}()
+        label!(y, label)
         push!(r, x => y)
         y
     end
 end
 
-sample(r::ConstantRelation{X,Y}, ::X) where {X,Y} = r.output
+sample(r::ConstantRelation{<:X,Y}, ::X) where {X,Y} = r.output
 
 
 ############################################################################################
 # operations
 
 # invert a relation
-inv(r::Relation) = Relation(reverse(p) for p ∈ pairs(r))
+inv(r::T) where {X,Y,T<:Relation{X,Y}} = Base.typename(T).wrapper{Y,X}(reverse(p) for p ∈ pairs(r))
 
 # composition of two relations, unicode ∘ can be typed with \\circ[Tab]
 function ∘(r1::Relation{Y,Z}, r2::Relation{X,Y}) where {X,Y,Z}
@@ -165,7 +175,7 @@ function ∘(r1::Relation{Y,Z}, r2::Relation{X,Y}) where {X,Y,Z}
     r2inv = inv(r2)
     for y ∈ collect(inputs(r1) ∩ outputs(r2))
         for x ∈ collect(r2inv(y)), z ∈ collect(r1(y))
-        push!(r, x => z)
+            push!(r, x => z)
         end
     end
     r
@@ -176,7 +186,7 @@ function +(r1::Relation{X,Y}, r2::Relation{X,Y}) where {X,Y}
     r = Relation{X,Y}()
     for x ∈ collect(inputs(r1) ∩ inputs(r2))
         for y1 ∈ collect(r1(x)), y2 ∈ collect(r2(x))
-        push!(r, x => y1 + y2)
+            push!(r, x => y1 + y2)
         end
     end
     r
