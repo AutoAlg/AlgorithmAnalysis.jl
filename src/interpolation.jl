@@ -183,10 +183,21 @@ linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p
 # Constraints
 
 """
-    constraints(oracle)
-    constraints(oracle, property)
+    constraints(o::Oracle)
+    constraints(o::Oracle, p::Property)
+    constraints(e::Expression)
 
-All constraints for an oracle, or the constraints for an oracle to have a given property.
+Return the constraints information of an input depending on its type:
+- **Oracle**
+Return all constraints for an oracle, or the constraints for an oracle given a property.
+- **Expression**
+Return a list of constraints the expression `e` is in.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> constraints(x)
+```
 """
 function constraints end
 

@@ -21,7 +21,7 @@ For oracles, this function recursively labels all suboracles.
     - the gradient of a functional with label `f` is `∇f`
     - the Hessian of a functional with label `f` is `∇²f`
 
-See also: [`@autolabel`](@ref).
+See also: [`@algorithm`](@ref).
 
 ```julia-repl
 julia> f = QuadraticFunctional{Rⁿ}()
@@ -40,8 +40,22 @@ function label! end
 label(x::Union{Expression,Oracle}) = x.label
 label(w::Wrapper) = label(unwrap(w))
 
-description(e::Expression) = (isempty(label(e)) ? description(decomposition(e)) : label(e))
+"""
+    description(e::Expression)
+    description(o::Oracle)
 
+Return the label information of an input depending on its type:
+-- **Expression**
+Return the label of an expression
+-- **Oracle**
+Return the label and type information of an oracle
+
+```julia-repl
+julia> x0 = Rⁿ()
+julia> label(x0, "x0")
+julia> description(x0) # Returns "x0"
+"""
+description(e::Expression) = (isempty(label(e)) ? description(decomposition(e)) : label(e))
 function description(d::LinearDecomposition)
     isempty(d) && return "(empty)"
     str = ""
@@ -98,9 +112,42 @@ function label!(o::Oracle, label::String)
     nothing
 end
 
+"""
+    defaultlabel(T, label)
+
+Create a label for an expression depending on its type `T`` and its label `label`
+- **Transpose**:  
+  For a transpose expression of an expression labeled `e`, return label string `e*`
+
+- **Subdifferential**:  
+  For the subdifferential of a functional labeled `f`, return label string `∂f`
+
+- **Gradient**:  
+    For the Gradient of a functional labeled `f`, return label string `∇f`
+    
+- **Hessian**:  
+    For the Hessian of a functional labeled `f`, return label string `∇²f`
+
+- **AbstractOperator**:
+    For an abstract operator labeled `f` applied on an expression labeled `e`, return label string `f(e)`
+
+- **ConstantMap**:
+    For an ConstantMap label `Σ`, return its label string `Σ`
+
+- **InnerProduct**:
+    For an inner product between expressions labeled `e1` and `e2` , return label string `<e1, e2>`
+
+- **Norm**:
+    For an inner product between an expression labeled `e1` and its transpose labeled `e1*`, return label string `|e1|²`
+
+```julia-repl
+julia> f = QuadraticFunctional{Rⁿ}()
+julia> defaultlabel(Type{f'}, label(f))
+"""
 defaultlabel(::Type{Transpose}, label::String) = label * "*"
 defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
 defaultlabel(::Type{Gradient}, label::String) = "∇" * label
+defaultlabel(::Type{Gradient2}, label::String) = "∇2" * label
 defaultlabel(::Type{Hessian}, label::String) = "∇²" * label
 
 defaultlabel(o::AbstractOperator, x) = "$(label(o))($(label(x)))"

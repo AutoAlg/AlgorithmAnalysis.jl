@@ -61,7 +61,7 @@ end
 # end
 
 """
-    variables_constraints_oracles
+    constraints_oracles
 
 Recursively find all variables, constraints, and oracles associated with an expression.
 """
@@ -326,7 +326,8 @@ function stateupdate(vars)
     real_vars = collect(v for v ∈ vars if v isa R)
     x⁺ = next(x)
     # u  = collect(setdiff(variables(x⁺), variables(vars)))
-    u  = collect(setdiff(variables(real_vars), variables(x)))
+    u  = collect(v for v ∈ vars if ismissing(next(v)) && v isa R)
+    # u  = collect(setdiff(variables(real_vars), variables(x)))
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
@@ -537,16 +538,16 @@ function bsmin( f, a, b, tol=1e-5 )
     return b
 end
 
-function rate(performance::Expression)
-    @info "CONTROL ANALYSIS"
-    if !isa(performance, R)
-        error("The performance measure must be a real number in $R")
-    end
-    @info "Finding the rate of convergence of performance measure $performance"
-    bsmin( ρ -> certify(performance,ρ), 0, 1 )
-end
+# function rate(performance::Expression)
+#     @info "CONTROL ANALYSIS"
+#     if !isa(performance, R)
+#         error("The performance measure must be a real number in $R")
+#     end
+#     @info "Finding the rate of convergence of performance measure $performance"
+#     bsmin( ρ -> certify(performance,ρ), 0, 1 )
+# end
 
-function rate(performance::Expression, tracker)
+function rate(performance::Expression, tracker=0)
     # @info "CONTROL ANALYSIS"
     if !isa(performance, R)
         error("The performance measure must be a real number in $R")
@@ -663,3 +664,82 @@ end
 
 createConstraintMatrix(constraint::Constraint, vectors, scalars) = createMatrix(expression(constraint), vectors, scalars)
 createConstraintMatrix(cons::Constraints, vectors, scalars) = [createConstraintMatrix(constraint, vectors, scalars) for constraint in prune!(cons)]
+
+function lift(state::Expression, dimension::Int)
+    initial_state, initial_inputs = get_states_inputs(state)
+    state_formula = get_formulas([initial_state; initial_inputs], Expressions(state))[1]
+    input_formulas = get_formulas(initial_state, initial_inputs)
+
+    all_states = [initial_state; state]
+    depth = length(initial_state) # How many state is used to update
+    for i in length(all_states)+1:dimension+length(all_states) # if 3 states have been created, next state is "lift_4_state"
+        current_states = all_states[end-depth+1:end] # Get the states needed to create the inputs
+        inputs = [] # Get the inputs needed for this update
+        for input_formula in input_formulas
+            input_oracle = input_formula[1]
+            input_decomp = vec(input_formula[2]) # Get the decomp of the input
+            decomp = sum(input_decomp * current_states for (input_decomp, current_states) in zip(input_decomp, current_states))
+            label!(decomp, "lift_$(i)_input_$(length(inputs)+1)") # to create "lift_4_state" we use "lift_4_input_n"
+            input = sample(input_oracle, decomp)
+            push!(inputs, input)
+        end
+        state_decomp = vec(state_formula[2]) # Get the decomp of the next state
+        state_components = [current_states; inputs] # Get the states and inputs needed to create the next state
+        next_state = sum(state_decomp * state_components for (state_decomp, state_components) in zip(state_decomp, state_components))
+        label!(next_state, "lift_$(i)_state") # label the new state
+        @algorithm all_states[end] => next_state # define as next state
+        push!(all_states, next_state)
+        # push!(all_states)
+    end
+end
+
+function get_formulas(components, targets)
+    # components, targets = collect(components), collect(targets)
+    formulas = []  
+    for target in (targets)
+        oracle = get_oracle_input(target)[1]
+        if !ismissing(oracle) # target e is the result of sampling an oracle
+            e = get_oracle_input(target)[2]
+        else # target is just what it is
+            e = target
+        end
+        if hasmethod(hasdecomposition, Tuple{typeof(e)}) && hasdecomposition(e) # if e is a decomposition
+            if !⊆(Expressions(collect(keys(weights(decomposition(e))))), Expressions(components))
+                return missing # break if anything in e's decomposition is not in components
+            end
+        else # if e is a variable
+            if !⊆(Expressions(e), Expressions(components))
+                return missing # break if e is not in component
+            end
+        end
+        push!(formulas, (oracle, linearform(collect(components) => e)))
+    end
+    return formulas # Every target in targets can be created using the components
+end
+
+function get_states_inputs(e::Expression)
+    states, inputs = Set(), []
+    if !(e isa Gram) && hasmethod(hasdecomposition, Tuple{typeof(e)}) && hasdecomposition(e)
+        for i in keys(weights(decomposition(e)))
+            oracle = first(get_oracle_input(i))
+            if !ismissing(oracle) # if the expression has an oracle, it is an input state
+                push!(inputs, i)
+            else
+                push!(states, i)
+            end
+        end
+    end
+    first_state_candidates = copy(states)
+    for state in states
+        if !ismissing(next(state))
+            delete!(first_state_candidates, next(state)) # If another state have "state" as its next state, "state" is not the first state)
+        end
+    end
+    head = only(first_state_candidates)
+    states = Any[]
+    while !ismissing(next(head))
+        push!(states, head)
+        head = next(head)
+    end
+    return states, inputs
+end

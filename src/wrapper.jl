@@ -24,6 +24,11 @@ struct Gradient{T<:AbstractDifferentiableFunctional} <: AbstractSubdifferential{
     parent::T
 end
 
+"Generic wrapper for the gradient of a differentiable functional."
+struct Gradient2{T<:AbstractDifferentiableFunctional} <: AbstractSubdifferential{T}
+    parent::T
+end
+
 struct GradientOf{T<:AbstractDifferentiableFunctional} <: Wrapper{T}
     parent::T
 end

@@ -269,33 +269,33 @@ function GD(m, L, prev_rate=0)
     end
     @show rate(performance, prev_rate)
 end
-# m = 1
-# # Evaluate TMM at 12 logarithmically spaced points between 1 and 100
-# L_sampled = exp10.(range(log10(1), log10(100), length=6))
-# condition_numbers_sampled = L_sampled ./ m
-# # Find the guaranteed convergence rate depending on condition number
-# prev_rate = 0 # Remembers the last returned rate
-# results = []
-# for L in L_sampled
-#     length(results) == 0 ? prev_rate = 0 : prev_rate = results[end]
-#     push!(results, FG(m, L, prev_rate))
-# end
-# # results = [FG(m, L) for L in L_sampled]
-# # Set up tick positions: whole numbers 1 to 10 and multiples of 10 from 10 to 100.
-# tick_positions = (union(collect(1:10), collect(10:10:100)))
-# # Define labels: Only powers of 10 (1, 10, 100) labeled as 10⁰, 10¹, 10²
-# tick_labels = Dict(1 => L"10^0", 10 => L"10^1", 100 => L"10^2")
-# formatted_labels = [get(tick_labels, x, "") for x in tick_positions]
-# # Plot data and the reference function
-# scatter(condition_numbers_sampled, results,
-#     xscale=:log10,
-#     xlabel="Condition Number (L/m)",
-#     ylabel="FG(m, L)",
-#     title="FG Results",
-#     label="FG(m,L)",
-#     markersize=5,
-#     xticks=(tick_positions, formatted_labels)
-# )
+m = 1
+# Evaluate TMM at 12 logarithmically spaced points between 1 and 100
+L_sampled = exp10.(range(log10(1), log10(100), length=6))
+condition_numbers_sampled = L_sampled ./ m
+# Find the guaranteed convergence rate depending on condition number
+prev_rate = 0 # Remembers the last returned rate
+results = []
+for L in L_sampled
+    length(results) == 0 ? prev_rate = 0 : prev_rate = results[end]
+    push!(results, FG(m, L, prev_rate))
+end
+# results = [FG(m, L) for L in L_sampled]
+# Set up tick positions: whole numbers 1 to 10 and multiples of 10 from 10 to 100.
+tick_positions = (union(collect(1:10), collect(10:10:100)))
+# Define labels: Only powers of 10 (1, 10, 100) labeled as 10⁰, 10¹, 10²
+tick_labels = Dict(1 => L"10^0", 10 => L"10^1", 100 => L"10^2")
+formatted_labels = [get(tick_labels, x, "") for x in tick_positions]
+# Plot data and the reference function
+scatter(condition_numbers_sampled, results,
+    xscale=:log10,
+    xlabel="Condition Number (L/m)",
+    ylabel="FG(m, L)",
+    title="FG Results",
+    label="FG(m,L)",
+    markersize=5,
+    xticks=(tick_positions, formatted_labels)
+)
 
 # (Only for TMM) Smooth reference curve using 1000 points for plotting purposes
 # L_fine = exp10.(range(log10(1), log10(100), length=1000))
