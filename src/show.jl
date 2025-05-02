@@ -2,27 +2,34 @@
 # ELEMENT
 ############################################################################################
 
-function show(io::IO, e::Element)
-    if haslabel(e)
-        print(io, label(e))
-    elseif hasvalue(e)
-        print(io, value(e))
+function show(io::IO, x::Object)
+    if haslabel(x)
+        print(io, label(x))
+    elseif hasvalue(x)
+        print(io, value(x))
     else
-        print(io, typeof(e))
+        print(io, typeof(x))
     end
 end
 
-function show(io::IO, ::MIME"text/plain", a::Element)
-    print(io, "Element of $(space(a))")
-    haslabel(a) && print(io, "\n  Label: ", label(a))
-    hasvalue(a) && print(io, "\n  Value: ", value(a))
-    hasconstraints(a) && print(io, "\n  Constraints: ", join(constraints(a), ", "))
-    hasoperators(a) && print(io, "\n  Operators: ", join(operators(a), ", "))
-    hasnext(a) && print(io, "\n  Next: ", next(a))
-    hasproperties(a) && print(io, "\n  Properties: ", join(properties(a), ", "))
+function show(io::IO, ::MIME"text/plain", x::Object)
+    print(io, "Object in $(space(x))")
+    haslabel(x) && print(io, "\n  Label: ", label(x))
+    hasvalue(x) && print(io, "\n  Value: ", value(x))
+    hasproperties(x) && print(io, "\n  Properties: ", join(properties(x), ", "))
+    hasconstraints(x) && print(io, "\n  Constraints: ", join(constraints(x), ", "))
+    hasoperators(x) && print(io, "\n  Operators: ", join(operators(x), ", "))
+    hasnext(x) && print(io, "\n  Next: ", next(x))
+
+    for s ∈ structures(space(x))
+        y = get(inv(relation(s)), x, missing)
+        if !ismissing(y)
+            print(io, "\n  ", s, y)
+        end
+    end
 end
 
-function show(io::IO, ::MIME"text/plain", elements::Elements)
+function show(io::IO, ::MIME"text/plain", elements::Objects)
     if isempty(elements)
         print(io, "Empty set of elements")
     else
@@ -31,10 +38,10 @@ function show(io::IO, ::MIME"text/plain", elements::Elements)
     end
 end
 
-function show(io::IO, ::MIME"text/plain", objs::Objects)
-    print(io, "Set of objects with $(length(objs)) elements:")
-    foreach( x -> print(io, "\n  ", x), objs )
-end
+# function show(io::IO, ::MIME"text/plain", objs::Objects)
+#     print(io, "Set of objects with $(length(objs)) elements:")
+#     foreach( x -> print(io, "\n  ", x), objs )
+# end
 
 ############################################################################################
 # PRODUCT SPACE
@@ -66,12 +73,12 @@ function show(io::IO, ::Type{CartesianProduct{T}}) where T
     print(io, join(fieldtypes(T), " × "))
 end
 
-show(io::IO, ::Type{<:Element{<:Addition}}) = print(io, "+")
-show(io::IO, ::Type{<:Element{<:Multiplication}}) = print(io, "*")
+show(io::IO, ::Type{<:Object{<:Addition}}) = print(io, "+")
+show(io::IO, ::Type{<:Object{<:Multiplication}}) = print(io, "*")
 
 show(io::IO, ::Type{CartesianPower{T, N}}) where {N, T} = print(io, T, superscript(N))
 show(io::IO, ::Type{CartesianPower{T}}) where {T} = print(io, T, "ᴺ")
-show(io::IO, e::Element{<:CartesianPower}) = print(io, "(", join(value(e), ","), ")")
+show(io::IO, e::Object{<:CartesianPower}) = print(io, "(", join(value(e), ","), ")")
 
 
 ############################################################################################
@@ -134,7 +141,7 @@ end
 
 # show(io::IO, x::TreeWrapper) = print(io, x.name)
 
-# function children(x::Element)
+# function children(x::Object)
 #     # ops = operators(space(x))
 #     if hasoperators(x) && x ∈ outputs(first(operators(x)))
 #         f = first(operators(x))
@@ -148,8 +155,8 @@ end
 
 # children(x::TreeWrapper) = x.children
 
-# tree(x::Expression; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
+# tree(x::Object; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
 
-# function tree(io::IO, x::Expression; maxdepth=10)
+# function tree(io::IO, x::Object; maxdepth=10)
 #     print_tree(io, x; maxdepth=maxdepth)
 # end

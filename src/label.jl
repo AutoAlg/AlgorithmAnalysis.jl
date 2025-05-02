@@ -44,27 +44,30 @@ Check if an `Object` has a label.
 function haslabel end
 
 
-label(obj::Object) = hasfield(typeof(obj), :label) ? obj.label : ""
-label(w::Wrapper) = label(unwrap(w))
+label(x::Object) = x.label
 
-haslabel(obj::Object) = !isempty(label(obj))
+haslabel(x::Object) = !isempty(label(x))
 
-label!(obj::Object, label::String) = (label!(obj, label, Objects());  nothing)
-label!(::AbstractArray{<:Expression}, ::String) = nothing
+label!(::AbstractArray{<:Object}, ::String) = nothing
 
-# Label the object x and all of its associations except for those associated with the set of objects objs (as these have already been labeled).
-function label!(obj::Object, label::String, objs::Objects)
-    if hasfield(typeof(obj), :label)
-        obj.label = label
-    end
-    push!(objs, obj)
-    # for a ∈ associations(obj)
-    #     if last(a) ∉ objs
-    #         label!(last(a), defaultlabel(first(a), label), objs)
-    #     end
-    # end
+function label!(obj::Object, l::String)
+    obj.label = l
+    obj.labeler = (x::Object) -> "$l($(label(x)))"
 end
 
+function label!(obj::Object{<:LinearFunctional}, l::String)
+    obj.label = l
+    obj.labeler = (x::Object) ->
+        if haslabel(x) && haslabel(obj)
+            if isequal(obj', x)
+                "|"*label(x)*"|²"
+            else
+                "⟨"*label(x)*","*label(obj')*"⟩"
+            end
+        else
+            ""
+        end
+end
 
 ############################################################################################
 # Default labels
@@ -77,19 +80,12 @@ defaultlabel(::Any, ::Any) = ""
 # defaultlabel(::Type{Jacobian}, label::String) = "J" * label
 # defaultlabel(::Type{Dual}, label::String) = label * "*"
 
-function defaultlabel(o::Expression{<:Operator}, x)
+function defaultlabel(o::Object{<:Operator}, x)
     haslabel(o) && haslabel(x) ? "$(label(o))($(label(x)))" : ""
 end
 
 # defaultlabel(o::ConstantMap, ::Any) = label(o)
 
-function defaultlabel(o::Expression{<:LinearFunctional{T}}, x::Expression{T}) where T
-    if haslabel(x) && haslabel(o)
-        isequal(o', x) ? "|"*label(x)*"|²" : "⟨"*label(x)*","*label(o')*"⟩"
-    else
-        ""
-    end
-end
 
 
 ############################################################################################
@@ -169,7 +165,7 @@ function _algorithm(ex::Expr)
     end
 end
 
-eval_and_label(x::Expression) = :($(esc(x)))
+eval_and_label(x::Object) = :($(esc(x)))
 
 function eval_and_label(ex::Expr)
     

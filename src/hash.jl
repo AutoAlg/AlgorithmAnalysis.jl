@@ -22,28 +22,29 @@ function hash end
 # Therefore we define `isequal` to still have a notion of equality
 # (Normally `isequal` falls back to `==`, so we need to provide a method).
 # All `Expression`s (Constraints are not `Expression`s!) are compared by value, except for AbstractVariables, which are compared by `===` (objectid).
-isequal(::Object, ::Object) = false
+# function isequal(x::Object, y::Object)
+#     if typeof(x) != typeof(y)
+#         return false
+#     end
+#     for i in 1:fieldcount(typeof(x))
+#         if !isequal(getfield(x, i), getfield(y, i))
+#             return false
+#         end
+#     end
+#     true
+# end
 
-function isequal(x::Expression, y::Expression)
-    if typeof(x) != typeof(y)
-        return false
-    end
-    for i in 1:fieldcount(typeof(x))
-        if !isequal(getfield(x, i), getfield(y, i))
-            return false
-        end
-    end
-    true
-end
+# # Define hash consistently with `isequal`
+# function hash(x::Object, h::UInt)
+#     h = hash(typeof(x), h)
+#     for i in 1:fieldcount(typeof(x))
+#         h = hash(getfield(x, i), h)
+#     end
+#     h
+# end
 
-# Define hash consistently with `isequal`
-function hash(x::Expression, h::UInt)
-    h = hash(typeof(x), h)
-    for i in 1:fieldcount(typeof(x))
-        h = hash(getfield(x, i), h)
-    end
-    h
-end
+isequal(x::Object, y::Object) = isequal(objectid(x), objectid(y))
+hash(x::Object, h::UInt) = hash(objectid(x), h)
 
 ############################################################################################
 # IsEqual

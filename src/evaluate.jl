@@ -24,20 +24,20 @@ julia> isequal(A(x), A*x)  # true
 function evaluate end
 
 # evaluate a generic element
-function (f::Element)(x::Element)
+function (f::Object)(x::Object)
     T1 = space(f)
     T2 = space(x)
     if !canevaluate(T1, T2)
-        error("Elements in space $T1 cannot be evaluated at elements in space $T2")
+        error("Objects in $T1 cannot be evaluated at objects in $T2")
     end
     sample(relation(f), x, defaultlabel(f,x))
+    # sample(instance(space(f)).relation(f), x, f.labeler(x))
 end
 
-function (f::Element)(x::Vararg{Element})
+function (f::Object)(x::Vararg{Object})
     if isfunction(f)
         f(convert(domain(f), x))
     else
-        error("Cannot evaluate element of type $(typeof(f))")
+        error("Cannot evaluate object of type $(typeof(f))")
     end
 end
-

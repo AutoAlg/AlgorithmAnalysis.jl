@@ -30,7 +30,7 @@ julia> y = Rⁿ();  (x+y)'  # linear functional z ↦ ⟨x,z⟩ + ⟨y,z⟩
 """
 function adjoint end
 
-function adjoint(o::Element)
+function adjoint(o::Object)
     error("Objects of type $(typeof(o)) do not have an associated operator o'. To specify a related operator, specialize `adjoint` for this object type.")
 end
 
@@ -45,9 +45,9 @@ end
 #     Hessian{typeof(o.parent)}(o.parent)
 # end
 
-adjoint(x::Element{<:Functional}) = instance(space(x)).gradient
-adjoint(x::Element{<:Field}) = x
-adjoint(x::Element{<:VectorSpace}) = instance(space(x)).dual(x)
+adjoint(x::Object{<:Functional}) = instance(space(x)).gradient(x)
+adjoint(x::Object{<:Field}) = x
+adjoint(x::Object{<:VectorSpace}) = instance(space(x)).dual(x)
 
 # adjoint(x::Zero) = Zero{LinearFunctional{space(x)}}()
 
@@ -60,5 +60,5 @@ adjoint(x::Element{<:VectorSpace}) = instance(space(x)).dual(x)
 # adjoint(::Type{T}) where {T} = LinearFunctional{T}
 adjoint(::Type{<:LinearFunctional{X}}) where X = X
 adjoint(::Type{T}) where {T<:Field} = T
-adjoint(::Type{T}) where {T<:VectorSpace} = LinearFunctional{T}
+adjoint(::Type{T}) where {T<:VectorSpace} = 𝓛{T}
 

@@ -1,14 +1,75 @@
 ############################################################################################
 # Real numbers
 
+structures(::Type{<:Space}) = Atoms()
+
+"""
+    Sampler{X,Y}
+
+A sampler from `X` to `Y`.
+"""
+struct Sampler{X,Y}
+    relation::SingleValuedRelation{Func{X,Y},Relation}
+    labeler::Function
+    singlevalued::Bool
+
+    function Sampler{X,Y}(singlevalued = true) where {X,Y}
+        relation = SingleValuedRelation{Func{X,Y},SingleValuedRelation}()
+        labeler = () -> ""
+        new{X,Y}(relation, labeler, singlevalued)
+    end
+end
+
+
+"""
+    𝓛{V}
+
+Space of linear functionals on a vector space `V`.
+"""
+struct 𝓛{V} <: LinearFunctional{V}
+    gradient::Object{AbstractFunction{𝓛{V},UnaryOperator{V}}}
+    relation::Object{AbstractFunction{𝓛{V},SingleValuedRelation}}
+    # relation::SingleValuedRelation{𝓛{V},SingleValuedRelation}
+
+    function Base.reinterpret(::Type{𝓛{V}}) where V
+        gradient = AbstractFunction{𝓛{V},UnaryOperator{V}}()
+        gradient.labeler = x -> "∇$(label(x))"
+        relation = AbstractFunction{𝓛{V},SingleValuedRelation}()
+        new{V}(gradient, relation)
+    end
+end
+
+const _𝓛 = Dict{VectorSpace,𝓛}()
+instance(::Type{𝓛{V}}) where {V<:VectorSpace} = get(_𝓛, V, reinterpret(𝓛{V}))
+
+
+"""
+    𝓕{V}
+
+Space of differentiable functionals on a vector space `V`.
+"""
+struct 𝓕{V} <: Functional{V}
+    gradient::Object{AbstractFunction{𝓕{V},UnaryOperator{V}}}
+
+    function Base.reinterpret(::Type{𝓕{V}}) where V
+        grad = AbstractFunction{𝓕{V},UnaryOperator{V}}()
+        grad.labeler = x -> "∇$(label(x))"
+        new{V}(grad)
+    end
+end
+
+const _𝓕 = Dict{VectorSpace,𝓕}()
+instance(::Type{𝓕{V}}) where {V<:VectorSpace} = get(_𝓕, V, reinterpret(𝓕{V}))
+
+
 """
     R <: Field
 
 The field of real numbers.
 """
 struct R <: Field
-    addition::Element{Addition{R}}
-    multiplication::Element{Multiplication{R}}
+    addition::Object{Addition{R}}
+    multiplication::Object{Multiplication{R}}
 
     # Use a different name for the inner constructor so that we can create real numbers using R(); see https://stackoverflow.com/questions/74801484/inner-constructor-in-julia-with-different-name-than-the-struct
     function Base.reinterpret(::Type{R})
@@ -23,6 +84,7 @@ end
 
 const _R = reinterpret(R)
 instance(::Type{R}) = _R
+structures(::Type{R}) = Atoms([instance(R).addition, instance(R).multiplication])
 
 
 """
@@ -31,22 +93,25 @@ instance(::Type{R}) = _R
 A real inner product space.
 """
 struct Rⁿ <: InnerProductSpace{R}
-    addition::Element{Addition{Rⁿ}}
-    scaling::Element{Scaling{Rⁿ,R}}
-    dual::Element{AbstractFunction{Rⁿ,LinearFunctional{Rⁿ}}}
+    addition::Object{Addition{Rⁿ}}
+    scaling::Object{Scaling{Rⁿ,R}}
+    dual::Object{AbstractFunction{Rⁿ,Rⁿ'}}
 
     function Base.reinterpret(::Type{Rⁿ})
         f = Addition{Rⁿ}()
         g = Scaling{Rⁿ,R}()
-        h = AbstractFunction{Rⁿ,LinearFunctional{Rⁿ}}()
+        h = AbstractFunction{Rⁿ,Rⁿ'}()
         f ∈ Associative
         f ∈ Commutative
+        h.labeler = x -> "$(label(x))'"
         new(f, g, h)
     end
 end
 
 const _Rⁿ = reinterpret(Rⁿ)
 instance(::Type{Rⁿ}) = _Rⁿ
+structures(::Type{Rⁿ}) = Atoms([
+    instance(Rⁿ).addition, instance(Rⁿ).scaling, instance(Rⁿ).dual])
 
 """
     Rᵐ <: InnerProductSpace
@@ -54,8 +119,8 @@ instance(::Type{Rⁿ}) = _Rⁿ
 A real inner product space.
 """
 struct Rᵐ <: InnerProductSpace{R}
-    addition::Element{Addition{Rᵐ}}
-    scaling::Element{Scaling{Rᵐ,R}}
+    addition::Object{Addition{Rᵐ}}
+    scaling::Object{Scaling{Rᵐ,R}}
 
     function Base.reinterpret(::Type{Rᵐ})
         f = Addition{Rᵐ}()
@@ -68,23 +133,8 @@ end
 
 const _Rᵐ = reinterpret(Rᵐ)
 instance(::Type{Rᵐ}) = _Rᵐ
-
-
-"""
-    𝓕{V}
-
-A differentiable functional on a vector space `V`.
-"""
-struct 𝓕{V} <: Functional{V}
-    gradient::Element{UnaryOperator{V}}
-
-    function Base.reinterpret(::Type{𝓕{V}}) where {V}
-        new{V}(UnaryOperator{V}())
-    end
-end
-
-const _𝓕 = Dict{VectorSpace,𝓕}()
-instance(::Type{𝓕{V}}) where {V<:VectorSpace} = get(_𝓕, V, reinterpret(𝓕{V}))
+structures(::Type{Rᵐ}) = Atoms([
+    instance(Rᵐ).addition, instance(Rᵐ).scaling, instance(Rᵐ).dual])
 
 
 
@@ -102,16 +152,16 @@ isimplementable(::Type{<:Real}) = true
 
 juliatype(::Any) = Union{}
 juliatype(::Type{R}) = Real
-juliatype(::Type{CartesianProduct{Tuple{R,R}}}) = Tuple{Real, Real}
+juliatype(::Type{R × R}) = Tuple{Real, Real}
 
 algorithmtype(::Any) = Union{}
 algorithmtype(::Type{Real}) = R
-algorithmtype(::Type{Tuple{Real, Real}}) = CartesianProduct{R, R}
+algorithmtype(::Type{Tuple{Real, Real}}) = R × R
 
-# convert(::Type{<:Expression{R}}, x::Real) = Atom{R}(x)
+convert(::Type{<:Object{R}}, x::Real) = Atom{R}(x)
 # # convert(::Type{<:Expression{R}}, ::Zero) = R(0)
 # # convert(::Type{<:Expression{R}}, ::One) = R(1)
-# promote_rule(::Type{<:Expression{R}}, ::Type{<:Real}) = Expression{R}
+promote_rule(::Type{<:Object{R}}, ::Type{<:Real}) = Object{R}
 
 # +(x::Real, y::Expression{R}) = +(promote(x,y)...)
 # +(x::Expression{R}, y::Real) = y + x

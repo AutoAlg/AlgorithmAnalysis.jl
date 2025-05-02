@@ -5,14 +5,10 @@ version = "0.1.0"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
-Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
-Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 Zeros = "bd1ec220-6eb4-527a-9b49-e79c3db6233b"
 
 [compat]
 AbstractTrees = "0.4.5"
-Memoize = "0.4.4"
-Polynomials = "4.0.19"
-Revise = "3.7.3"
+JuMP = "1.25.0"
 Zeros = "0.3.0"

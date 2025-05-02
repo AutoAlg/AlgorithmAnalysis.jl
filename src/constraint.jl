@@ -1,12 +1,8 @@
-
-# a constraint expression
-const ConEx = Union{Expression,AbstractArray{<:Expression}}
-
 ############################################################################################
 # Add constraint
 
 "Add a constraint to all variables in an expression."
-function add_constraint!(x::ConEx, c::Constraint)
+function add_constraint!(x::Object, c::Constraint)
     map(v -> push!(constraints(v), c), collect(variables(x)))
 end
 
@@ -14,7 +10,7 @@ end
 ############################################################################################
 # Constraint
 
-function ∈(x::Expression, s::ConstraintSet)
+function ∈(x::Object, s::ConstraintSet)
     error("∈ not implemented for expression $(typeof(x)) and set $(typeof(s)).")
 end
 
@@ -36,7 +32,7 @@ struct PositiveOrthant <: Cone end
 struct ZeroSet <: Cone end
 
 struct ConeConstraint{K<:Cone} <: Constraint
-    x::ConEx
+    x::Object
     
     function ConeConstraint{K}(x) where {K<:Cone}
         if !hasvalue(x)
@@ -53,7 +49,7 @@ const Positive = ConeConstraint{PositiveOrthant}
 const Semidefinite = ConeConstraint{PositiveSemidefiniteCone}
 const Equality = ConeConstraint{ZeroSet}
 
-∈(x::Expression, ::K) where {K<:Cone} = ConeConstraint{K}(x)
+∈(x::Object, ::K) where {K<:Cone} = ConeConstraint{K}(x)
 
 expression(c::ConeConstraint) = c.x
 
@@ -61,25 +57,25 @@ set(::ConeConstraint{K}) where {K<:Cone} = K
 
 cone(c::ConeConstraint) = set(c)
 
-==(lhs::ConEx, rhs::ConEx) = Equality(lhs-rhs)
-==(lhs::ConEx, rhs) = Equality(lhs-rhs)
-==(lhs, rhs::ConEx) = Equality(lhs-rhs)
+==(lhs::Object, rhs::Object) = Equality(lhs-rhs)
+==(lhs::Object, rhs) = Equality(lhs-rhs)
+==(lhs, rhs::Object) = Equality(lhs-rhs)
 
-≤(lhs::ConEx, rhs::ConEx) = Positive(rhs-lhs)
-≤(lhs::ConEx, rhs) = Positive(rhs-lhs)
-≤(lhs, rhs::ConEx) = Positive(rhs-lhs)
+≤(lhs::Object, rhs::Object) = Positive(rhs-lhs)
+≤(lhs::Object, rhs) = Positive(rhs-lhs)
+≤(lhs, rhs::Object) = Positive(rhs-lhs)
 
-≥(lhs::ConEx, rhs::ConEx) = Positive(lhs-rhs)
-≥(lhs::ConEx, rhs) = Positive(lhs-rhs)
-≥(lhs, rhs::ConEx) = Positive(lhs-rhs)
+≥(lhs::Object, rhs::Object) = Positive(lhs-rhs)
+≥(lhs::Object, rhs) = Positive(lhs-rhs)
+≥(lhs, rhs::Object) = Positive(lhs-rhs)
 
-⪯(lhs::ConEx, rhs::ConEx) = Semidefinite(rhs-lhs)
-⪯(lhs::ConEx, rhs) = Semidefinite(rhs-lhs)
-⪯(lhs, rhs::Expression) = Semidefinite(rhs-lhs)
+⪯(lhs::Object, rhs::Object) = Semidefinite(rhs-lhs)
+⪯(lhs::Object, rhs) = Semidefinite(rhs-lhs)
+⪯(lhs, rhs::Object) = Semidefinite(rhs-lhs)
 
-⪰(lhs::ConEx, rhs::ConEx) = Semidefinite(lhs-rhs)
-⪰(lhs::ConEx, rhs) = Semidefinite(lhs-rhs)
-⪰(lhs, rhs::ConEx) = Semidefinite(lhs-rhs)
+⪰(lhs::Object, rhs::Object) = Semidefinite(lhs-rhs)
+⪰(lhs::Object, rhs) = Semidefinite(lhs-rhs)
+⪰(lhs, rhs::Object) = Semidefinite(lhs-rhs)
 
 
 ############################################################################################
@@ -110,7 +106,7 @@ end
 
 """
     check(c::Constraint)
-    check(x::Expression, S::ConstraintSet)
+    check(x::Object, S::ConstraintSet)
 
 Check whether or not a constraint is satisfied.
 """
