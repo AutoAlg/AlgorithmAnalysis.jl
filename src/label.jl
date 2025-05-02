@@ -88,6 +88,8 @@ end
 ############################################################################################
 # Expressions
 
+label!(::Any, ::String) = nothing
+
 label!(e::Expression, label::String) = (e.label=label; nothing)
 # label!(x::InnerProductSpace, label::String) = (x.label=label; label!(x.dual,label*"*"); nothing)
 
@@ -187,41 +189,91 @@ julia> end
 ```
 """
 macro algorithm(ex::Expr)
+    _algorithm(ex)
+end
+
+_algorithm(x::LineNumberNode) = x
+_algorithm(x::Symbol) = x
+
+function _algorithm(ex::Expr)
+
+    # if the expression is a block, call the macro on each argument in the block
     if ex.head == :block
-        Expr(:block, [ _algorithm(arg) for arg ∈ ex.args if !(arg isa LineNumberNode) ]...)
+        Expr(:block, [ _algorithm(arg) for arg ∈ ex.args ]...)
+
+    # else if the expression is a for loop, evalaute the macro on each line of the loop
+    elseif ex.head == :for
+        val = esc(ex.args[1].args[1])
+        vals = esc(ex.args[1].args[2])
+        expr = ex.args[2]
+
+        quote
+            for $val in $vals
+                $(_algorithm(expr))
+            end
+        end
     else
-        _algorithm(ex)
+    
+        # if the expression is a pair, then update the pair
+        if ex.head == :call && ex.args[1] == :(=>)
+            lhs = esc(ex.args[2])
+            rhs = esc(ex.args[3])
+            quote
+                update!( $lhs => $rhs )
+            end
+            
+        # else if the expression is not an assignment, then just evaluate it
+        elseif ex.head ≠ :(=)
+            :($(esc(ex)))
+        
+        # otherwise the expression is an assignment, so evaluate and label it
+        else
+            eval_and_label(ex)
+        end
     end
 end
 
-function _algorithm(ex::Expr)
+eval_and_label(x::Expression) = :($(esc(x)))
+
+function eval_and_label(ex::Expr)
     
-    # if the expression is a pair, then update the pair
-    if ex.head == :call && ex.args[1] == :(=>)
+    # if the lhs is a symbol
+    if ex.args[1] isa Symbol
+
+        lhs = esc(ex.args[1])
+        rhs = esc(ex.args[2])
+        str = string(ex.args[1])
+
         quote
-            update!( $(esc(ex.args[2])) => $(esc(ex.args[3])) )
+            $lhs = $rhs
+            label!($lhs, $str)
         end
+
+    # else if the lhs is an element of an array (evalutes the index)
+    elseif ex.args[1] isa Expr && ex.args[1].head == :ref
+
+        lhs = esc(ex.args[1])
+        rhs = esc(ex.args[2])
+        sym = string(ex.args[1].args[1])
+        ind = esc(ex.args[1].args[2])
         
-    # else if the expression is not an assignment, then just evaluate it
-    elseif ex.head ≠ :(=)
-        :($(esc(ex)))
-    
-    # otherwise, the expression is an assignment, so evaluate it and label the new variable
-    else
-        if ex.args[1] isa Symbol
-            quote
-                local var = $(esc(ex.args[2]))
-                label!(var, $(string(ex.args[1])))
-                $(esc(ex.args[1])) = var
-            end
-        elseif ex.args[1] isa Expr && ex.args[1].head == :tuple
-            quote
-                local var = $(esc(ex.args[2]))
-                label!.(var, $([string(x) for x ∈ ex.args[1].args]))
-                $(esc(ex.args[1])) = var
-            end
-        else
-            throw(ArgumentError("@autolabel: `$ex` does not have the correct left-hand side."))
+        quote
+            $lhs = $rhs
+            label!($lhs, $sym * "[" * string($ind) * "]")
         end
+
+    # else if the lhs is a tuple, then label each element in the tuple
+    elseif ex.args[1] isa Expr && ex.args[1].head == :tuple
+
+        lhs = esc(ex.args[1])
+        rhs = esc(ex.args[2])
+
+        quote
+            $lhs = $rhs
+            label!.($lhs, $([string(x) for x ∈ ex.args[1].args]))
+        end
+
+    else
+        throw(ArgumentError("@algorithm: `$ex` does not have the correct left-hand side."))
     end
 end

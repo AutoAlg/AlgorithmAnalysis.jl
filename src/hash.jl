@@ -33,9 +33,9 @@ end
 ############################################################################################
 # IsEqual
 
-isequal(x1::Expression, x2::Expression) = false
-isequal(x1::Expression, x2::Any) = false
-isequal(x1::Any, x2::Expression) = false
+isequal(::Expression, ::Any) = false
+isequal(::Any, ::Expression) = false
+isequal(::Expression, ::Expression) = false
 
 function isequal(x1::T, x2::T) where {T<:Expression}
     if !isdefined(x1, :value) || !isdefined(x2, :value)
