@@ -14,8 +14,8 @@ export R, Rⁿ, Rᵐ
 
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
-export label, label!, getlabel, value, value!, decomposition, selfdecomp, hasvalue
-export isvariable, hasdecomposition, previous, previous!, next, next!, update
+export label, label!, getlabel, value, value!, decomposition, selfdecomp, hasvalue, defaultlabel
+export isvariable, hasdecomposition, previous, previous!, next, next!, update, update!
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
 # constraint
@@ -23,13 +23,14 @@ export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
 export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
 export ⪯, ⪰
+export Gram, evaluate, ⊂, ⊆, prune_grams, gram_to_constraint
 
 # relation
-export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
+export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation#, DualInputRelation
 export domain, codomain, inputs, outputs, inputs_outputs
 
 # oracle
-export Oracle, Oracles, Dual, DualOracle, FunctionOracle, OperatorOracle, Functional
+export Oracle, Oracles, DualOracle, FunctionOracle, OperatorOracle, Functional
 export ConvexFunction, DifferentiableFunction
 export Operator, ContinuousOperator, LinearOperator
 export oracle, oracles, superoracle, suboracle, suboracles, sample, samples, relation, get_oracle
@@ -42,14 +43,17 @@ export AbstractDifferentiableFunctional, AbstractTwiceDifferentiableFunctional
 export AbstractInfinitelyDifferentiableFunctional, AbstractLinearFunctional
 
 export Operator, Map, LinearMap, SymmetricLinearMap, SkewSymmetricLinearMap
-export Functional, SubdifferentiableFunctional, DifferentiableFunctional
+export Functional, SubdifferentiableFunctional, DifferentiableFunctional, DualInputFunctional
 export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
 export LinearFunctional, ZeroFunctional
 
+export get_oracle_input
+
 # wrappers
 export Wrapper, unwrap
-export Transpose, AbstractDifferential, AbstractSubdifferential
-export Subdifferential, Gradient, Hessian
+export Dual
+export Transpose, AbstractDifferential, AbstractSubdifferential, TransposeOf
+export Subdifferential, Gradient, Gradient2, Hessian, GradientOf
 
 # decompositions
 export Decomposition, EmptyDecomposition, LinearDecomposition
@@ -60,7 +64,7 @@ export Convex, SmoothStronglyConvex, ConvexIndicator, StronglyConvex, Smooth
 export QuadraticGrowth, Lipschitz
 export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive
 export StronglyMonotone, MaxSingularValue
-export triplets, Triplets, interpolate
+export triplets, Triplets, interpolate, allvecs, gram
 
 # properties
 export Property, Properties
@@ -89,9 +93,10 @@ export first_order_stationary_point
 export hierarchy
 
 # analysis
-export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify
+export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify, certifyTMM, grams
 export quadraticform, linearform, tr, optvar, optcon, maximize
 export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
+export get_states_inputs, get_formulas, lift
 
 ############################################################################################
 # Import
@@ -99,13 +104,15 @@ export variable_dictionary, optimization_variable_dictionary, isimplementable, m
 # import Convex as cvx
 import JuMP
 import SCS
+import MosekTools
+import SDPA
 import LinearAlgebra as la
 import InteractiveUtils
 import AbstractTrees
 import Zeros: Zero
 import MathOptInterface as MOI
 
-import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩
+import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊂, ⊆
 import Base: isempty, iszero, isequal
 import Base: promote_rule, convert, show, zero, zeros, adjoint
 import Base: length, Generator, iterate, size, push!, inv, pairs

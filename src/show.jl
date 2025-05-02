@@ -43,6 +43,8 @@ end
 function show(io::IO, e::Expression)
     if iszero(e)
         print(io, "𝟎")
+    elseif e isa Gram
+        print(io, "Gram matrix of vector $(e.vecs)")
     elseif hasvalue(e)
         print(io, value(e))
     elseif !isempty(label(e))
@@ -54,6 +56,7 @@ end
 
 elementname(::Type{<:VectorSpace}) = "vector"
 elementname(::Type{<:Field}) = "scalar"
+elementname(::Type{<:Gram}) = "gram matrix"
 
 function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     if iszero(e)
@@ -62,6 +65,7 @@ function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     #     print(io, value(e))
     else
         print(io, "\n$(uppercasefirst(elementname(T))) in $(typeof(e))")
+        isdefined(e, :vecs) && print(io, "\n Value: $(e.vecs) ⊗ $(e.vecs)")
         !isempty(label(e)) && print(io, "\n  Label: ", label(e))
         hasvalue(e) && print(io, "\n  Value: ", value(e))
         hasdecomposition(e) && print(io, "\n  Decomposition: ", decomposition(e))

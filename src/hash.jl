@@ -38,7 +38,9 @@ isequal(::Any, ::Expression) = false
 isequal(::Expression, ::Expression) = false
 
 function isequal(x1::T, x2::T) where {T<:Expression}
-    if !ismissing(x1.value) && !ismissing(x2.value)
+    if !isdefined(x1, :value) || !isdefined(x2, :value)
+        false 
+    elseif !ismissing(x1.value) && !ismissing(x2.value)
         isequal(x1.value, x2.value)
     elseif ismissing(x1.value) && ismissing(x2.value)
         x1 ≡ x2
@@ -67,3 +69,7 @@ function isequal(lhs::Constraint, rhs::Constraint)
 end
 isequal(::Satisfied, ::Satisfied) = true
 isequal(::Unsatisfied, ::Unsatisfied) = true
+isequal(::Satisfied, ::Constraint) = false
+isequal(::Unsatisfied, ::Constraint) = false
+isequal(::Constraint, ::Satisfied) = false
+isequal(::Constraint, ::Unsatisfied) = false

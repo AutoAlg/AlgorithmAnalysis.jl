@@ -24,12 +24,13 @@ mutable struct Map{X,Y} <: AbstractFunction{X,Y}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,Y}
+    associations::Associations
     
-    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}())
+    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}(), Associations())
 end
 
 """
-    ConstantMap{X,Y}(value = missing)
+    ConstantMap{X,Y}
 
 A constant map from `X` to `Y`.
 
@@ -55,6 +56,9 @@ mutable struct LinearMap{X,Y} <: AbstractLinearMap{X,Y}
     LinearMap{X,Y}() where {X,Y} = new{X,Y}("LinearMap{$X,$Y}", Properties([Linear()]), SingleValuedRelation{X,Y}(), Dict(Transpose => Map{Y,X}()))
 end
 
+"""
+    SymmetricLinearMap{X}
+"""
 mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
     label::String
     properties::Properties
@@ -63,6 +67,9 @@ mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
     SymmetricLinearMap{X}() where {X} = new{X}("SymmetricLinearMap{$X}", Properties([Symmetric()]), SingleValuedRelation{X,X}())
 end
 
+"""
+    SkewSymmetricLinearMap{X}
+"""
 mutable struct SkewSymmetricLinearMap{X} <: AbstractSkewSymmetricLinearMap{X}
     label::String
     properties::Properties
@@ -82,6 +89,9 @@ mutable struct Functional{X} <: AbstractFunctional{X}
     Functional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("Functional{$X}", Properties(), SingleValuedRelation{X,F}())
 end
 
+"""
+    SubdifferentiableFunctional{X}
+"""
 mutable struct SubdifferentiableFunctional{X} <: AbstractSubdifferentiableFunctional{X}
     label::String
     properties::Properties
@@ -91,15 +101,47 @@ mutable struct SubdifferentiableFunctional{X} <: AbstractSubdifferentiableFuncti
     SubdifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("SubdifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Subdifferential => Operator{X,X}()))
 end
 
+"""
+    DifferentiableFunctional{X}
+"""
 mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+    function DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
+        f = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+        push!(unwrap(f').associations, GradientOf => f)
+        f
+    end
+    # DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
 end
 
+# mutable struct DualInputFunctional{X1, X2, F<:Field} <: AbstractDifferentiableFunctional{[X1; X2]}
+#     label::String
+#     properties::Properties
+#     relation::SingleValuedRelation{[X1; X2], F}
+#     associations::Associations
+
+#     function DualInputFunctional{X1, X2, F}() where {F<:Field, X1<:VectorSpace{F}, X2<:VectorSpace{F}}
+#         # Notice that we no longer do new{X1, X2}(...); just new(...).
+#         f = new(
+#             "DualInputFunctional{$(X1), $(X2)}",
+#             Properties(),
+#             SingleValuedRelation{[X1, X2], F}(),
+#             # Adjust dictionary keys if needed (here I assume you want two different mappings).
+#             Dict(Gradient => Map{X1, X1}(), Gradient2 => Map{X2, X2}())
+#         )
+#         # If needed, associate the gradient of this oracle with itself.
+#         push!(unwrap(f').associations, GradientOf => f)
+#         push!(unwrap(f'').associations, GradientOf => f)
+#         return f
+#     end
+# end
+"""
+    TwiceDifferentiableFunctional{X}
+"""
 mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
     label::String
     properties::Properties
@@ -109,6 +151,9 @@ mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFu
     TwiceDifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("TwiceDifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}(), Hessian => Map{X,SymmetricLinearMap{X}}()))
 end
 
+"""
+    QuadraticFunctional{X}
+"""
 mutable struct QuadraticFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
     label::String
     properties::Properties
@@ -118,23 +163,32 @@ mutable struct QuadraticFunctional{X} <: AbstractTwiceDifferentiableFunctional{X
     QuadraticFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("QuadraticFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => LinearMap{X,X}(), Hessian => SymmetricLinearMap{X}()))
 end
 
+"""
+    LinearFunctional{X}
+"""
 mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
 
     function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
-        new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
+        f = new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
+        # push!(unwrap(f').associations, TransposeOf => f) # new
+        f #new
     end
 end
 
+"""
+    ZeroFunctional{X}
+"""
 mutable struct ZeroFunctional{X} <: AbstractLinearFunctional{X}
     label::String
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
-    
+
     ZeroFunctional{X}() where {X} = new{X}("ZeroFunctional{$X}", Properties())  # [Linear()]
 end
+
 
 iszero(o::Oracle) = false
 iszero(o::ZeroFunctional) = true
@@ -178,11 +232,6 @@ The relation associated with an oracle (or its wrapper).
 """
 relation(o::OracleOrWrapper) = unwrap(o).relation
 
-"""
-    associations(o)
-
-Get the set of oracles associated with the oracle `o`.
-"""
 function associations(o::OracleOrWrapper)
     hasproperty(unwrap(o), :associations) ? unwrap(o).associations : Associations()
 end
@@ -196,11 +245,6 @@ The set of samples is a `Relation`. Iterating an oracle iterates over its sample
 """
 samples(o::OracleOrWrapper) = samples(relation(o))
 
-"""
-    description(o)
-
-Get a description of an oracle (or its wrapper).
-"""
 description(w::W) where {W<:Wrapper{<:Oracle}} = "$(string(Base.typename(W).wrapper)) of $(label(w.parent))"
 description(o::Operator) = "Operator from $(domain(o)) to $(codomain(o))"
 description(o::Map) = "Map from $(domain(o)) to $(codomain(o))"
@@ -267,31 +311,38 @@ end
 sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(Zero())
 
 function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
-
     # if x is zero, then return the scalar zero
-    if iszero(o) || iszero(x)
-        F(Zero())
-        
+    if (iszero(o) || iszero(x))
+        y = F(Zero())
     # else if x has an empty decomposition, sample it directly
     elseif isempty(decomposition(x))
-        y = sample(relation(o), x)
-        label!(y, defaultlabel(o,x))
+        if hash(o') > hash(x)
+            y = sample(relation(o), x)
+            label!(y, defaultlabel(o,x))
+        else
+            y = sample(relation(x), o)
+            label!(y, defaultlabel(x,o))
+        end
         push!(x.oracles, o)
         push!(y.oracles, o)
-        y
-        
     # otherwise, sample each element of the decomposition
     else
         y = F(Zero())
         for (key,value) ∈ weights(selfdecomp(x))
-            y0 = sample(relation(o), key)
-            label!(y0, defaultlabel(o, key))
+            if hash(o') > hash(key)
+                y0 = sample(relation(o), key)
+                label!(y0, defaultlabel(o, key))
+                y += value*y0
+            else
+                y0 = sample(key, relation(o))
+                label!(y0, defaultlabel(key, o))
+                y += value*y0
+            end
             push!(key.oracles, o)
             push!(y0.oracles, o)
-            y += value*y0
         end
-        y
     end
+    y
 end
 
 # function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}}
@@ -329,24 +380,51 @@ end
 # end
 
 # Overload () to denote sampling
+# """
+#     (o::OracleOrWrapper)(x) = sample(o,x)
+# This function overloads () to sample an oracle. To sample oracle `f'` at expression `x0`, use f'(x0)
+
+# ```julia-repl
+# julia> x0 = Rⁿ()
+# julia> f = DifferentiableFunctional{Rⁿ}()
+# julia> f'(x0)
+# """
 (o::OracleOrWrapper)(x) = sample(o,x)
 
 # For linear maps, also use * to denote sampling
-*(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},Dual}, x) = sample(o,x)
+# """
+#     *(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},OrWrapper{AbstractSymmetricLinearMap},Dual}, x) = sample(o,x)
+# This function overloads * to sample a linear map oracle. To sample oracle `Σ'` at expression `x0`, use Σ*x0
+
+# ```julia-repl
+# julia> x0 = Rⁿ()
+# julia> Σ = SymmetricLinearMap{Rⁿ}()
+# julia> Σ*x0
+# """
+*(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},OrWrapper{AbstractSymmetricLinearMap},Dual}, x) = sample(o,x)
 
 function *(o::Dual{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
-
     if iszero(o) || iszero(x)
         F(Zero())
     else
         y = F(Zero())
         for (key1,val1) ∈ weights(selfdecomp(o')), (key2,val2) ∈ weights(selfdecomp(x))
-            orc = unwrap(key1')
-            y0 = sample(relation(orc), key2)
-            label!(y0, defaultlabel(key1', key2))
-            push!(key2.oracles, orc)
-            push!(y0.oracles, orc)
-            y += val1 * val2 * y0
+            # Inner product ordering done by hash
+            if hash(key2) < hash(key1)
+                orc = unwrap(key2')
+                y0 = sample(relation(orc), key1)
+                label!(y0, defaultlabel(key2', key1))
+                push!(key1.oracles, orc)
+                push!(y0.oracles, orc)
+                y += val1 * val2 * y0
+            else
+                orc = unwrap(key1')
+                y0 = sample(relation(orc), key2)
+                label!(y0, defaultlabel(key1', key2))
+                push!(key2.oracles, orc)
+                push!(y0.oracles, orc)
+                y += val1 * val2 * y0
+            end
         end
         y
     end
@@ -358,6 +436,17 @@ end
 
 properties(o::OracleOrWrapper) = unwrap(o).properties
 
+"""
+    ∈(o::OracleOrWrapper, property::Property)
+    ∈(o::OracleOrWrapper, properties::Properties)
+Push a property or set of properties onto an Oracle.
+
+# Examples
+```julia-repl
+f = DifferentiableFunctional{Rⁿ}()
+f ∈ SmoothStronglyConvex(1, 10) # Push the property of being 1 smooth 10 strongly convex onto Oracle `f`
+```
+"""
 ∈(o::OracleOrWrapper, property::Property) = push!(properties(o), property)
 ∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties)
 
@@ -400,3 +489,19 @@ julia> hierarchy(Oracle)
 ```
 """
 hierarchy(d::DataType) = AbstractTrees.print_tree(d; maxdepth=10)
+
+function get_oracle_input(e::Expression) # Get the oracle and the expression used to create en expression
+    if !(e isa Gram) && hasproperty(e, :oracles) && hasmethod(oracles, Tuple{typeof(e)}) # Check if the expression has oracles
+        if length((oracles(e))) > 0
+            for o in oracles(e)
+                io = inputs_outputs(o)
+                index = findfirst(isequal(e), io[2])
+                if !isnothing(index)  
+                    return o, io[1][index] # Return the oracle and the sampled expression
+                end
+            end
+        end
+    end
+    return missing, missing
+    # error("No oracle had the expression $(e) as an output") # No oracle was found
+end

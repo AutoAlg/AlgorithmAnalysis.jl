@@ -1,15 +1,7 @@
 # API
 
-## General
-
-```@docs
-label
-label!
-@autolabel
-```
-
-
 ## Expressions
+
 
 ```@docs
 Expression
@@ -18,6 +10,7 @@ Expression
 ### Abstract expression types
 
 ```@docs
+AbstractVectorSpace
 Field
 VectorSpace
 NormedVectorSpace
@@ -30,7 +23,7 @@ InnerProductSpace
 R
 Rⁿ
 Rᵐ
-GramMatrix
+Gram
 ```
 
 ### Macros to create types of expressions
@@ -45,22 +38,69 @@ GramMatrix
 ### Expression methods
 
 ```@docs
-⊗
+constraints
+oracles
+associations
+isvariable
+iszero
+hasdecomposition
+hasvalue
+decomposition
+value
+value!
 variables
+selfdecomp
+next!
+next
+update!
+weights
+size
+length
+evaluate
+⊂
+⊆
+⊗
 ```
 
+## Label
+
+```@docs
+label
+label!
+description
+defaultlabel
+@algorithm
+```
 
 ## Constraints
 
 ```@docs
 Constraint
 ConstraintSet
+
 add_constraint!
+Satisfied
+Unsatisfied
+Cone
+PositiveSemidefiniteCone
+PositiveOrthant
+ZeroSet
+ConeConstraint
+Positive
+Semidefinite
+Equality
+∈
+expression
+set
+cone
+==
+≤
+≥
+⪯
+⪰
 check
 prune!
-constraints
 ```
-
 
 ## Oracles
 
@@ -69,19 +109,25 @@ Oracle
 Operator
 Map
 ConstantMap
-Relation
 LinearMap
+SymmetricLinearMap
+SkewSymmetricLinearMap
 Functional
-oracle
-superoracle
-suboracle
-suboracles
+SubdifferentiableFunctional
+DifferentiableFunctional
+TwiceDifferentiableFunctional
+QuadraticFunctional
+LinearFunctional
+ZeroFunctional
+relation
 samples
 sample
-associations
-description
 ```
 
+## Relation
+```@docs
+Relation
+```
 
 ## Properties
 
@@ -106,17 +152,18 @@ reference
 
 ```@docs
 Wrapper
+Decomposition
+EmptyDecomposition
 LinearDecomposition
-AffineDecomposition
+# AffineDecomposition
 Transpose
 Subdifferential
 Gradient
 Hessian
-Adjoint
+# Adjoint
 isempty
-weights
-linear
-constant
+# linear
+# constant
 unwrap
 ```
 
@@ -127,4 +174,15 @@ unwrap
 adjoint
 hash
 hierarchy
+ConstantRelation
+SingleValuedRelation
+MultiValuedRelation
+Dual
 ```
+
+### Analysis methods
+```@docs
+bsmin
+variables_constraints_oracles
+```
+
