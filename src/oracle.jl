@@ -29,6 +29,15 @@ mutable struct Map{X,Y} <: AbstractFunction{X,Y}
     Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}(), Associations())
 end
 
+mutable struct TwoInputTwoOutputMap{X,Y} <: AbstractFunction{X,Y}
+    label::String
+    properties::Properties
+    relation::TwoInputTwoOutputRelation{X,Y}
+    associations::Associations
+    
+    TwoInputTwoOutputMap{X,Y}() where {X,Y} = new{X,Y}("TwoInputTwoOutputMap{$X,$Y}", Properties(), TwoInputTwoOutputRelation{X,Y}(), Associations())
+end
+
 """
     ConstantMap{X,Y}
 
@@ -109,7 +118,6 @@ mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
-    
     function DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
         f = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
         push!(unwrap(f').associations, GradientOf => f)
@@ -118,6 +126,29 @@ mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X
     # DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
 end
 
+# mutable struct TwoInputDifferentiableFunctional{P, Q} <: AbstractDifferentiableFunctional{Tuple{P, Q}}
+#     label::String
+#     properties::Properties              
+#     relation::TwoInputSingleValuedRelation{P, Q, <:Field} 
+#     associations::Associations          
+#     function TwoInputDifferentiableFunctional{P, Q}() where {F<:Field, P<:VectorSpace{F}, Q<:VectorSpace{F}}
+#         f = new{P, Q}("TwoInputDifferentiableFunctional{$(P),$(Q)}", Properties(), TwoInputSingleValuedRelation{P, Q, F}(), Dict(Gradient => Map{P,P}(), Gradient2 => Map{Q,Q}()))
+#         push!(unwrap(f').associations, GradientOf => f)
+#         push!(unwrap(f'').associations, Gradient2Of => f)
+#         f
+#     end
+# end
+mutable struct TwoInputDifferentiableFunctional{P, Q} <: AbstractDifferentiableFunctional{Tuple{P, Q}}
+    label::String
+    properties::Properties              
+    relation::TwoInputSingleValuedRelation{P, Q, <:Field} 
+    associations::Associations          
+    function TwoInputDifferentiableFunctional{P, Q}() where {F<:Field, P<:VectorSpace{F}, Q<:VectorSpace{F}}
+        f = new{P, Q}("TwoInputDifferentiableFunctional{$(P),$(Q)}", Properties(), TwoInputSingleValuedRelation{P, Q, F}(), Dict(Gradient => TwoInputTwoOutputMap{P,Q}()))
+        push!(unwrap(f').associations, GradientOf => f)
+        f
+    end
+end
 # mutable struct DualInputFunctional{X1, X2, F<:Field} <: AbstractDifferentiableFunctional{[X1; X2]}
 #     label::String
 #     properties::Properties
@@ -254,6 +285,7 @@ description(o::SymmetricLinearMap) = "Symmetric linear map from $(domain(o)) to 
 description(o::SkewSymmetricLinearMap) = "Skew-symmetric linear map from $(domain(o)) to $(codomain(o))"
 description(o::Functional) = "Functional on $(domain(o))"
 description(o::DifferentiableFunctional) = "Differentiable functional on $(domain(o))"
+description(o::TwoInputDifferentiableFunctional) = "Two Input Differentiable functional on $(domain(o))"
 description(o::SubdifferentiableFunctional) = "Subdifferentiable functional on $(domain(o))"
 description(o::TwiceDifferentiableFunctional) = "Twice differentiable functional on $(domain(o))"
 description(o::QuadraticFunctional) = "Quadratic functional on $(domain(o))"
@@ -297,7 +329,33 @@ function sample end
 
 sample(w::Wrapper, x, l::String = "") = sample(unwrap(w), x, l)
 
-function sample(o::Oracle, x, l::String = "")
+function sample(o::Oracle, x::Tuple{Expression, Expression}, l::String = "")
+    if iszero(o) || (iszero(first(x)) && iszero(last(x)))
+        return codomain(o)(Zero())
+    end
+    y = sample(relation(o), x)
+    label!(y, isempty(l) ? defaultlabel(o,x) : l)
+    push!(first(x).oracles, o)
+    push!(last(x).oracles, o)
+    push!(y.oracles, o)
+    y
+end
+
+function sample(o::TwoInputTwoOutputMap, x::Tuple{Expression, Expression}, l::String = "")
+    if iszero(o) || (iszero(first(x)) && iszero(last(x)))
+        return codomain(o)(Zero())
+    end
+    (y1, y2) = sample(relation(o), x)
+    label!(y1, isempty(l) ? defaultlabel(o,first(x)) : l)
+    label!(y2, isempty(l) ? defaultlabel(o,last(x)) : l)
+    push!(first(x).oracles, o)
+    push!(last(x).oracles, o)
+    push!(y1.oracles, o)
+    push!(y2.oracles, o)
+    (y1, y2)
+end
+
+function sample(o::Oracle, x::Expression, l::String = "")
     if iszero(o) || iszero(x)
         return codomain(o)(Zero())
     end
@@ -391,6 +449,12 @@ end
 # """
 (o::OracleOrWrapper)(x) = sample(o,x)
 
+# When sampling a vector of expression for Primal Dual, sample a Tuple instead
+(o::TwoInputDifferentiableFunctional)(x) = sample(o, Tuple(x))
+function (o::Gradient{F})(x) where {F<:TwoInputDifferentiableFunctional}
+    sample(o, Tuple(x))
+end
+
 # For linear maps, also use * to denote sampling
 # """
 #     *(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},OrWrapper{AbstractSymmetricLinearMap},Dual}, x) = sample(o,x)
@@ -448,7 +512,8 @@ f ∈ SmoothStronglyConvex(1, 10) # Push the property of being 1 smooth 10 stron
 ```
 """
 ∈(o::OracleOrWrapper, property::Property) = push!(properties(o), property)
-∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties)
+# ∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties) Map is not defined on sets error
+∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, collect(properties))
 
 
 ############################################################################################
@@ -495,10 +560,20 @@ function get_oracle_input(e::Expression) # Get the oracle and the expression use
         if length((oracles(e))) > 0
             for o in oracles(e)
                 io = inputs_outputs(o)
-                index = findfirst(isequal(e), io[2])
-                if !isnothing(index)  
-                    return o, io[1][index] # Return the oracle and the sampled expression
+                # index = findfirst(isequal(e), io[2])
+                # if isnothing(index)
+                for i in range(1, length(io[2]))
+                    if isequal(e, io[2][i])
+                        return o, io[1][i]
+                    elseif io[2][i] isa Tuple && isequal(e, first(io[2][i]))
+                        return o, first(io[1][i])
+                    elseif io[2][i] isa Tuple && isequal(e, last(io[2][i]))
+                        return o, last(io[1][i])
+                    end
                 end
+                # if !isnothing(index)  
+                #     return o, io[1][index] # Return the oracle and the sampled expression
+                # end
             end
         end
     end

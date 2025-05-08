@@ -105,6 +105,8 @@ end
 ############################################################################################
 # Relation
 
+description(::TwoInputSingleValuedRelation) = "Two Input Single-valued Relation"
+description(::TwoInputTwoOutputRelation) = "Two Input Two Output Relation"
 description(::SingleValuedRelation) = "Single-valued relation"
 description(::MultiValuedRelation) = "Multi-valued relation"
 description(::ConstantRelation) = "Constant relation"

@@ -28,6 +28,7 @@ export Gram, evaluate, ⊂, ⊆, prune_grams, gram_to_constraint
 # relation
 export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation#, DualInputRelation
 export domain, codomain, inputs, outputs, inputs_outputs
+export TwoInputSingleValuedRelation, TwoInputTwoOutputRelation # Primal Dual
 
 # oracle
 export Oracle, Oracles, DualOracle, FunctionOracle, OperatorOracle, Functional
@@ -47,13 +48,15 @@ export Functional, SubdifferentiableFunctional, DifferentiableFunctional, DualIn
 export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
 export LinearFunctional, ZeroFunctional
 
+export TwoInputDifferentiableFunctional, TwoInputTwoOutputMap
+
 export get_oracle_input
 
 # wrappers
 export Wrapper, unwrap
 export Dual
 export Transpose, AbstractDifferential, AbstractSubdifferential, TransposeOf
-export Subdifferential, Gradient, Gradient2, Hessian, GradientOf
+export Subdifferential, Gradient, Gradient2, Hessian, GradientOf, Gradient2Of
 
 # decompositions
 export Decomposition, EmptyDecomposition, LinearDecomposition
@@ -96,7 +99,7 @@ export hierarchy
 export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify, certifyTMM, grams
 export quadraticform, linearform, tr, optvar, optcon, maximize
 export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
-export get_states_inputs, get_formulas, lift
+export get_states_inputs, get_formulas, lift, PDstate
 
 ############################################################################################
 # Import
@@ -105,6 +108,7 @@ export get_states_inputs, get_formulas, lift
 import JuMP
 import SCS
 import MosekTools
+import Mosek
 import SDPA
 import LinearAlgebra as la
 import InteractiveUtils

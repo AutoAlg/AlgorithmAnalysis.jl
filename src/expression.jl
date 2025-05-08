@@ -135,6 +135,7 @@ end
 ############################################################################################
 # Methods
 constraints(e::Expression) = e.constraints
+constraints(e::Tuple{Expression, Expression}) = first(e).constraints ∪ last(e).constraints
 
 """
     oracles(e)
@@ -148,6 +149,7 @@ julia> oracles(x)
 ```
 """
 oracles(e::Expression) = e.oracles
+oracles(e::Tuple{Expression, Expression}) = first(e).oracles ∪ last(e).oracles
 """
     associations(::Expression)
     associations(e::InnerProductSpace)
@@ -204,6 +206,7 @@ julia> iszero(x)
 
 """
 iszero(e::Expression) = e.value isa Zero
+iszero(e::Tuple{Expression, Expression}) = first(e).value isa Zero && last(e).value isa Zero
 """
     hasdecomposition(e)
 
@@ -295,6 +298,7 @@ julia> x = Rⁿ()
 julia> variables(x)
 ```
 """
+variables(e::Tuple{Expression, Expression}) = variables(first(e)) ∪ variables(last(e))
 function variables(e::Expression)
     if hasdecomposition(e)
         variables(decomposition(e))
@@ -378,6 +382,26 @@ julia> next(f')
 julia> a = [Rⁿ(), Rⁿ()]
 julia> next(a)
 """
+
+function next(e::Tuple{Expression, Expression}) # next of a tuple of expressions to support PD
+    if (!ismissing(next(first(e))) && !ismissing(next(last(e)))) # next of a tuple of unsampled expressions
+        (next(first(e)), next(last(e)))
+    else # next of a tuple of oracle output expressions
+        for o in oracles(e)
+            index = findfirst(ex -> isequal(e, ex), inputs_outputs(o)[2])
+            if index != nothing # oracle found
+                nexte = next(inputs_outputs(o)[1][index])
+                nextindex = !ismissing(nexte) ? findfirst(ex -> isequal(nexte, ex), inputs_outputs(o)[1]) : missing
+                if !ismissing(nextindex)
+                    return inputs_outputs(o)[2][nextindex]
+                end
+            end
+        end
+        (missing, missing)
+    end
+end
+                
+
 function next(f::AbstractFunction)
     if f isa LinearFunctional
         io = inputs_outputs(f)
@@ -386,7 +410,7 @@ function next(f::AbstractFunction)
             return missing
         end
         nextx = next(io[1][index])
-        if nextx === missing
+        if ismissing(nextx)
             return missing
         end
         for i in eachindex(io[2])
@@ -413,10 +437,10 @@ function next(d:: Dual{})
 end
 
 function next(x::Expression)
-    if x.next !== missing #|| (!hasdecomposition(x) && isa(x, R))
+    if !ismissing(x.next) # If x has a next, return it #|| (!hasdecomposition(x) && isa(x, R))
         return x.next
     end
-    if !hasdecomposition(x)
+    if !hasdecomposition(x) # If it is a varible
         # orc = nothing
         # if length(oracles(x)) == 0
         #     return missing
@@ -437,8 +461,11 @@ function next(x::Expression)
         # io = inputs_outputs(orc)
         # index = findfirst(ex -> ex === x, io[2])
         # nextx = next(io[1][index])
-        orc, input = get_oracle_input(x)
-        nextx = next(input) # nextx = next(io[1][index])
+        orc, input = get_oracle_input(x) # Find the oracle and input used to create x
+        if ismissing(orc) || ismissing(input)
+            return missing
+        end
+        nextx = next(input) # get nextx in order to sample the oracle at nextx  # nextx = next(io[1][index])
         # if hasfield(typeof(orc), :next) || typeof(orc) == Dual{Rⁿ} || typeof(orc) == LinearFunctional{Rⁿ}
         #     nextoracle = next(orc)
         # else
@@ -449,12 +476,28 @@ function next(x::Expression)
             return missing
         end
         nextio = inputs_outputs(nextoracle)
-        for i in eachindex(nextio[1])
-            if nextx === nextio[1][i] || iszero(nextx - nextio[1][i]) || (hasdecomposition(nextx) && hasdecomposition(nextio[1][i]) && abs(sum(collect(values(weights(nextx - nextio[1][i]))))) < 1e-10)
+        for i in eachindex(nextio[1]) # Return oracle(nextx) only if the oracle has been sampled at nextx
+            if nextx isa Tuple # Search if tuple nextx has been sampled
+                x1, x2, y1, y2 = first(nextx), last(nextx), first(nextio[1][i]), last(nextio[1][i])
+                if nextio[1][i] isa Tuple && (isequal(x1, y1) && isequal(x2,y2))
+                    next!(x, nextio[2][i]) 
+                    return nextio[2][i]
+                end
+            elseif !(nextio[1][i] isa Tuple) && (nextx === nextio[1][i] || (hasdecomposition(nextx) && hasdecomposition(nextio[1][i]) && isequal(nextx, nextio[1][i]))) #abs(sum(collect(values(weights(nextx - nextio[1][i]))))) < 1e-10) # Search if non-tuple nextx has been sampled on its on
                 if hasfield(typeof(x), :next)
                     next!(x, nextio[2][i])
+                    return nextio[2][i]
                 end
-                return nextio[2][i]
+            elseif nextio[1][i] isa Tuple && (nextx === first(nextio[1][i]) || (hasdecomposition(nextx) && hasdecomposition(first(nextio[1][i])) && isequal(nextx, first(nextio[1][i])))) # Search if non-tuple nextx has been sampled as first() of a tuple
+                if hasfield(typeof(x), :next)
+                    next!(x, first(nextio[2][i]))
+                    return first(nextio[2][i])
+                end                
+            elseif nextio[1][i] isa Tuple && (nextx === last(nextio[1][i]) || (hasdecomposition(nextx) && hasdecomposition(last(nextio[1][i])) && isequal(nextx, last(nextio[1][i])))) # Search if non-tuple nextx has been sampled as last() of a tuple
+                if hasfield(typeof(x), :next)
+                    next!(x, last(nextio[2][i]))
+                    return last(nextio[2][i])
+                end 
             end
         end
         return missing

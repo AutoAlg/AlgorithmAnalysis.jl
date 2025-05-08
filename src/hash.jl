@@ -54,8 +54,21 @@ function isequal(x1::AbstractArray{<:Expression}, x2::Expression)
 end
 isequal(x1::Expression, x2::AbstractArray{<:Expression}) = isequal(x2,x1)
 
-function isequal(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
-    isequal(weights(x1), weights(x2))
+function isequal(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T} # Add edge case for numerical error
+    if isequal(weights(x1), weights(x2))
+        return true
+    else
+        w1, w2 = weights(x1), weights(x2)
+        keys(w1) == keys(w2) || return false
+        for k in keys(w1)
+            v1, v2 = w1[k], w2[k] # no need for get since we already checked that the keys match
+            if !isapprox(v1, v2, atol=1e-5)
+                return false
+            end
+        end
+        return true
+    end
+    return false
 end
 function isequal(a1::AbstractArray{T}, a2::AbstractArray{T}) where {T<:Expression}
     isequal(size(a1), size(a2)) && all( isequal(a1[i],a2[i]) for i ∈ eachindex(a1) )

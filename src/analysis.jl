@@ -9,7 +9,7 @@ function variables(o::OracleOrWrapper)
     # end
     # for a ∈ values(associations(o))
     for a ∈ associations(o)
-        if first(a) != GradientOf
+        if first(a) != GradientOf && first(a) != Gradient2Of
             union!(vars, variables(unwrap(last(a))))
         end
     end        
@@ -323,79 +323,53 @@ end
 
 function stateupdate(vars)
     x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
+    
     real_vars = collect(v for v ∈ vars if v isa R)
+
     x⁺ = next(x)
     # u  = collect(setdiff(variables(x⁺), variables(vars)))
     u  = collect(v for v ∈ vars if ismissing(next(v)) && v isa R)
     # u  = collect(setdiff(variables(real_vars), variables(x)))
+    a = real_vars
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
     X, X⁺, x, u
 end
-# function certifyTMM(performance::Expression, ρ::Number, q0s, qs1, q01)
-#     if !isa(performance, R)
-#         error("The performance measure must be a real number in $R.")
-#     end
-#     vars, cons, orcs = variables_constraints_oracles(performance)
-#     vars = collect(vars)
-#     X, X⁺, x, u = stateupdate(vars)
+function certifyTMM(performance::Expression, ρ::Number, m, L, q0s, qs1, q01)
+    if !isa(performance, R)
+        error("The performance measure must be a real number in $R.")
+    end
+    # ρ = 0.15
+    # delta = (ρ^2)/(1-ρ^2)
+    # performance = ((1+delta)*(x2) - delta*(x1) -xs)^2
+    vars, cons, orcs = variables_constraints_oracles(performance)
+    vars = collect(vars)
+    X, X⁺, x, u = stateupdate(vars)
 
-#     model = JuMP.Model(SCS.Optimizer)
-#     JuMP.set_silent(model)
-#     # optimization variables
-#     JuMP.@variable(model, P[1:length([x;u])])
-#     L1 = vec(linearform([x;u] => 10*performance+q0s))*P
-#     L2 = vec(linearform([x;u] => -((1-ρ^2)*qs1 + ρ^2*q01)))*P
+    model = JuMP.Model(SCS.Optimizer)
+    JuMP.set_silent(model)
+    # optimization variables
+    JuMP.@variable(model, P[1:length(x)])
+    # L1 = vec(linearform([x;u] => (m*L*performance + q0s))).*[P; vec(zeros(1,length(u)))]
+    # L2 = vec(linearform([x;u] => -((1-ρ^2)*qs1 + ρ^2*q01))).*[P; vec(zeros(1,length(u)))]
+    L1 = vec(linearform([x;u] => (m*L*performance)))#.*[P; vec(zeros(1,length(u)))]
+    # L2 = vec(linearform([x;u] => -((1-ρ^2)*qs1 + ρ^2*q01))).*[P; vec(zeros(1,length(u)))]
+    λ = multiplier(model, q0s≥0); M = vec(linearform( [x; u] => λ * q0s ))
+    L1 += M
+    μ1 = multiplier(model, qs1≥0); N1 = vec(linearform( [x; u] => μ1 * qs1*(1-ρ^2) ))
+    μ2 = multiplier(model, q01≥0); N2 = vec(linearform( [x; u] => μ2 * q01*(ρ^2) ))
+    L2 = -N1 - N2
+       
+    # JuMP.@variable(model, P[1:length([x;u])])
+    # L1 = vec(linearform([x;u] => 1.5*performance+q0s)).*P
+    # L2 = vec(linearform([x;u] => -((1-ρ^2)*qs1 + ρ^2*q01))).*P
 
-#     JuMP.@constraint(model, L1 .== 0 )
-#     JuMP.@constraint(model, L2 .== 0 )
-#     JuMP.optimize!(model)
-#     JuMP.termination_status(model) == JuMP.OPTIMAL
-# end
-# function certify(performance::Expression, ρ::Number, L::Number, A::Oracle)
-#     vars, cons, orcs = variables_constraints_oracles(performance)
-#     vars = collect(vars)
-#     X, X⁺, x, u = stateupdate(vars)
-#     # optimization problem
-#     model = JuMP.Model(SCS.Optimizer)
-#     JuMP.set_silent(model)
-#     # optimization variables
-#     JuMP.@variable(model, P[1:length(x)])
-#     # Lyapunov function
-#     V = X'*P
-#     V⁺ = X⁺'*P
-#     𝒫 = vec(linearform( [x; u] => performance ))
-#     L1 = 𝒫 - V
-#     L2 = V⁺ - ρ^2*V
-#     # optimization constraints
-#     for con ∈ cons
-#         λ = multiplier(model, con)
-#         μ = multiplier(model, con)
-#         e = expression(con)
-#         if e isa Gram
-#             e = evaluate(e)
-#         end
-#         if e isa Expression
-#             M = vec(linearform( [x; u] => λ * e ))
-#             N = vec(linearform( [x; u] => μ * e ))
-#         elseif e isa Vector
-#             M = vec(linearform( [x; u] => λ' * e ))
-#             N = vec(linearform( [x; u] => μ' * e ))
-#         elseif e isa Matrix
-#             M = vec(linearform( [x; u] => la.tr(λ * e) ))
-#             N = vec(linearform( [x; u] => la.tr(μ * e) ))
-#         end
-#         L1 += M
-#         L2 += N
-#     end
-#     JuMP.@constraint(model, L1 .== 0 )
-#     JuMP.@constraint(model, L2 .== 0 )
-
-#     JuMP.optimize!(model)
-
-#     JuMP.termination_status(model) == JuMP.OPTIMAL
-# end
+    # JuMP.@constraint(model, L1 .<= 0 )
+    JuMP.@constraint(model, L2 .<= 0 )
+    JuMP.optimize!(model)
+    JuMP.termination_status(model) == JuMP.OPTIMAL
+end
 function certify(performance::Expression, ρ::Number)
     if !isa(performance, R)
         error("The performance measure must be a real number in $R.")
@@ -405,8 +379,8 @@ function certify(performance::Expression, ρ::Number)
     # order the variables
     vars = collect(vars)
     X, X⁺, x, u = stateupdate(vars) 
-    # optimization problem
-    model = JuMP.Model(SCS.Optimizer)
+    # model = JuMP.Model(SCS.Optimizer)
+    model = JuMP.Model(Mosek.Optimizer) 
     JuMP.set_silent(model)
     # optimization variables
     JuMP.@variable(model, P[1:length(x)])
@@ -434,14 +408,31 @@ function certify(performance::Expression, ρ::Number)
             M = vec(linearform( [x; u] => la.tr(λ * e) ))
             N = vec(linearform( [x; u] => la.tr(μ * e) ))
         end
+
         L1 += M
         L2 += N
     end
     JuMP.@constraint(model, L1 .== 0 )
     JuMP.@constraint(model, L2 .== 0 )
-
+    # t = 1e-10
+    # JuMP.@constraint(model, L1 .<= t)
+    # JuMP.@constraint(model, L2 .<= t)
     JuMP.optimize!(model)
 
+    # L1_vals = JuMP.value.(L1)
+    # L2_vals = JuMP.value.(L2)
+    # JuMP.all_variables(model)
+    # for (i, val) in enumerate(L1_vals)
+    #     println("L1[", i, "] = ", val)
+    # end
+    # for (i, val) in enumerate(L2_vals)
+    #     println("L2[", i, "] = ", val)
+    # end
+
+    # allv = JuMP.all_variables(model)
+    # for i in allv
+    #     println(i, " ", JuMP.value(i))
+    # end
     JuMP.termination_status(model) == JuMP.OPTIMAL
 end
 
@@ -679,14 +670,14 @@ function lift(state::Expression, dimension::Int)
             input_oracle = input_formula[1]
             input_decomp = vec(input_formula[2]) # Get the decomp of the input
             decomp = sum(input_decomp * current_states for (input_decomp, current_states) in zip(input_decomp, current_states))
-            label!(decomp, "lift_$(i)_input_$(length(inputs)+1)") # to create "lift_4_state" we use "lift_4_input_n"
+            label!(decomp, "$(i)th_lift_$(length(inputs)+1)th_input") # to create "4th_lift_state" we use "4th_lift_nth_input"
             input = sample(input_oracle, decomp)
             push!(inputs, input)
         end
         state_decomp = vec(state_formula[2]) # Get the decomp of the next state
         state_components = [current_states; inputs] # Get the states and inputs needed to create the next state
         next_state = sum(state_decomp * state_components for (state_decomp, state_components) in zip(state_decomp, state_components))
-        label!(next_state, "lift_$(i)_state") # label the new state
+        label!(next_state, "$(i)th_lift_state") # label the new state
         @algorithm all_states[end] => next_state # define as next state
         push!(all_states, next_state)
         # push!(all_states)
@@ -719,7 +710,7 @@ end
 
 function get_states_inputs(e::Expression)
     states, inputs = Set(), []
-    if !(e isa Gram) && hasmethod(hasdecomposition, Tuple{typeof(e)}) && hasdecomposition(e)
+    if !(e isa Gram) && hasmethod(hasdecomposition, Tuple{typeof(e)}) && hasdecomposition(e) # hasmethod arg is Tuple{typeof}
         for i in keys(weights(decomposition(e)))
             oracle = first(get_oracle_input(i))
             if !ismissing(oracle) # if the expression has an oracle, it is an input state
@@ -741,5 +732,30 @@ function get_states_inputs(e::Expression)
         push!(states, head)
         head = next(head)
     end
+    # states = []
+    # for i in first_state_candidates
+    #     head = i
+    #     push!(states, [])
+    #     while !ismissing(next(head))
+    #         push!(states[end], head)
+    #         head = next(head)
+    #     end
+    # end
     return states, inputs
 end
+
+PDstate(p::Rᵐ, q::Rⁿ) = PDstate(q, p)
+function PDstate(p::Rⁿ, q::Rᵐ)
+    f = missing
+    for i in oracles(p) ∪ oracles(q)
+        f = get(associations(i), GradientOf, get(associations(i), Gradient2Of, missing))
+        if !ismissing(f)
+            break
+        end
+    end
+    if !ismissing(f)
+        f([p ; q])
+    else
+        error("Couldn't find any functional oracle sampled at p or q")
+    end
+end   

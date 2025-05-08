@@ -54,6 +54,13 @@ function *(a::DecompositionValue, e::T) where {T<:AbstractVectorSpace}
     hasvalue(e) ? T( a*value(e) ) : T( a*selfdecomp(e) )
 end
 
++( x::Tuple{T1, T2}, y::Tuple{T1, T2} ) where {T1<:AbstractVectorSpace, T2<:AbstractVectorSpace} = (first(x) + first(y),  last(x) + last(y))
+-( x::Tuple{T1, T2}, y::Tuple{T1, T2} ) where {T1<:AbstractVectorSpace, T2<:AbstractVectorSpace} = (first(x) - first(y),  last(x) - last(y))
+*( x::Tuple{T1, T2}, a::Any ) where {T1<:AbstractVectorSpace, T2<:AbstractVectorSpace} = (a*first(x), a*last(x))
+*( a::Any, x::Tuple{T1, T2} ) where {T1<:AbstractVectorSpace, T2<:AbstractVectorSpace} = (a*first(x), a*last(x))
+/( x::Tuple{T1, T2}, s::Any ) where {T1<:AbstractVectorSpace, T2<:AbstractVectorSpace} = ((1/a)*first(x), (1/a)*last(x))
+/( a::Any, x::Tuple{T1, T2} ) where {T1<:AbstractVectorSpace, T2<:AbstractVectorSpace} = ((1/a)*first(x), (1/a)*last(x))
+
 -(e1::AbstractVectorSpace, e2::Zero) = e1
 -(e1::Gram, e2::Number) = e1 + (-e2)
 +(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = +(promote(e1,e2)...)

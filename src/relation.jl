@@ -68,6 +68,31 @@ MultiValuedRelation(g::Generator) = MultiValuedRelation(Set(p for p ∈ g))
 
 ############################################################################################
 # Single-valued relation
+# ============================================
+# New TwoInput Relation Type
+# ============================================
+
+"""
+    TwoInputSingleValuedRelation{P, Q, R}
+
+A relation that maps a tuple `(p, q)`—with `p` of type `P` and `q` of type `Q`—to an output of type `R`.
+"""
+mutable struct TwoInputSingleValuedRelation{P, Q, R} <: Relation{Tuple{P, Q}, R}
+    pairs::Dict{Tuple{P, Q}, R}
+
+    TwoInputSingleValuedRelation{P, Q, R}() where {P, Q, R} = new(Dict{Tuple{P, Q}, R}())
+    TwoInputSingleValuedRelation(d::Dict{Tuple{P, Q}, R}) where {P, Q, R} = new{P, Q, R}(d)
+    TwoInputSingleValuedRelation{P, Q, R}(d::Dict{Tuple{P, Q}, R}) where {P, Q, R} = new(d)
+end
+
+mutable struct TwoInputTwoOutputRelation{P, Q} <: Relation{Tuple{P, Q}, Tuple{P, Q}}
+    pairs::Dict{Tuple{P, Q}, Tuple{P, Q}}
+
+    TwoInputTwoOutputRelation{P, Q}() where {P, Q} = new(Dict{Tuple{P, Q}, Tuple{P, Q}}())
+    TwoInputTwoOutputRelation(d::Dict{Tuple{P, Q}, Tuple{P, Q}}) where {P, Q} = new{P, Q}(d)
+    TwoInputTwoOutputRelation{P, Q}(d::Dict{Tuple{P, Q}, Tuple{P, Q}}) where {P, Q} = new(d)
+end
+
 
 "A single-valued relation (also known as a function) is a relation in which there is a unique element of the codomain associated with each element of the domain."
 mutable struct SingleValuedRelation{X,Y} <: Relation{X,Y}
@@ -89,6 +114,10 @@ SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
 #
 # WARNING: must use Dict(pairs(r)) instead of r.pairs to avoid odd behavior after setting the value of the keys
 (r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(Dict(pairs(r)), x, missing)
+(r::TwoInputSingleValuedRelation{P, Q, R})(x::Tuple{P, Q}) where {P, Q, R} = get(Dict(pairs(r)), x, missing)
+(r::TwoInputTwoOutputRelation{P, Q})(x::Tuple{P, Q}) where {P, Q} = get(Dict(pairs(r)), x, missing)
+
+
 
 # ## Testing Dual Input
 # mutable struct DualInputRelation{X1, X2, Y} <: Relation{Tuple{X1, X2}, Y}
@@ -108,6 +137,7 @@ SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
 # # Returns a value in the codomain or `missing`.
 # (r::DualInputRelation{X1, X2, Y})(x::Tuple{X1, X2}) where {X1, X2, Y} =
 #     get(r.pairs, x, missing)
+
 
 ############################################################################################
 # Constant relation
@@ -135,6 +165,9 @@ end
 
 push!(r::MultiValuedRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = push!(r.pairs, p)
 push!(r::SingleValuedRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = push!(r.pairs, p)
+push!(r::TwoInputSingleValuedRelation{P,Q,R}, p::Pair{Tuple{P,Q},R}) where {P,Q,R} = push!(r.pairs, p)
+push!(r::TwoInputTwoOutputRelation{X,Y}, p::Pair{Tuple{X,Y}, Tuple{X,Y}}) where {X,Y} = push!(r.pairs, p)
+
 push!(r::ConstantRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = isequal(r.output, last(p)) ? r.output : error("Cannot add the point $(last(p)) to the constant relation $r")
 
 
@@ -144,6 +177,10 @@ push!(r::ConstantRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = isequal(r.output, la
 pairs(r::MultiValuedRelation) = r.pairs
 pairs(r::SingleValuedRelation{X,Y}) where {X,Y} = Set{Pair{X,Y}}(first(p) => last(p) for p ∈ collect(r.pairs))
 pairs(r::ConstantRelation{X,Y}) where {X,Y} = Set{Pair{X,Y}}(x => r.output for x ∈ r.inputs)
+
+pairs(r::TwoInputSingleValuedRelation{P,Q,R}) where {P,Q,R} = Set{Pair{Tuple{P,Q},R}}(first(p) => last(p) for p ∈ collect(r.pairs))
+pairs(r::TwoInputTwoOutputRelation{P,Q}) where {P,Q} = Set{Pair{Tuple{P,Q},Tuple{P,Q}}}(first(p) => last(p) for p ∈ collect(r.pairs))
+
 
 samples(r::Relation) = pairs(r)
 
@@ -168,6 +205,26 @@ function sample(r::SingleValuedRelation{X,Y}, x::X, label::String = "") where {X
         y = codomain(r)(label)
         push!(r, x => y)
         y
+    end
+end
+
+function sample(r::TwoInputSingleValuedRelation{P, Q, R}, x::Tuple{P,Q}, label::String = "") where {P, Q, R}
+    if x ∈ inputs(r)
+        r(x)
+    else
+        y = codomain(r)(label)
+        push!(r, x => y)
+        y
+    end
+end
+
+function sample(r::TwoInputTwoOutputRelation{P, Q}, x::Tuple{P,Q}, label::String = "") where {P, Q}
+    if x ∈ inputs(r)
+        r(x)
+    else
+        y1, y2 = (codomain(r).parameters[1])(label), (codomain(r).parameters[2])(label)
+        push!(r, x => (y1, y2))
+        (y1, y2)
     end
 end
 

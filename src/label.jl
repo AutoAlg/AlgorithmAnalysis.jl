@@ -38,6 +38,7 @@ julia> label(y)        # "f(x)"
 function label! end
 
 label(x::Union{Expression,Oracle}) = x.label
+label(x::Tuple{Expression, Expression}) = "[$(first(x).label); $(last(x).label)]"
 label(w::Wrapper) = label(unwrap(w))
 
 """
@@ -147,7 +148,7 @@ julia> defaultlabel(Type{f'}, label(f))
 defaultlabel(::Type{Transpose}, label::String) = label * "*"
 defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
 defaultlabel(::Type{Gradient}, label::String) = "∇" * label
-defaultlabel(::Type{Gradient2}, label::String) = "∇2" * label
+# defaultlabel(::Type{Gradient2}, label::String) = "∇2" * label
 defaultlabel(::Type{Hessian}, label::String) = "∇²" * label
 
 defaultlabel(o::AbstractOperator, x) = "$(label(o))($(label(x)))"

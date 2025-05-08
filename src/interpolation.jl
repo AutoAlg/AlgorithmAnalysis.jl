@@ -169,6 +169,7 @@ quadraticform(p::SectorBounded) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
 Linear--quadratic form of a constraint.
 """
 linearquadraticform(p::TwoPointLinearQuadraticConstraint) = (p.m, p.M)
+# linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
 linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
 # linearquadraticform(p::SmoothStronglyConvex) = ([0; 0], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
 
@@ -230,7 +231,8 @@ function constraints(o::AbstractOperator, p::AbstractIncrementalQuadraticConstra
 end
 
 triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
-
+# special triplet function for TwoInputDifferentiableFunctional, return for every [p0; q0] triplet f([p0, q0]), [p0; q0], [f'([p0;q0][1], f'([p0;q0][2]]
+triplets(o::TwoInputDifferentiableFunctional) = Set( (collect(x),o(x),collect(o'(x))) for (x,y) ∈ o ) ∪ Set( (collect(x),o(x),collect(o'(x))) for (x,_) ∈ o' )
 # function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractPointwiseLinearQuadraticConstraint)
 #     m, M = linearquadraticform(p)
 #     xs, fs, gs = reference(p)
@@ -241,7 +243,10 @@ function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractTwoPointL
     m, M = linearquadraticform(p)
     Constraints( 0 ≤ m'*[fᵢ; fⱼ] + [xᵢ; xⱼ; gᵢ; gⱼ]'*M*[xᵢ; xⱼ; gᵢ; gⱼ] for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
 end
-
+function constraints(o::TwoInputDifferentiableFunctional, p::AbstractTwoPointLinearQuadraticConstraint)
+    m, M = linearquadraticform(p)
+    Constraints( 0 ≤ m'*[fᵢ; fⱼ] + [xᵢ, xⱼ, gᵢ, gⱼ]'*M*[xᵢ, xⱼ, gᵢ, gⱼ] for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
+end
 # function constraints(o::AbstractLocallyLipschitzFunctional, p::SmoothStronglyConvex)
 #     a, b = p.a, p.b
 #     if o isa AbstractSubdifferentiableFunctional && b < Inf
