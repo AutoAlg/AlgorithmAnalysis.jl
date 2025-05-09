@@ -3,22 +3,22 @@
 
 structures(::Type{<:Space}) = Atoms()
 
-"""
-    Sampler{X,Y}
+# """
+#     Sampler{X,Y}
 
-A sampler from `X` to `Y`.
-"""
-struct Sampler{X,Y}
-    relation::SingleValuedRelation{Func{X,Y},Relation}
-    labeler::Function
-    singlevalued::Bool
+# A sampler from `X` to `Y`.
+# """
+# struct Sampler{X,Y}
+#     relation::SingleValuedRelation{Func{X,Y},Relation}
+#     labeler::Function
+#     singlevalued::Bool
 
-    function Sampler{X,Y}(singlevalued = true) where {X,Y}
-        relation = SingleValuedRelation{Func{X,Y},SingleValuedRelation}()
-        labeler = () -> ""
-        new{X,Y}(relation, labeler, singlevalued)
-    end
-end
+#     function Sampler{X,Y}(singlevalued = true) where {X,Y}
+#         relation = SingleValuedRelation{Func{X,Y},SingleValuedRelation}()
+#         labeler = () -> ""
+#         new{X,Y}(relation, labeler, singlevalued)
+#     end
+# end
 
 
 """

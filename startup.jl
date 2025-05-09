@@ -1,4 +1,3 @@
-cd("C:\\Users\\Bryan\\.julia\\dev\\AlgorithmAnalysis\\")
 using Pkg
 Pkg.activate(".")
 using Revise

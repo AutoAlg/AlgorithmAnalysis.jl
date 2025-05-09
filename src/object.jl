@@ -26,9 +26,9 @@ mutable struct Atom{T} <: Object{T}
     constraints::Constraints
     operators::Operators
     properties::Properties
-    # relation::Relation
+    relation::Relation
     next::Union{Object{T}, Missing}
-    # labeler::Function
+    labeler::Function
 
     Atom{T}(value = missing) where {T<:Space} = new{T}(
         "",
@@ -36,9 +36,9 @@ mutable struct Atom{T} <: Object{T}
         Constraints(),
         Operators(),
         Properties(),
-        # emptyrelation(T),
+        emptyrelation(T),
         missing,
-        # (::Object) -> ""
+        (::Object) -> ""
     )
 
     Atom(value::T) where {T<:Space} = new{T}(
@@ -47,9 +47,9 @@ mutable struct Atom{T} <: Object{T}
         Constraints(),
         Operators(),
         Properties(),
-        # emptyrelation(T),
+        emptyrelation(T),
         missing,
-        # (::Object) -> ""
+        (::Object) -> ""
     )
 end
 
