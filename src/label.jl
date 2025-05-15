@@ -44,30 +44,32 @@ Check if an `Object` has a label.
 function haslabel end
 
 
-label(x::Object) = x.label
+label(x::Union{Object, Space}) = hasfield(typeof(x), :label) ? x.label : ""
 
-haslabel(x::Object) = !isempty(label(x))
+haslabel(x::Union{Object, Space}) = !isempty(label(x))
 
 label!(::AbstractArray{<:Object}, ::String) = nothing
 
-function label!(obj::Object, l::String)
-    obj.label = l
-    obj.labeler = (x::Object) -> "$l($(label(x)))"
-end
+label!(x::Union{Object, Space}, l::String) = x.label = l #label!(space(x), x, l)
 
-function label!(obj::Object{<:LinearFunctional}, l::String)
-    obj.label = l
-    obj.labeler = (x::Object) ->
-        if haslabel(x) && haslabel(obj)
-            if isequal(obj', x)
-                "|"*label(x)*"|²"
-            else
-                "⟨"*label(x)*","*label(obj')*"⟩"
-            end
-        else
-            ""
-        end
-end
+# function label!(::Space, obj::Object, l::String)
+#     obj.label = l
+#     obj.labeler = (x::Object) -> "$l($(label(x)))"
+# end
+
+# function label!(::LinearFunctional, obj::Object, l::String)
+#     obj.label = l
+#     obj.labeler = (x::Object) ->
+#         if haslabel(x) && haslabel(obj)
+#             if isequal(obj', x)
+#                 "|"*label(x)*"|²"
+#             else
+#                 "⟨"*label(x)*","*label(obj')*"⟩"
+#             end
+#         else
+#             ""
+#         end
+# end
 
 ############################################################################################
 # Default labels
@@ -80,9 +82,9 @@ defaultlabel(::Any, ::Any) = ""
 # defaultlabel(::Type{Jacobian}, label::String) = "J" * label
 # defaultlabel(::Type{Dual}, label::String) = label * "*"
 
-function defaultlabel(o::Object{<:Operator}, x)
-    haslabel(o) && haslabel(x) ? "$(label(o))($(label(x)))" : ""
-end
+# function defaultlabel(o::Object{<:Operator}, x)
+#     haslabel(o) && haslabel(x) ? "$(label(o))($(label(x)))" : ""
+# end
 
 # defaultlabel(o::ConstantMap, ::Any) = label(o)
 
@@ -147,7 +149,7 @@ function _algorithm(ex::Expr)
                 update!( $lhs => $rhs )
             end
             
-        # else if the expression is declaring a variable (e.g., x ∈ R), then 
+        # else if the expression is declaring a variable (e.g., x ∈ R), then eval and label
         elseif ex.head == :call && ex.args[1] == :(∈)
             eval_and_label(ex)
 
@@ -166,6 +168,7 @@ function _algorithm(ex::Expr)
 end
 
 eval_and_label(x::Object) = :($(esc(x)))
+eval_and_label(x::Space) = :($(esc(x)))
 
 function eval_and_label(ex::Expr)
     
@@ -189,10 +192,9 @@ function eval_and_label(ex::Expr)
         str = string(ex.args[2])
 
         quote
-            $lhs = ($rhs)()
+            $lhs = sample($rhs)
             label!($lhs, $str)
         end
-
 
     # else if the lhs is an element of an array (evalutes the index)
     elseif ex.args[1] isa Expr && ex.args[1].head == :ref

@@ -1,6 +1,9 @@
 ############################################################################################
-# ELEMENT
+# OBJECT
 ############################################################################################
+
+show(io::IO, x::Atoms) = print(io, "(", join(value(x), ", "), ")")
+show(io::IO, ::MIME"text/plain", x::Atoms) = print(io, "(", join(value(x), ", "), ")")
 
 function show(io::IO, x::Object)
     if haslabel(x)
@@ -16,24 +19,26 @@ function show(io::IO, ::MIME"text/plain", x::Object)
     print(io, "Object in $(space(x))")
     haslabel(x) && print(io, "\n  Label: ", label(x))
     hasvalue(x) && print(io, "\n  Value: ", value(x))
-    hasproperties(x) && print(io, "\n  Properties: ", join(properties(x), ", "))
+    # hasproperties(x) && print(io, "\n  Properties: ", join(properties(x), ", "))
     hasconstraints(x) && print(io, "\n  Constraints: ", join(constraints(x), ", "))
-    hasoperators(x) && print(io, "\n  Operators: ", join(operators(x), ", "))
+    # hasoperators(x) && print(io, "\n  Operators: ", join(operators(x), ", "))
     hasnext(x) && print(io, "\n  Next: ", next(x))
 
-    for s ∈ structures(space(x))
-        y = get(inv(relation(s)), x, missing)
-        if !ismissing(y)
-            print(io, "\n  ", s, y)
-        end
-    end
+    # for (_, a) ∈ structures(space(x))
+    #     y = get(inv(relation(space(a))), x, missing)
+    #     if !ismissing(y)
+    #         print(io, "\n  ", a, y)
+    #     end
+    # end
+    # print(io, "\n")
+    # show(io, MIME"text/plain"(), space(x))
 end
 
 function show(io::IO, ::MIME"text/plain", elements::Objects)
     if isempty(elements)
-        print(io, "Empty set of elements")
+        print(io, "Empty set of objects")
     else
-        print(io, "Set with $(length(elements)) " * (isone(length(elements)) ? "element:" : "elements:"))
+        print(io, "Set with $(length(elements)) " * (isone(length(elements)) ? "objects:" : "objects:"))
         foreach( v -> print(io, "\n  ", v), elements )
     end
 end
@@ -44,8 +49,30 @@ end
 # end
 
 ############################################################################################
-# PRODUCT SPACE
+# SPACE
 ############################################################################################
+
+show(io::IO, x::Space) = print(io, label(x))
+
+function show(io::IO, ::MIME"text/plain", x::Space)
+    print(io, "Space")
+    haslabel(x) && print(io, "\n  Label: ", label(x))
+    hasstructures(x) && print(io, "\n  Structures: ", structures(x))
+end
+
+show(io::IO, ::MIME"text/plain", x::Type{<:Space}) = show(io, MIME"text/plain"(), x())
+
+function show(io::IO, ::MIME"text/plain", x::FunctionSpace)
+    print(io, "Space of functions $(domain(x)) → $(codomain(x))")
+    haslabel(x) && print(io, "\n  Label: ", label(x))
+    print(io, "\n  Objects: ", join(objects(x), ", "))
+end
+
+function show(io::IO, ::MIME"text/plain", x::BinaryOperator)
+    print(io, "Space of binary operators on $(space(x))")
+    haslabel(x) && print(io, "\n  Label: ", label(x))
+    print(io, "\n  Samples: ", samples(x))
+end
 
 function subscript(i::Integer)
     i<0 ? error("$i is negative") : join('₀'+d for d in reverse(digits(i)))
@@ -69,16 +96,52 @@ function superscript(i::Integer)
     )
 end
 
-function show(io::IO, ::Type{CartesianProduct{T}}) where T
-    print(io, join(fieldtypes(T), " × "))
+show(io::IO, T::CartesianProduct) = print(io, join(spaces(T), " × "))
+# show(io::IO, T::CartesianPower) = print(io, space(T), superscript(power(T)))
+show(io::IO, T::FunctionSpace) = print(io, "$(domain(T)) → $(codomain(T))")
+show(io::IO, T::OperatorSpace) = print(io, "$(domain(T)) ⇒ $(codomain(T))")
+show(io::IO, T::Powerset) = print(io, "𝒫($(base(T))")
+
+function show(io::IO, ::MIME"text/plain", T::CartesianProduct)
+    print(io, "Set of $(length(objects(T))) objects")
+    if !isempty(objects(T))
+        print(io, "\n  Objects: ", join(objects(T), ", "))
+    end
 end
 
-show(io::IO, ::Type{<:Object{<:Addition}}) = print(io, "+")
-show(io::IO, ::Type{<:Object{<:Multiplication}}) = print(io, "*")
+# function show(io::IO, ::MIME"text/plain", T::CartesianPower)
+#     print(io, "Set of $(length(objects(T))) objects")
+#     if !isempty(objects(T))
+#         print(io, "\n  Objects: ", join(objects(T), ", "))
+#     end
+# end
 
-show(io::IO, ::Type{CartesianPower{T, N}}) where {N, T} = print(io, T, superscript(N))
-show(io::IO, ::Type{CartesianPower{T}}) where {T} = print(io, T, "ᴺ")
-show(io::IO, e::Object{<:CartesianPower}) = print(io, "(", join(value(e), ","), ")")
+function show(io::IO, ::MIME"text/plain", T::SetSpace)
+    print(io, "Set $(label(T)) of $(length(objects(T))) objects")
+    if !isempty(objects(T))
+        print(io, "\n  Objects: ", join(objects(T), ", "))
+    end
+end
+
+function show(io::IO, ::MIME"text/plain", T::Subset)
+    print(io, "Subset of $(parent(T)) with $(length(objects(T))) objects")
+    if !isempty(objects(T))
+        print(io, "\n  Objects: ", join(objects(T), ", "))
+    end
+end
+
+function show(io::IO, ::MIME"text/plain", T::Powerset)
+    print(io, "Powerset of $(base(T)) with $(length(objects(T))) objects")
+    if !isempty(objects(T))
+        print(io, "\n  Objects: ", join(objects(T), ", "))
+    end
+end
+
+############################################################################################
+# STRUCTURES
+############################################################################################
+
+show(io::IO, s::Structures) = print(io, join(keys(s.structures), ", "))
 
 
 ############################################################################################
@@ -134,6 +197,17 @@ end
 # COMPUTATIONAL TREE
 ############################################################################################
 
+function children(x::Object)
+    if space(x) isa FunctionSpace
+        space(x).samples(x)
+    else
+        space(x)
+    end
+end
+
+children(s::Space) = objects(structures(s))
+children(s::FunctionSpace) = samples(s)
+
 # struct TreeWrapper
 #     name::String
 #     children::Tuple
@@ -155,8 +229,8 @@ end
 
 # children(x::TreeWrapper) = x.children
 
-# tree(x::Object; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
+tree(x::Object; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
 
-# function tree(io::IO, x::Object; maxdepth=10)
-#     print_tree(io, x; maxdepth=maxdepth)
-# end
+function tree(io::IO, x::Object; maxdepth=10)
+    print_tree(io, x; maxdepth=maxdepth)
+end

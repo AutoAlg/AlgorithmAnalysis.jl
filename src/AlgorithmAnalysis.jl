@@ -4,10 +4,10 @@ module AlgorithmAnalysis
 # EXPORTS
 ############################################################################################
 
-export Object, Space, Atom, Constraint, Constraints, ConstraintSet, Atoms
-export Operator, Operators, Property, Properties
+export Object, Space, Atom, Constraint, Constraints, ConstraintSet, Atoms, Spaces
+export Operator, Operators, Property, Properties, Structures
 export VectorSpace, NormedVectorSpace, InnerProductSpace, Field, field, Subset, Module
-export R, Rⁿ, Rᵐ, Zero, One, 𝟎, 𝟏, ×
+export R, Rⁿ, Rᵐ, Zero, One, 𝟎, 𝟏, ×, →, ⇒
 export isimplementable, juliatype, algorithmtype
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
@@ -22,15 +22,16 @@ export Associative, Commutative, Scaling
 
 export CartesianProduct, CartesianPower, tree, spaces, children, getfields
 export hasoperators, nodes, DifferentiableFunctional, 𝓕, 𝓛, Functional, LinearFunctional
-export LinearMap, AbstractFunction
+export LinearMap, AbstractFunction, FunctionSpace, OperatorSpace
 
 export UnaryOperator, BinaryOperator, NaryOperator, arity, neighbors
-export issinglevalued, flatten, hasvalue, adjoint
+export issinglevalued, flatten, hasvalue, adjoint, objects, SetSpace, Subset, graph
+export Powerset, base, @set, sample
 
 # relation
 export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
 export domain, codomain, inputs, outputs, inputs_outputs, inputs_and_outputs, relation
-export samples, canevaluate
+export samples, canevaluate, isfunction
 
 ############################################################################################
 # IMPORTS
@@ -48,15 +49,16 @@ import Base: length, Generator, iterate, size, push!, inv, pairs, parent, map, i
 import Base: numerator, denominator, empty!
 
 include("abstract.jl")
+# include("traits.jl")
 include("object.jl")
 include("relation.jl")
 include("constraint.jl")
 include("algebra.jl")
 include("label.jl")
 include("evaluate.jl")
-include("show.jl")
 include("hash.jl")
 include("adjoint.jl")
 include("space.jl")
+include("show.jl")
 
 end

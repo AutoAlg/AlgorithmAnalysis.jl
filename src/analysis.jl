@@ -1,3 +1,35 @@
+############################################################################################
+# Neighbors
+
+neighbors(x::Object) = Objects(
+    # constraints(x) ∪
+    # flatten(inputs_and_outputs(x)) ∪
+    # ( hasnext(x) ? Objects([next(x)]) : Objects() ) ∪
+    # operators(space(x))
+    neighbors(space(x))
+)
+
+neighbors(s::Space) = objects(structures(s))
+neighbors(x::FunctionSpace) = inputs(relation(x))
+neighbors(objs::Union{Objects,Array{<:Object}}) = mapreduce(neighbors, ∪, objs)
+
+# Get all objects in the graph using graph search
+function nodes(x::Object)
+    visited = Objects()
+    queue = Objects([x])
+    
+    while !isempty(queue)
+        node = pop!(queue)
+        if node ∉ visited
+            push!(visited, node)
+            union!(queue, neighbors(node))
+        end
+    end
+    visited
+end
+
+
+
 # Set of variables in a constraint or set of constraints
 variables(c::Constraint) = variables(expression(c))
 

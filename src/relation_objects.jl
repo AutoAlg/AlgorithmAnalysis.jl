@@ -22,8 +22,6 @@ function inputs_outputs(r::Relation)
     [first(p) for p ∈ v], [last(p) for p ∈ v]
 end
 
-inputs_and_outputs(r::Relation) = inputs(r) ∪ outputs(r)
-
 # Iterate over the pairs of a relation.
 iterate(r::Relation) = iterate(r,1)
 function iterate(r::Relation, state::Int)
@@ -40,14 +38,15 @@ end
 
 "A relation is a subset of the Cartesian product of its domain `X` and codomain `Y`."
 mutable struct MultiValuedRelation{X,Y} <: Relation{X,Y}
-  pairs::Set{Pair{X,Y}}
+  pairs::Set{Pair{Object{<:X},Object{<:Y}}}
 
   # Construct an empty multi-valued relation.
-  MultiValuedRelation{X,Y}() where {X,Y} = new(Set{Pair{X,Y}}())
+  MultiValuedRelation{X,Y}() where {X,Y} = new(Set{Pair{Object{<:X},Object{<:Y}}}())
 
   # Construct a multi-valued relation from a set of input-output pairs.
-  MultiValuedRelation(s::Set{Pair{X,Y}}) where {X,Y} = new{X,Y}(s)
-  MultiValuedRelation{X,Y}(s::Set{Pair{X,Y}}) where {X,Y} = new(s)
+  MultiValuedRelation(s::Set{Pair{Object{X},Object{Y}}}) where {X,Y} = new{X,Y}(s)
+  MultiValuedRelation{X,Y}(s::Set{Pair{Object{<:X},Object{<:Y}}}) where {X,Y} = new(s)
+  MultiValuedRelation{X,Y}(s::Set{Pair{<:Object{X},<:Object{Y}}}) where {X,Y} = new(s)
 end
 
 # Construct a multi-valued relation from a generator of pairs of points.
@@ -55,9 +54,9 @@ MultiValuedRelation(g::Generator) = MultiValuedRelation(Set(p for p ∈ g))
 MultiValuedRelation{X,Y}(g::Generator) where {X,Y} = MultiValuedRelation{X,Y}(Set(p for p ∈ g))
 
 # Evaluate a multi-valued relation at a point (or set of points) in its domain. Returns a set of points in the codomain. To evaluate a relation `r` at a point `y` in its codomain, use `inv(r)(y)`.
-(r::MultiValuedRelation{X,Y})(x::X) where {X,Y} = Set{Y}(last(p) for p ∈ pairs(r) if isequal(first(p),x))
-(r::MultiValuedRelation{X,Y})(s::Set{X}) where {X,Y} = union([r(x) for x ∈ s]...)
-(r::MultiValuedRelation{X,Y})(v::Vector{X}) where {X,Y} = r(Set(v))
+(r::MultiValuedRelation{X,Y})(x::Object{X}) where {X,Y} = Set{Object{Y}}(last(p) for p ∈ pairs(r) if isequal(first(p),x))
+(r::MultiValuedRelation{X,Y})(s::Set{Object{X}}) where {X,Y} = union([r(x) for x ∈ s]...)
+(r::MultiValuedRelation{X,Y})(v::Vector{Object{X}}) where {X,Y} = r(Set(v))
 
 
 ############################################################################################
@@ -65,15 +64,14 @@ MultiValuedRelation{X,Y}(g::Generator) where {X,Y} = MultiValuedRelation{X,Y}(Se
 
 "A single-valued relation (also known as a function) is a relation in which there is a unique element of the codomain associated with each element of the domain."
 mutable struct SingleValuedRelation{X,Y} <: Relation{X,Y}
-    pairs::Dict{X,Y}
-    sampler::Function
+    pairs::Dict{Object{<:X},Object{<:Y}}
 
     # Construct an empty relation.
-    SingleValuedRelation{X,Y}() where {X,Y} = new(Dict{X,Y}(), x -> "")
+    SingleValuedRelation{X,Y}() where {X,Y} = new(Dict{Object{<:X},Object{<:Y}}())
 
     # Construct a relation from a set of input-output pairs.
-    SingleValuedRelation(d::Dict{X,Y}) where {X,Y} = new{X,Y}(d, x -> "")
-    SingleValuedRelation{X,Y}(d::Dict) where {X,Y} = new(d, x -> "")
+    SingleValuedRelation(d::Dict{<:Object{<:X},<:Object{<:Y}}) where {X,Y} = new{X,Y}(d)
+    SingleValuedRelation{X,Y}(d::Dict) where {X,Y} = new(d)
 end
 
 # Construct a relation from a generator of pairs of points.
@@ -129,7 +127,7 @@ empty!(r::SingleValuedRelation) = empty!(r.pairs)
 # push!
 
 push!(r::MultiValuedRelation{X,Y}, p::Pair{<:X,<:Y}) where {X,Y} = push!(r.pairs, p)
-push!(r::SingleValuedRelation{X,Y}, p::Pair{<:X,<:Y}) where {X,Y} = push!(r.pairs, p)
+push!(r::SingleValuedRelation{X,Y}, p::Pair{<:Object{<:X},<:Object{<:Y}}) where {X,Y} = push!(r.pairs, p)
 push!(r::ConstantRelation{X,Y}, p::Pair{<:X,<:Y}) where {X,Y} = isequal(r.output, last(p)) ? r.output : error("Cannot add the point $(last(p)) to the constant relation $r")
 
 
@@ -151,19 +149,19 @@ samples(r::Relation) = pairs(r)
 ############################################################################################
 # sample
 
-function sample(r::MultiValuedRelation{<:X,Y}, x::X, label::String="") where {X,Y}
+function sample(r::MultiValuedRelation{<:X,Y}, x::Object{<:X}, label::String="") where {X,Y}
     y = space(Y)()
     label!(y, label)
     push!(r, x => y)
     y
 end
 
-function sample(r::SingleValuedRelation{<:X,<:Y}, x::X, label::String="") where {X,Y}
+function sample(r::SingleValuedRelation{X,Y}, x::Object{<:X}, label::String="") where {X,Y}
     if x ∈ inputs(r)
         r(x)
     else
-        y = r.sampler(x) # Y()
-        # label!(y, label)
+        y = Y()
+        label!(y, label)
         push!(r, x => y)
         y
     end

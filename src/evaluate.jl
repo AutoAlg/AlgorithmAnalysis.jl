@@ -30,14 +30,9 @@ function (f::Object)(x::Object)
     if !canevaluate(T1, T2)
         error("Objects in $T1 cannot be evaluated at objects in $T2")
     end
-    sample(relation(f), x, defaultlabel(f,x))
-    # sample(instance(space(f)).relation(f), x, f.labeler(x))
+    r = sample(space(f), f)
+    sample(r, x)
 end
 
-function (f::Object)(x::Vararg{Object})
-    if isfunction(f)
-        f(convert(domain(f), x))
-    else
-        error("Cannot evaluate object of type $(typeof(f))")
-    end
-end
+# For f(x1,x2,...), collect the arguments into an element of the Cartesian product space
+(f::Object)(x::Vararg{Object}) = f(x())
