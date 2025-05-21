@@ -25,13 +25,16 @@ export hasoperators, nodes, DifferentiableFunctional, 𝓕, 𝓛, Functional, Li
 export LinearMap, AbstractFunction, FunctionSpace, OperatorSpace
 
 export UnaryOperator, BinaryOperator, NaryOperator, arity, neighbors
-export issinglevalued, flatten, hasvalue, adjoint, objects, SetSpace, Subset, graph
+export issinglevalued, flatten, hasvalue, adjoint, objects, BasicSet, Subset, graph
 export Powerset, base, @set, sample
+export SetIntersection, SetUnion
 
 # relation
 export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
 export domain, codomain, inputs, outputs, inputs_outputs, inputs_and_outputs, relation
 export samples, canevaluate, isfunction
+
+export elements, @var, cartesian_to_tuple, tuple_to_cartesian, TupleDecomposition
 
 ############################################################################################
 # IMPORTS
@@ -42,23 +45,25 @@ using JuMP
 import Zeros: Zero, One, 𝟎, 𝟏
 import AbstractTrees: children, print_tree
 
-import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩
+import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ∪
 import Base: isempty, iszero, isone, isequal, hash
 import Base: promote_rule, convert, show, zero, one, zeros, adjoint, hasfield
 import Base: length, Generator, iterate, size, push!, inv, pairs, parent, map, issubset
-import Base: numerator, denominator, empty!
+import Base: numerator, denominator, empty!, setdiff
+
+# include("set.jl")
 
 include("abstract.jl")
-# include("traits.jl")
+# # include("traits.jl")
 include("object.jl")
-include("relation.jl")
-include("constraint.jl")
-include("algebra.jl")
-include("label.jl")
-include("evaluate.jl")
-include("hash.jl")
-include("adjoint.jl")
 include("space.jl")
+# include("relation.jl")
+# include("constraint.jl")
+# include("algebra.jl")
+include("label.jl")
+# include("evaluate.jl")
+# include("hash.jl")
+# include("adjoint.jl")
 include("show.jl")
 
 end

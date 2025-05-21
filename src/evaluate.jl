@@ -24,12 +24,12 @@ julia> isequal(A(x), A*x)  # true
 function evaluate end
 
 # evaluate a generic element
-function (f::Object)(x::Object)
-    T1 = space(f)
-    T2 = space(x)
-    if !canevaluate(T1, T2)
-        error("Objects in $T1 cannot be evaluated at objects in $T2")
-    end
+function (f::Object{FunctionSpace{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
+    # T1 = space(f)
+    # T2 = space(x)
+    # if !canevaluate(T1, T2)
+    #     error("Objects in $T1 cannot be evaluated at objects in $T2")
+    # end
     r = sample(space(f), f)
     sample(r, x)
 end

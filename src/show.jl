@@ -2,8 +2,8 @@
 # OBJECT
 ############################################################################################
 
-show(io::IO, x::Atoms) = print(io, "(", join(value(x), ", "), ")")
-show(io::IO, ::MIME"text/plain", x::Atoms) = print(io, "(", join(value(x), ", "), ")")
+# show(io::IO, x::Atoms) = print(io, "(", join(value(x), ", "), ")")
+# show(io::IO, ::MIME"text/plain", x::Atoms) = print(io, "(", join(value(x), ", "), ")")
 
 function show(io::IO, x::Object)
     if haslabel(x)
@@ -16,7 +16,7 @@ function show(io::IO, x::Object)
 end
 
 function show(io::IO, ::MIME"text/plain", x::Object)
-    print(io, "Object in $(space(x))")
+    print(io, "Object in ", space(x))
     haslabel(x) && print(io, "\n  Label: ", label(x))
     hasvalue(x) && print(io, "\n  Value: ", value(x))
     # hasproperties(x) && print(io, "\n  Properties: ", join(properties(x), ", "))
@@ -52,26 +52,45 @@ end
 # SPACE
 ############################################################################################
 
+# show(io::IO, x::Type{<:Space}) = show(io, instance(x))
+# show(io::IO, ::MIME"text/plain", x::Type{<:Space}) = show(io, MIME"text/plain"(), instance(x))
+
 show(io::IO, x::Space) = print(io, label(x))
 
 function show(io::IO, ::MIME"text/plain", x::Space)
     print(io, "Space")
     haslabel(x) && print(io, "\n  Label: ", label(x))
+    !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
     hasstructures(x) && print(io, "\n  Structures: ", structures(x))
 end
 
-show(io::IO, ::MIME"text/plain", x::Type{<:Space}) = show(io, MIME"text/plain"(), x())
-
-function show(io::IO, ::MIME"text/plain", x::FunctionSpace)
-    print(io, "Space of functions $(domain(x)) → $(codomain(x))")
-    haslabel(x) && print(io, "\n  Label: ", label(x))
-    print(io, "\n  Objects: ", join(objects(x), ", "))
+function show(io::IO, ::MIME"text/plain", x::Subset)
+    print(io, "Subset of $(parent(x))")
+    !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
 end
 
-function show(io::IO, ::MIME"text/plain", x::BinaryOperator)
-    print(io, "Space of binary operators on $(space(x))")
+function show(io::IO, ::MIME"text/plain", ::Powerset{T}) where {T<:Space}
+    print(io, "Powerset of $T")
+end
+
+function show(io::IO, ::MIME"text/plain", x::Type{<:OperatorSpace})
+    print(io, "Set of operators from $(domain(x)) to $(codomain(x))")
     haslabel(x) && print(io, "\n  Label: ", label(x))
-    print(io, "\n  Samples: ", samples(x))
+    !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
+end
+
+function show(io::IO, ::MIME"text/plain", x::Type{<:FunctionSpace})
+    print(io, "Set of functions from $(domain(x)) to $(codomain(x))")
+    haslabel(x) && print(io, "\n  Label: ", label(x))
+    !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
+end
+
+function show(io::IO, ::MIME"text/plain", T::Type{<:SetUnion})
+    print(io, "Union ", join(spaces(T), " ∪ "))
+end
+
+function show(io::IO, ::MIME"text/plain", T::Type{<:SetIntersection})
+    print(io, "Intersection ", join(spaces(T), " ∩ "))
 end
 
 function subscript(i::Integer)
@@ -96,46 +115,44 @@ function superscript(i::Integer)
     )
 end
 
-show(io::IO, T::CartesianProduct) = print(io, join(spaces(T), " × "))
-# show(io::IO, T::CartesianPower) = print(io, space(T), superscript(power(T)))
-show(io::IO, T::FunctionSpace) = print(io, "$(domain(T)) → $(codomain(T))")
-show(io::IO, T::OperatorSpace) = print(io, "$(domain(T)) ⇒ $(codomain(T))")
-show(io::IO, T::Powerset) = print(io, "𝒫($(base(T))")
+show(io::IO, T::Type{<:CartesianProduct}) = print(io, join(spaces(T), " × "))
+# # show(io::IO, T::CartesianPower) = print(io, space(T), superscript(power(T)))
+show(io::IO, T::Type{<:FunctionSpace}) = print(io, "$(domain(T)) → $(codomain(T))")
+show(io::IO, T::Type{<:OperatorSpace}) = print(io, "$(domain(T)) ⇒ $(codomain(T))")
+# show(io::IO, T::Powerset) = print(io, "𝒫($(base(T))")
 
-function show(io::IO, ::MIME"text/plain", T::CartesianProduct)
-    print(io, "Set of $(length(objects(T))) objects")
-    if !isempty(objects(T))
-        print(io, "\n  Objects: ", join(objects(T), ", "))
-    end
+function show(io::IO, ::MIME"text/plain", T::Type{<:CartesianProduct})
+    print(io, "Cartesian product ", join(spaces(T), " × "))
+    !isempty(T) && print(io, "\n  Elements: ", join(elements(T), ", "))
 end
 
-# function show(io::IO, ::MIME"text/plain", T::CartesianPower)
-#     print(io, "Set of $(length(objects(T))) objects")
+# # function show(io::IO, ::MIME"text/plain", T::CartesianPower)
+# #     print(io, "Set of $(length(objects(T))) objects")
+# #     if !isempty(objects(T))
+# #         print(io, "\n  Objects: ", join(objects(T), ", "))
+# #     end
+# # end
+
+# function show(io::IO, ::MIME"text/plain", T::BasicSet)
+#     print(io, "Set $(label(T)) of $(length(objects(T))) objects")
 #     if !isempty(objects(T))
 #         print(io, "\n  Objects: ", join(objects(T), ", "))
 #     end
 # end
 
-function show(io::IO, ::MIME"text/plain", T::SetSpace)
-    print(io, "Set $(label(T)) of $(length(objects(T))) objects")
-    if !isempty(objects(T))
-        print(io, "\n  Objects: ", join(objects(T), ", "))
-    end
-end
+# function show(io::IO, ::MIME"text/plain", T::Subset)
+#     print(io, "Subset of $(parent(T)) with $(length(objects(T))) objects")
+#     if !isempty(objects(T))
+#         print(io, "\n  Objects: ", join(objects(T), ", "))
+#     end
+# end
 
-function show(io::IO, ::MIME"text/plain", T::Subset)
-    print(io, "Subset of $(parent(T)) with $(length(objects(T))) objects")
-    if !isempty(objects(T))
-        print(io, "\n  Objects: ", join(objects(T), ", "))
-    end
-end
-
-function show(io::IO, ::MIME"text/plain", T::Powerset)
-    print(io, "Powerset of $(base(T)) with $(length(objects(T))) objects")
-    if !isempty(objects(T))
-        print(io, "\n  Objects: ", join(objects(T), ", "))
-    end
-end
+# function show(io::IO, ::MIME"text/plain", T::Powerset)
+#     print(io, "Powerset of $(base(T)) with $(length(objects(T))) objects")
+#     if !isempty(objects(T))
+#         print(io, "\n  Objects: ", join(objects(T), ", "))
+#     end
+# end
 
 ############################################################################################
 # STRUCTURES
@@ -166,16 +183,16 @@ show(io::IO, s::Structures) = print(io, join(keys(s.structures), ", "))
 # RELATION
 ############################################################################################
 
-description(::SingleValuedRelation) = "Single-valued relation"
-description(::MultiValuedRelation) = "Multi-valued relation"
-description(::ConstantRelation) = "Constant relation"
+# description(::SingleValuedRelation) = "Single-valued relation"
+# description(::MultiValuedRelation) = "Multi-valued relation"
+# description(::ConstantRelation) = "Constant relation"
 
-function show(io::IO, r::Relation)
-    print(io, "$(description(r)) on $(domain(r)) x $(codomain(r))")
-    foreach(p -> print(io, "\n  ", first(p), " → ", last(p)), collect(samples(r)))
-end
+# function show(io::IO, r::Relation)
+#     print(io, "$(description(r)) on $(domain(r)) x $(codomain(r))")
+#     foreach(p -> print(io, "\n  ", first(p), " → ", last(p)), collect(samples(r)))
+# end
 
-show(io::IO, ::EmptyRelation) = print(io, "Empty relation")
+# show(io::IO, ::EmptyRelation) = print(io, "Empty relation")
 
 
 ############################################################################################
@@ -197,16 +214,16 @@ end
 # COMPUTATIONAL TREE
 ############################################################################################
 
-function children(x::Object)
-    if space(x) isa FunctionSpace
-        space(x).samples(x)
-    else
-        space(x)
-    end
-end
+# function children(x::Object)
+#     if space(x) isa FunctionSpace
+#         space(x).samples(x)
+#     else
+#         space(x)
+#     end
+# end
 
-children(s::Space) = objects(structures(s))
-children(s::FunctionSpace) = samples(s)
+# children(s::Space) = objects(structures(s))
+# children(s::FunctionSpace) = samples(s)
 
 # struct TreeWrapper
 #     name::String

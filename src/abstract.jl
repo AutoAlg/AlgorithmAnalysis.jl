@@ -16,14 +16,14 @@ An object.
 
 A subtype is [`AbstractVectorSpace`](@ref).
 """
-abstract type Object end
+abstract type Object{T<:Space} end
 
 """
     Decomposition{T}
 
 An object in space `T` that is a decomposition of other objects.
 """
-# abstract type Decomposition{T<:Space} <: Object{T} end
+abstract type Decomposition{T<:Space} <: Object{T} end
 
 """
     Constraint
@@ -41,18 +41,18 @@ An abstract set for use in a [`Constraint`](@ref).
 """
 abstract type ConstraintSet end
 
-"""
-    Operator
+# """
+#     Operator
 
-An operator is a relation between pairs of objects. Operators may be sampled at objects in their domain to produce output objects in their codomain. Operators may also have other associated operators; for instance, a linear operator has an associated adjoint. Each operator can be sampled at a point in its domain, and it can have a set of properties.
+# An operator is a relation between pairs of objects. Operators may be sampled at objects in their domain to produce output objects in their codomain. Operators may also have other associated operators; for instance, a linear operator has an associated adjoint. Each operator can be sampled at a point in its domain, and it can have a set of properties.
 
-Any concrete subtype of `Operator` must have the following fields:
-    label::String
-    properties::Properties
+# Any concrete subtype of `Operator` must have the following fields:
+#     label::String
+#     properties::Properties
 
-Some concrete operators are [`LinearMap`](@ref), [`Functional`](@ref), etc.
-"""
-abstract type Operator{X<:Space, Y<:Space} <: Space end
+# Some concrete operators are [`LinearMap`](@ref), [`Functional`](@ref), etc.
+# """
+# abstract type Operator{X<:Space, Y<:Space} <: Space end
 
 """
     Relation{X,Y}
@@ -72,6 +72,11 @@ abstract type Relation{X,Y} <: Space end
 Property of objects of type `T`.
 """
 abstract type Property end
+
+struct RightUnique <: Property end
+struct LeftUnique <: Property end
+
+export RightUnique, LeftUnique
 
 # abstract type OnePointProperty <: Property end
 # abstract type TwoPointProperty <: Property end
@@ -93,10 +98,11 @@ abstract type Property end
 # CONSTANTS
 ############################################################################################
 
-const Objects = Set{Object}
+const Objects{T} = Set{Object{T}}
 # const Operators = Set{Object{<:Operator}}
-const Operators = Set{Object}
+# const Operators = Set{Object}
 const Constraints = Set{Constraint}
 const Properties = Set{Property}
 const Relations = Set{Relation}
 const Spaces = Set{Space}
+const Label = Union{Symbol, Missing}

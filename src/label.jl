@@ -44,13 +44,16 @@ Check if an `Object` has a label.
 function haslabel end
 
 
-label(x::Union{Object, Space}) = hasfield(typeof(x), :label) ? x.label : ""
+label(x::Union{Object, Space}) = hasfield(typeof(x), :label) ? x.label : missing
 
-haslabel(x::Union{Object, Space}) = !isempty(label(x))
+haslabel(x::Union{Object, Space}) = !ismissing(label(x))
 
-label!(::AbstractArray{<:Object}, ::String) = nothing
+label(T::Type{<:Space}) = label(instance(T))
+haslabel(T::Type{<:Space}) = haslabel(instance(T))
 
-label!(x::Union{Object, Space}, l::String) = x.label = l #label!(space(x), x, l)
+label!(::AbstractArray{<:Object}, ::Label) = nothing
+
+label!(x::Union{Object, Space}, l::Label) = x.label = l #label!(space(x), x, l)
 
 # function label!(::Space, obj::Object, l::String)
 #     obj.label = l

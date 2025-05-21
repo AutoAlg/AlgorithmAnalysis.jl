@@ -7,16 +7,14 @@
 
 Atomic object in space `T`.
 """
-mutable struct Atom <: Object
-    space::Space
-    label::String
+mutable struct Atom{T<:Space} <: Object{T}
+    label::Label
     value::Any
     constraints::Constraints
-    next::Union{Object, Missing}
+    next::Union{Object{T}, Missing}
 
-    function Atom(T::Space, label::String = "")
-        x = new(
-            T,
+    function Atom{T}(label::Label = missing) where {T<:Space}
+        x = new{T}(
             label,
             missing,
             Constraints(),
@@ -27,53 +25,35 @@ mutable struct Atom <: Object
     end
 end
 
+space(::Object{T}) where T = T
+space(::Type{Object{T}}) where T = T
+
 # const Atoms = Set{Atom}
 
 function clear(x::Atom)
     value!(x, missing)
     empty!(constraints(x))
-    empty!(relation(x))
-end
-
-"""
-    Atoms
-
-Atomic object in space `T`.
-"""
-struct Atoms <: Object
-    space::Space
-    value::Tuple{Vararg{Object}}
-
-    function Atoms(value::Tuple{Vararg{Object}})
-        T = space.(value)
-        if all(isequal.(T, first(T)))
-            new(CartesianPower(first(T), length(T)), value)
-        else
-            new(CartesianProduct(T), value)
-        end
-    end
+    next!(x, missing)
 end
 
 # Iteration over atoms
-length(a::Atom) = 1
-isempty(a::Atom) = false
-iterate(a::Atom) = iterate(a,1)
-iterate(a::Atom, state::Int) = state > 1 ? nothing : ( value(a), 2 )
+# length(a::Atom) = 1
+# isempty(a::Atom) = false
+# iterate(a::Atom) = a
+# iterate(::Atom, ::Int) = nothing
 
-length(a::Atoms) = length(value(a))
-isempty(a::Atoms) = iszero(length(a))
-iterate(a::Atoms) = iterate(a,1)
-iterate(a::Atoms, state::Int) = state > length(a) ? nothing : ( value(a)[state], state+1 )
+# length(a::Atoms) = length(value(a))
+# isempty(a::Atoms) = iszero(length(a))
+# iterate(a::Atoms) = iterate(a,1)
+# iterate(a::Atoms, state::Int) = state > length(a) ? nothing : ( value(a)[state], state+1 )
 
-
-space(x::Object) = x.space
 
 
 ############################################################################################
 # Constructors
 
-(T::Space)() = Atom(T)
-(x::Tuple{Vararg{Object}})() = Atoms(x)
+# (T::Space)() = Atom(T)
+# (x::Tuple{Vararg{Object}})() = Atoms(x)
 # (::Type{T})(value) where {T<:Space} = Atom{T}(value)
 
 # zero(::Type{T}) where {T<:Space} = Atom{T}(𝟎)
@@ -101,11 +81,11 @@ next(a::Atom) = a.next
 value!(x::Atom, val) = (x.value = val; nothing)
 
 # Atoms
-value(a::Atoms) = a.value
-constraints(a::Atoms) = mapreduce(constraints, ∪, value(a); init=Constraints())
-next(a::Atoms) = next(value(a))
+# value(a::Atoms) = a.value
+# constraints(a::Atoms) = mapreduce(constraints, ∪, value(a); init=Constraints())
+# next(a::Atoms) = next(value(a))
 
-value!(x::Atoms, val) = (x.value = val; nothing)
+# value!(x::Atoms, val) = (x.value = val; nothing)
 
 
 hasconstraints(a::Object) = !isempty(constraints(a))
@@ -122,7 +102,7 @@ constraint!(a::Object, c::Constraint) = push!(constraints(a), c)
 
 # operator!(a::Object, o::Object{<:Operator}) = push!(operators(a), o)
 
-# next!(x::Object{T}, y::Object{T}) where {T<:Space} = (x.next = y; nothing)
+next!(x::Object{T}, y::Union{Object{T}, Missing}) where {T<:Space} = (x.next = y; nothing)
 
 # field(::Type{<:VectorSpace{F}}) where {F<:Field} = F
 # field(::Type{F}) where {F<:Field} = F
@@ -181,16 +161,16 @@ evaluate(a::AbstractArray{<:Object}) = [ evaluate(e) for e ∈ a ]
 ############################################################################################
 # Inputs / outputs
 
-inputs(a::Object) = Objects(first(p) for p ∈ samples(a))
-outputs(a::Object) = Objects(last(p) for p ∈ samples(a))
+# inputs(a::Object) = Objects(first(p) for p ∈ samples(a))
+# outputs(a::Object) = Objects(last(p) for p ∈ samples(a))
 
-inputs(exps::Objects) = mapreduce(inputs, ∪, exps)
-outputs(exps::Objects) = mapreduce(outputs, ∪, exps)
+# inputs(exps::Objects) = mapreduce(inputs, ∪, exps)
+# outputs(exps::Objects) = mapreduce(outputs, ∪, exps)
 
-inputs_outputs(a::Object) = zip(samples(a))
+# inputs_outputs(a::Object) = zip(samples(a))
 
-inputs_and_outputs(x::Object) = inputs(x) ∪ outputs(x)
+# inputs_and_outputs(x::Object) = inputs(x) ∪ outputs(x)
 
-flatten(x::Object) = Set([x])
-# flatten(x::Object{<:CartesianProduct}) = Set(value(x))
-flatten(x::Objects) = mapreduce(flatten, ∪, x; init=Objects())
+# flatten(x::Object) = Set([x])
+# # flatten(x::Object{<:CartesianProduct}) = Set(value(x))
+# flatten(x::Objects) = mapreduce(flatten, ∪, x; init=Objects())

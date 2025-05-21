@@ -4,6 +4,55 @@ using Revise
 using AlgorithmAnalysis
 
 
+@set A, B, C
+@var a ∈ A, b ∈ B, c ∈ C
+
+I = A ∩ B
+U = A ∪ B
+F = A → B
+G = A ⇒ B
+D = A × B
+
+@var f ∈ F, g ∈ G, d ∈ D, z ∈ graph(g)
+
+fa = f(a)
+ga = g(a)
+
+
+# # Declare a symbolic convex function f: ℝ → ℝ
+# @symbolic f::ConvexFunction{X → Y}, g::ConvexFunction{X → Y}
+
+# # Sample the function at a point
+# fx = f(x)
+# gx = g(x)
+
+# # Build a composite expression h = f + 2g
+# h = f + 2 * g
+# hx = h(x)
+
+# # Compose functions: k = f ∘ g
+# k = f ∘ g
+# kx = k(x)
+
+# # Show results
+# println("f(x) = $fx")
+# println("g(x) = $gx")
+# println("h(x) = $hx")
+# println("k(x) = $kx")
+
+# # Add assumptions
+# @assume f ∈ ConvexFunctions
+# @assume g ∈ ConvexFunctions
+
+# println("Assumptions on f: ", assumptions(f))
+# println("Assumptions on g: ", assumptions(g))
+
+# # Check assumption
+# println("Is f convex? ", has_assumption(f, ConvexFunctions))
+
+
+
+
 ############################################################################################
 # ALGEBRA
 
@@ -19,21 +68,17 @@ using AlgorithmAnalysis
 
 # R² = R × R
 
-@set S
-@set T
+# @set S
+# @set T
 
-@algorithm begin
-#     S = SetSpace()
-#     T = SetSpace()
-#     U = Subset(S)
-#     V = Subset(T)
-#     S² = S × S
-#     T² = T × T
-    a ∈ S
-    b ∈ S
-    c ∈ T
-#     p ∈ S × T
-end
+# @algorithm begin
+#     F = S → T
+#     R = S × T
+#     a ∈ S
+#     b ∈ S
+#     c ∈ T
+# #     p ∈ S × T
+# end
 
 # @algorithm begin
 #     F = R² → R
