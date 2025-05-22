@@ -5,20 +5,21 @@ using AlgorithmAnalysis
 
 @set A, B, C
 
-I = A ∩ B
-U = A ∪ B
+# I = A ∩ B
+# U = A ∪ B
 F = A → B
 G = A ⇒ B
 D = A × B
 
+@var a ∈ A, b ∈ B, c ∈ C, f ∈ F, g ∈ G, h ∈ F, d ∈ D, z ∈ graph(g)
+
+fa = f(a)
+ga = g(a)
+
+f ∈ Differentiable{A,B}()
+h ∈ Convex{A,B}()
 
 
-# @var a ∈ A, b ∈ B, c ∈ C, f ∈ G, g ∈ G, d ∈ D, z ∈ graph(g)
-
-# add_structure!(f, Functional())
-
-# fa = f(a)
-# ga = g(a)
 
 
 # # Declare a symbolic convex function f: ℝ → ℝ

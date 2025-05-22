@@ -1,3 +1,7 @@
+############################################################################################
+# LABEL
+############################################################################################
+
 """
     label(x)
 
@@ -53,48 +57,13 @@ haslabel(T::Type{<:Space}) = haslabel(instance(T))
 
 label!(::AbstractArray{<:Object}, ::Label) = nothing
 
-label!(x::Union{Object, Space}, l::Label) = x.label = l #label!(space(x), x, l)
-
-# function label!(::Space, obj::Object, l::String)
-#     obj.label = l
-#     obj.labeler = (x::Object) -> "$l($(label(x)))"
-# end
-
-# function label!(::LinearFunctional, obj::Object, l::String)
-#     obj.label = l
-#     obj.labeler = (x::Object) ->
-#         if haslabel(x) && haslabel(obj)
-#             if isequal(obj', x)
-#                 "|"*label(x)*"|²"
-#             else
-#                 "⟨"*label(x)*","*label(obj')*"⟩"
-#             end
-#         else
-#             ""
-#         end
-# end
-
-############################################################################################
-# Default labels
-
-defaultlabel(::Any, ::Any) = ""
-
-# defaultlabel(::Type{Transpose}, label::String) = label * "ᵀ"
-# defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
-# defaultlabel(::Type{Gradient}, label::String) = "∇" * label
-# defaultlabel(::Type{Jacobian}, label::String) = "J" * label
-# defaultlabel(::Type{Dual}, label::String) = label * "*"
-
-# function defaultlabel(o::Object{<:Operator}, x)
-#     haslabel(o) && haslabel(x) ? "$(label(o))($(label(x)))" : ""
-# end
-
-# defaultlabel(o::ConstantMap, ::Any) = label(o)
+label!(x::Union{Object, Space}, l::Label) = x.label = l
 
 
 
 ############################################################################################
-# Algorithm macro
+# @ALGORITHM
+############################################################################################
 
 """
     @algorithm

@@ -2,9 +2,6 @@
 # OBJECT
 ############################################################################################
 
-# show(io::IO, x::Atoms) = print(io, "(", join(value(x), ", "), ")")
-# show(io::IO, ::MIME"text/plain", x::Atoms) = print(io, "(", join(value(x), ", "), ")")
-
 function show(io::IO, x::Object)
     if haslabel(x)
         print(io, label(x))
@@ -19,19 +16,9 @@ function show(io::IO, ::MIME"text/plain", x::Object)
     print(io, "Object in ", space(x))
     haslabel(x) && print(io, "\n  Label: ", label(x))
     hasvalue(x) && print(io, "\n  Value: ", value(x))
-    # hasproperties(x) && print(io, "\n  Properties: ", join(properties(x), ", "))
+    hasproperties(x) && print(io, "\n  Properties: ", join(properties(x), ", "))
     hasconstraints(x) && print(io, "\n  Constraints: ", join(constraints(x), ", "))
-    # hasoperators(x) && print(io, "\n  Operators: ", join(operators(x), ", "))
     hasnext(x) && print(io, "\n  Next: ", next(x))
-
-    # for (_, a) ∈ structures(space(x))
-    #     y = get(inv(relation(space(a))), x, missing)
-    #     if !ismissing(y)
-    #         print(io, "\n  ", a, y)
-    #     end
-    # end
-    # print(io, "\n")
-    # show(io, MIME"text/plain"(), space(x))
 end
 
 function show(io::IO, ::MIME"text/plain", elements::Objects)
@@ -43,24 +30,20 @@ function show(io::IO, ::MIME"text/plain", elements::Objects)
     end
 end
 
-# function show(io::IO, ::MIME"text/plain", objs::Objects)
-#     print(io, "Set of objects with $(length(objs)) elements:")
-#     foreach( x -> print(io, "\n  ", x), objs )
-# end
-
 
 ############################################################################################
-# TRAIT
+# PROPERTY
 ############################################################################################
-# show(io::IO, x::Operator) = print(io, label(x.domain), " → ", label(x.codomain))
+show(io::IO, ::Invertible) = print(io, "Invertible")
+show(io::IO, ::Differentiable) = print(io, "Differentiable")
+show(io::IO, ::LocallyLipschitz) = print(io, "Locally Lipschitz")
+show(io::IO, ::Convex) = print(io, "Convex")
+show(io::IO, p::StronglyConvex) = print(io, "$(p.parameter)-strongly convex")
 
 
 ############################################################################################
 # SPACE
 ############################################################################################
-
-# show(io::IO, x::Type{<:Space}) = show(io, instance(x))
-# show(io::IO, ::MIME"text/plain", x::Type{<:Space}) = show(io, MIME"text/plain"(), instance(x))
 
 show(io::IO, x::Space) = print(io, label(x))
 
@@ -68,7 +51,6 @@ function show(io::IO, ::MIME"text/plain", x::Space)
     print(io, "Set")
     haslabel(x) && print(io, "\n  Label: ", label(x))
     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
-    hasstructures(x) && print(io, "\n  Structures: ", join(structures(x), ", "))
 end
 
 function show(io::IO, ::MIME"text/plain", x::Subset)
@@ -80,25 +62,25 @@ function show(io::IO, ::MIME"text/plain", ::Powerset{T}) where {T<:Space}
     print(io, "Powerset of $T")
 end
 
-function show(io::IO, ::MIME"text/plain", x::Type{<:OperatorSpace})
+function show(io::IO, ::MIME"text/plain", x::Type{<:SetValuedMap})
     print(io, "Set of operators from $(domain(x)) to $(codomain(x))")
     haslabel(x) && print(io, "\n  Label: ", label(x))
     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
 end
 
-# function show(io::IO, ::MIME"text/plain", x::Type{<:FunctionSpace})
-#     print(io, "Set of functions from $(domain(x)) to $(codomain(x))")
-#     haslabel(x) && print(io, "\n  Label: ", label(x))
-#     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
+function show(io::IO, ::MIME"text/plain", x::Type{<:SingleValuedMap})
+    print(io, "Set of functions from $(domain(x)) to $(codomain(x))")
+    haslabel(x) && print(io, "\n  Label: ", label(x))
+    !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
+end
+
+# function show(io::IO, ::MIME"text/plain", T::Type{<:SetUnion})
+#     print(io, "Union ", join(spaces(T), " ∪ "))
 # end
 
-function show(io::IO, ::MIME"text/plain", T::Type{<:SetUnion})
-    print(io, "Union ", join(spaces(T), " ∪ "))
-end
-
-function show(io::IO, ::MIME"text/plain", T::Type{<:SetIntersection})
-    print(io, "Intersection ", join(spaces(T), " ∩ "))
-end
+# function show(io::IO, ::MIME"text/plain", T::Type{<:SetIntersection})
+#     print(io, "Intersection ", join(spaces(T), " ∩ "))
+# end
 
 function subscript(i::Integer)
     i<0 ? error("$i is negative") : join('₀'+d for d in reverse(digits(i)))
@@ -124,8 +106,8 @@ end
 
 show(io::IO, T::Type{<:CartesianProduct}) = print(io, join(spaces(T), " × "))
 # # show(io::IO, T::CartesianPower) = print(io, space(T), superscript(power(T)))
-# show(io::IO, T::Type{<:FunctionSpace}) = print(io, "$(domain(T)) → $(codomain(T))")
-show(io::IO, T::Type{<:OperatorSpace}) = print(io, "$(domain(T)) ⇒ $(codomain(T))")
+show(io::IO, T::Type{<:SingleValuedMap}) = print(io, "$(domain(T)) → $(codomain(T))")
+show(io::IO, T::Type{<:SetValuedMap}) = print(io, "$(domain(T)) ⇒ $(codomain(T))")
 # show(io::IO, T::Powerset) = print(io, "𝒫($(base(T))")
 
 function show(io::IO, ::MIME"text/plain", T::Type{<:CartesianProduct})
@@ -161,12 +143,6 @@ end
 #     end
 # end
 
-############################################################################################
-# STRUCTURES
-############################################################################################
-
-# show(io::IO, s::Structures) = print(io, join(keys(s.structures), ", "))
-
 
 ############################################################################################
 # Constraints
@@ -184,22 +160,6 @@ end
 #         foreach( c -> print(io, "\n  ", c), cons )
 #     end
 # end
-
-
-############################################################################################
-# RELATION
-############################################################################################
-
-# description(::SingleValuedRelation) = "Single-valued relation"
-# description(::MultiValuedRelation) = "Multi-valued relation"
-# description(::ConstantRelation) = "Constant relation"
-
-# function show(io::IO, r::Relation)
-#     print(io, "$(description(r)) on $(domain(r)) x $(codomain(r))")
-#     foreach(p -> print(io, "\n  ", first(p), " → ", last(p)), collect(samples(r)))
-# end
-
-# show(io::IO, ::EmptyRelation) = print(io, "Empty relation")
 
 
 ############################################################################################
@@ -253,8 +213,8 @@ end
 
 # children(x::TreeWrapper) = x.children
 
-tree(x::Object; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
+# tree(x::Object; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
 
-function tree(io::IO, x::Object; maxdepth=10)
-    print_tree(io, x; maxdepth=maxdepth)
-end
+# function tree(io::IO, x::Object; maxdepth=10)
+#     print_tree(io, x; maxdepth=maxdepth)
+# end

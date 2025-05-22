@@ -30,10 +30,18 @@ julia> y = Rⁿ();  (x+y)'  # linear functional z ↦ ⟨x,z⟩ + ⟨y,z⟩
 """
 function adjoint end
 
-adjoint(o::Object) = adjoint(space(o), o)
+adjoint(x::Object) = error("Objects of type $(typeof(x)) do not have an associated operator x'. To specify a related operator, specialize `adjoint` for this object type.")
 
-function adjoint(::Space, o::Object)
-    error("Objects of type $(typeof(o)) do not have an associated operator o'. To specify a related operator, specialize `adjoint` for this object type.")
+function adjoint(x::Object{SingleValuedMap{X,Y}}) where {X,Y}
+    if !ismissing(x(Differentiable))
+        gradient(x)
+    elseif !ismissing(x(Convex))
+        subdifferential(x)
+    elseif !ismissing(x(LocallyLipschitz))
+        clark_subdifferential(x)
+    else
+        error("Adjoint not implemented")
+    end
 end
 
 # adjoint(o::AbstractLinearMap) = Transpose{typeof(o)}(o)

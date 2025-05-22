@@ -34,12 +34,13 @@ export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantR
 export domain, codomain, inputs, outputs, inputs_outputs, inputs_and_outputs, relation
 export samples, canevaluate, isfunction
 
-export elements, @var, cartesian_to_tuple, tuple_to_cartesian, TupleDecomposition, N
-export clear_cache, add_structure!, has_structure, remove_structure!
+export Map, SingleValuedMap, SetValuedMap, Operator, BinaryOperator, arity
 
-export StructuredSet, IntersectionTrait, UnionTrait, get_trait
-export ∅
+export elements, @var, cartesian_to_tuple, tuple_to_cartesian, TupleDecomposition
+export clear_cache
 
+# natural
+export N, successor
 
 ############################################################################################
 # IMPORTS
@@ -54,20 +55,24 @@ import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ∪
 import Base: isempty, iszero, isone, isequal, hash
 import Base: promote_rule, convert, show, zero, one, zeros, adjoint, hasfield
 import Base: length, Generator, iterate, size, push!, inv, pairs, parent, map, issubset
-import Base: numerator, denominator, empty!, setdiff, getindex
-
-# include("set.jl")
+import Base: numerator, denominator, empty!, setdiff, getindex, delete!
 
 include("abstract.jl")
 include("object.jl")
 include("set.jl")
-# include("traits.jl")
+include("set/subset.jl")
+include("set/powerset.jl")
+include("set/cartesian-product.jl")
+include("set/map.jl")
+include("set/natural.jl")
+include("set/real.jl")
+include("property.jl")
 # include("constraint.jl")
 # include("algebra.jl")
 include("label.jl")
 # include("evaluate.jl")
 # include("hash.jl")
-# include("adjoint.jl")
+include("adjoint.jl")
 include("show.jl")
 
 end
