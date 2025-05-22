@@ -3,9 +3,7 @@ Pkg.activate(".")
 using Revise
 using AlgorithmAnalysis
 
-
 @set A, B, C
-@var a ∈ A, b ∈ B, c ∈ C
 
 I = A ∩ B
 U = A ∪ B
@@ -13,10 +11,14 @@ F = A → B
 G = A ⇒ B
 D = A × B
 
-@var f ∈ F, g ∈ G, d ∈ D, z ∈ graph(g)
 
-fa = f(a)
-ga = g(a)
+
+# @var a ∈ A, b ∈ B, c ∈ C, f ∈ G, g ∈ G, d ∈ D, z ∈ graph(g)
+
+# add_structure!(f, Functional())
+
+# fa = f(a)
+# ga = g(a)
 
 
 # # Declare a symbolic convex function f: ℝ → ℝ

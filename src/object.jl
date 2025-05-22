@@ -13,14 +13,16 @@ mutable struct Atom{T<:Space} <: Object{T}
     constraints::Constraints
     next::Union{Object{T}, Missing}
 
-    function Atom{T}(label::Label = missing) where {T<:Space}
+    function Atom{T}(label::Label = missing, flag::Bool = true) where {T<:Space}
         x = new{T}(
             label,
             missing,
             Constraints(),
             missing
         )
-        push!(T, x)
+        if flag
+            push!(T, x)
+        end
         x
     end
 end

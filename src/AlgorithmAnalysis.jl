@@ -5,7 +5,7 @@ module AlgorithmAnalysis
 ############################################################################################
 
 export Object, Space, Atom, Constraint, Constraints, ConstraintSet, Atoms, Spaces
-export Operator, Operators, Property, Properties, Structures
+export Operator, Operators, Property, Properties, Structure, Structures
 export VectorSpace, NormedVectorSpace, InnerProductSpace, Field, field, Subset, Module
 export R, Rⁿ, Rᵐ, Zero, One, 𝟎, 𝟏, ×, →, ⇒
 export isimplementable, juliatype, algorithmtype
@@ -34,7 +34,12 @@ export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantR
 export domain, codomain, inputs, outputs, inputs_outputs, inputs_and_outputs, relation
 export samples, canevaluate, isfunction
 
-export elements, @var, cartesian_to_tuple, tuple_to_cartesian, TupleDecomposition
+export elements, @var, cartesian_to_tuple, tuple_to_cartesian, TupleDecomposition, N
+export clear_cache, add_structure!, has_structure, remove_structure!
+
+export StructuredSet, IntersectionTrait, UnionTrait, get_trait
+export ∅
+
 
 ############################################################################################
 # IMPORTS
@@ -49,15 +54,14 @@ import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ∪
 import Base: isempty, iszero, isone, isequal, hash
 import Base: promote_rule, convert, show, zero, one, zeros, adjoint, hasfield
 import Base: length, Generator, iterate, size, push!, inv, pairs, parent, map, issubset
-import Base: numerator, denominator, empty!, setdiff
+import Base: numerator, denominator, empty!, setdiff, getindex
 
 # include("set.jl")
 
 include("abstract.jl")
-# # include("traits.jl")
 include("object.jl")
-include("space.jl")
-# include("relation.jl")
+include("set.jl")
+# include("traits.jl")
 # include("constraint.jl")
 # include("algebra.jl")
 include("label.jl")

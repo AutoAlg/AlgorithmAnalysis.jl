@@ -54,12 +54,12 @@ abstract type ConstraintSet end
 # """
 # abstract type Operator{X<:Space, Y<:Space} <: Space end
 
-"""
-    Relation{X,Y}
+# """
+#     Relation{X,Y}
 
-A relation is a subset of the product space Element{X} × Element{Y}.
-"""
-abstract type Relation{X,Y} <: Space end
+# A relation is a subset of the product space Element{X} × Element{Y}.
+# """
+# abstract type Relation{X,Y} <: Space end
 
 
 ############################################################################################
@@ -103,6 +103,6 @@ const Objects{T} = Set{Object{T}}
 # const Operators = Set{Object}
 const Constraints = Set{Constraint}
 const Properties = Set{Property}
-const Relations = Set{Relation}
+# const Relations = Set{Relation}
 const Spaces = Set{Space}
 const Label = Union{Symbol, Missing}

@@ -48,6 +48,13 @@ end
 #     foreach( x -> print(io, "\n  ", x), objs )
 # end
 
+
+############################################################################################
+# TRAIT
+############################################################################################
+# show(io::IO, x::Operator) = print(io, label(x.domain), " → ", label(x.codomain))
+
+
 ############################################################################################
 # SPACE
 ############################################################################################
@@ -58,10 +65,10 @@ end
 show(io::IO, x::Space) = print(io, label(x))
 
 function show(io::IO, ::MIME"text/plain", x::Space)
-    print(io, "Space")
+    print(io, "Set")
     haslabel(x) && print(io, "\n  Label: ", label(x))
     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
-    hasstructures(x) && print(io, "\n  Structures: ", structures(x))
+    hasstructures(x) && print(io, "\n  Structures: ", join(structures(x), ", "))
 end
 
 function show(io::IO, ::MIME"text/plain", x::Subset)
@@ -79,11 +86,11 @@ function show(io::IO, ::MIME"text/plain", x::Type{<:OperatorSpace})
     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
 end
 
-function show(io::IO, ::MIME"text/plain", x::Type{<:FunctionSpace})
-    print(io, "Set of functions from $(domain(x)) to $(codomain(x))")
-    haslabel(x) && print(io, "\n  Label: ", label(x))
-    !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
-end
+# function show(io::IO, ::MIME"text/plain", x::Type{<:FunctionSpace})
+#     print(io, "Set of functions from $(domain(x)) to $(codomain(x))")
+#     haslabel(x) && print(io, "\n  Label: ", label(x))
+#     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
+# end
 
 function show(io::IO, ::MIME"text/plain", T::Type{<:SetUnion})
     print(io, "Union ", join(spaces(T), " ∪ "))
@@ -117,7 +124,7 @@ end
 
 show(io::IO, T::Type{<:CartesianProduct}) = print(io, join(spaces(T), " × "))
 # # show(io::IO, T::CartesianPower) = print(io, space(T), superscript(power(T)))
-show(io::IO, T::Type{<:FunctionSpace}) = print(io, "$(domain(T)) → $(codomain(T))")
+# show(io::IO, T::Type{<:FunctionSpace}) = print(io, "$(domain(T)) → $(codomain(T))")
 show(io::IO, T::Type{<:OperatorSpace}) = print(io, "$(domain(T)) ⇒ $(codomain(T))")
 # show(io::IO, T::Powerset) = print(io, "𝒫($(base(T))")
 
@@ -158,7 +165,7 @@ end
 # STRUCTURES
 ############################################################################################
 
-show(io::IO, s::Structures) = print(io, join(keys(s.structures), ", "))
+# show(io::IO, s::Structures) = print(io, join(keys(s.structures), ", "))
 
 
 ############################################################################################
