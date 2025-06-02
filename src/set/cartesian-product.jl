@@ -5,10 +5,14 @@
 
 struct CartesianProduct{T<:Tuple{Vararg{Space}}} <: Space
     elements::Objects{CartesianProduct{T}}
+    dict::Dict{Object{CartesianProduct{T}}, Tuple{Vararg{Object}}}
 
     function CartesianProduct{T}() where {T<:Tuple{Vararg{Space}}}
         get!(_CACHE, CartesianProduct{T}) do
-            new{T}( Set{TupleDecomposition{T}}() )
+            new{T}(
+                Set{TupleDecomposition{CartesianProduct{T}}}(),
+                Dict{Object{CartesianProduct{T}}, Tuple{Vararg{Object}}}()
+            )
         end
     end
 end
@@ -16,13 +20,13 @@ end
 """
     TupleDecomposition{T} <: Decomposition{T}
 
-A decomposition of an object as a tuple of objects in space `T`.
+A decomposition of an object as a tuple of objects in space `T`. This is the type of object to use for elements of a Cartesian product space.
 """
-struct TupleDecomposition{T<:Tuple{Vararg{Space}}} <: Decomposition{CartesianProduct{T}}
+struct TupleDecomposition{T<:CartesianProduct} <: Decomposition{T}
     value::Tuple{Vararg{Object}}
 
     function TupleDecomposition(val::Vararg{Object})
-        T = Tuple{(space(a) for a ∈ val)...}
+        T = CartesianProduct{Tuple{(space(a) for a ∈ val)...}}
         new{T}(val)
     end
 end

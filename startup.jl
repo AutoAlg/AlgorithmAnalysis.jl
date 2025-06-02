@@ -5,13 +5,15 @@ using AlgorithmAnalysis
 
 @set A, B, C
 
+@var a ∈ A, b ∈ B, c ∈ C
+
 # I = A ∩ B
 # U = A ∪ B
 F = A → B
 G = A ⇒ B
 D = A × B
 
-@var a ∈ A, b ∈ B, c ∈ C, f ∈ F, g ∈ G, h ∈ F, d ∈ D, z ∈ graph(g)
+@var f ∈ F, g ∈ G, h ∈ F, d ∈ D, z ∈ graph(g)
 
 fa = f(a)
 ga = g(a)
@@ -19,40 +21,10 @@ ga = g(a)
 f ∈ Differentiable{A,B}()
 h ∈ Convex{A,B}()
 
+@var a ∈ R, b ∈ R, u ∈ Rⁿ, v ∈ Rⁿ, f : Rⁿ → R, g : Rⁿ → R
 
 
-
-# # Declare a symbolic convex function f: ℝ → ℝ
-# @symbolic f::ConvexFunction{X → Y}, g::ConvexFunction{X → Y}
-
-# # Sample the function at a point
-# fx = f(x)
-# gx = g(x)
-
-# # Build a composite expression h = f + 2g
-# h = f + 2 * g
-# hx = h(x)
-
-# # Compose functions: k = f ∘ g
-# k = f ∘ g
-# kx = k(x)
-
-# # Show results
-# println("f(x) = $fx")
-# println("g(x) = $gx")
-# println("h(x) = $hx")
-# println("k(x) = $kx")
-
-# # Add assumptions
-# @assume f ∈ ConvexFunctions
-# @assume g ∈ ConvexFunctions
-
-# println("Assumptions on f: ", assumptions(f))
-# println("Assumptions on g: ", assumptions(g))
-
-# # Check assumption
-# println("Is f convex? ", has_assumption(f, ConvexFunctions))
-
+# f ∘ g + 2h
 
 
 

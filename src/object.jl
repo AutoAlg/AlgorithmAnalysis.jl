@@ -7,10 +7,10 @@
 
 Atomic object in space `T`.
 """
-struct Atom{T<:Space} <: Object{T}
+mutable struct Atom{T<:Space} <: Object{T}
     label::Label
     value::Any
-    properties::Properties
+    properties::Properties{Object{T}}
     constraints::Constraints
     next::Union{Object{T}, Missing}
 
@@ -18,7 +18,7 @@ struct Atom{T<:Space} <: Object{T}
         x = new{T}(
             label,
             missing,
-            Properties(),
+            Properties{Object{T}}(),
             Constraints(),
             missing
         )
@@ -78,7 +78,7 @@ end
 
 constraint!(a::Object, c::Constraint) = push!(constraints(a), c)
 next!(x::Object{T}, y::Union{Object{T}, Missing}) where {T<:Space} = (x.next = y; nothing)
-iszero(a::Object) = iszero(value(a))
-isone(a::Object) = isone(value(a))
+# iszero(a::Object) = iszero(value(a))
+# isone(a::Object) = isone(value(a))
 next(a::AbstractArray{<:Object}) = [ next(x) for x ∈ a ]
 update!(p::Pair{T, T}) where T = next!( first(p), last(p) )

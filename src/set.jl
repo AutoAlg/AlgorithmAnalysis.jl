@@ -38,14 +38,17 @@ macro set(ex)
 end
 
 function _set(s::Symbol)
+    T = esc(s)
+    sym = QuoteNode(s)
     quote
-        struct $(esc(s)) <: Space
+        struct $T <: Space
             label::Label
-            elements::Objects{$(esc(s))}
+            elements::Objects{$T}
+            properties::Properties
 
-            function $(esc(s))()
-                get!(_CACHE, $(esc(s)) ) do
-                    new( $(QuoteNode(s)), Objects{$(esc(s))}() )
+            function $T()
+                get!(_CACHE, $T ) do
+                    new( $sym, Objects{$T}(), Properties{$T}() )
                 end
             end
         end
@@ -64,10 +67,13 @@ end
 
 instance(T::Type{<:Space}) = T()
 
-elements(S::Space) = S.elements
-elements(S::Type{<:Space}) = elements(S())
+elements(s::Space) = s.elements
+elements(T::Type{<:Space}) = elements(T())
 
-sample(T::Type{<:Space}, label::Symbol) = Atom{T}(label)
+properties(s::Space) = s.properties
+properties(T::Type{<:Space}) = properties(T())
+
+sample(T::Type{<:Space}, label::Label) = Atom{T}(label)
 push!(T::Type{<:Space}, x::Object) = push!(elements(T), x)
 
 
@@ -87,13 +93,46 @@ function _var(expr::Expr)
     if expr.head == :tuple
         Expr(:block, [ _var(arg) for arg ∈ expr.args ]...)
     elseif expr.head == :call && (expr.args[1] == :(∈) || expr.args[1] == :in)
+        # Notation: a ∈ A
         a = esc(expr.args[2])
         A = esc(expr.args[3])
+        sym = QuoteNode(expr.args[2])
         quote
-            $a = sample($A, $(QuoteNode(expr.args[2]))); nothing
+            $a = sample($A, $sym); nothing
+        end
+    elseif expr.head == :call && expr.args[1] == :→ && expr.args[2] isa Expr && expr.args[2].head == :call && expr.args[2].args[1] == :(:)
+        # Notation: f : X → Y
+        f = esc(expr.args[2].args[2])
+        X = esc(expr.args[2].args[3])
+        Y = esc(expr.args[3])
+        sym = QuoteNode(expr.args[2].args[2])
+        quote
+            $f = sample($X → $Y, $sym); nothing
+        end
+    elseif expr.head == :call && expr.args[1] == :⇒ && expr.args[2] isa Expr && expr.args[2].head == :call && expr.args[2].args[1] == :(:)
+        # Notation: F : X ⇒ Y
+        F = esc(expr.args[2].args[2])
+        X = esc(expr.args[2].args[3])
+        Y = esc(expr.args[3])
+        sym = QuoteNode(expr.args[2].args[2])
+        quote
+            $F = sample($X ⇒ $Y, $sym); nothing
+        end
+    elseif expr.head == :call && expr.args[1] == :⊂ && expr.args[2] isa Symbol && expr.args[3] isa Symbol
+        # Notation: A ⊂ B
+        A = esc(expr.args[2])
+        B = esc(expr.args[3])
+        sym = QuoteNode(expr.args[2])
+        quote
+            $A = Subset{$B}($sym); nothing
         end
     else
-        error("@var expects `a ∈ A`")
+        error("""@var expects one of the following notations:
+          a ∈ A
+          A ⊂ B
+          f : X → Y
+          F : X ⇒ Y
+        """)
     end
 end
 

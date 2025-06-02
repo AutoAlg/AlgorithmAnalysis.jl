@@ -1,14 +1,15 @@
 
-export Property, Properties, properties, hasproperties, @property
-export Invertible, Differentiable, LocallyLipschitz, Convex, StronglyConvex
+export Property, Properties, properties, hasproperties, @property, get
+export Linear, Invertible, Differentiable, LocallyLipschitz, Convex, StronglyConvex
+export SelfAdjoint
 export inv, gradient, clark_subdifferential, subdifferential
-
+export Ring, zero, one
 
 ############################################################################################
 # PROPERTIES
 ############################################################################################
 
-properties(x::Object) = hasfield(typeof(x), :properties) ? x.properties : Properties()
+properties(x::Object) = hasfield(typeof(x), :properties) ? x.properties : Properties{typeof(x)}()
 delete!(x::Object, p::Property) = delete!(properties(x), p)
 hasproperties(x::Object) = length(properties(x)) > 0
 space(::Property{T}) where T = T
@@ -22,11 +23,14 @@ end
 
 ∈(x::Object, properties::Properties) = map(p -> x ∈ p, properties)
 
-function (x::Object)(T::Type{<:Property})
+function get(x, T::Type{<:Property})
     for p in properties(x)
-        typeof(p) <: T && return p
+        if typeof(p) <: T
+            return p
+        end
     end
-    return missing
+    # error("Error: $x does not have property $T")
+    missing
 end
 
 
@@ -78,7 +82,7 @@ end
 # INVERTIBLE
 ############################################################################################
 
-struct Invertible{X,Y} <: Property{SingleValuedMap{X,Y}}
+struct Invertible{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
     inverse::Dict{Object{SingleValuedMap{X,Y}}, Object{SingleValuedMap{Y,X}}}
 
     Invertible{X,Y}() where {X,Y} = get!(_CACHE, Invertible{X,Y}) do
@@ -90,7 +94,7 @@ domain(::Invertible{X,Y}) where {X,Y} = X
 codomain(::Invertible{X,Y}) where {X,Y} = Y
 
 function inv(f::Object{T}) where {X, Y, T<:SingleValuedMap{X,Y}}
-    t = f(Invertible)
+    t = get(f, Invertible)
     if ismissing(t)
         error("Function $f is not invertible")
     end
@@ -100,7 +104,7 @@ function inv(f::Object{T}) where {X, Y, T<:SingleValuedMap{X,Y}}
         for (x,y) ∈ graph(f)
             push!(graph(f⁻¹), TupleDecomposition(y,x))
         end
-        get!(f⁻¹(Invertible).inverse, f⁻¹) do
+        get!(get(f⁻¹, Invertible).inverse, f⁻¹) do
             f
         end
         f⁻¹
@@ -112,7 +116,7 @@ end
 # DIFFERENTIABLE
 ############################################################################################
 
-struct Differentiable{X,Y} <: Property{SingleValuedMap{X,Y}}
+struct Differentiable{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
     gradient::Dict{Object{SingleValuedMap{X,Y}}, Object{SingleValuedMap{X,X}}}
 
     Differentiable{X,Y}() where {X,Y} = get!(_CACHE, Differentiable{X,Y}) do
@@ -121,14 +125,14 @@ struct Differentiable{X,Y} <: Property{SingleValuedMap{X,Y}}
 end
 
 function ∈(x::Object{SingleValuedMap{X,Y}}, ::Differentiable{X,Y}) where {X,Y}
-    if !ismissing(x(LocallyLipschitz))
+    if !ismissing(get(x, LocallyLipschitz))
         error("Function $x is already locally Lipschitz.")
     end
     push!(properties(x), Differentiable{X,Y}())
 end
 
 function gradient(f::Object{T}) where {X, Y, T<:SingleValuedMap{X,Y}}
-    t = f(Differentiable)
+    t = get(f, Differentiable)
     if ismissing(t)
         error("Function $f does not have a gradient because it is not differentiable")
     end
@@ -138,11 +142,25 @@ function gradient(f::Object{T}) where {X, Y, T<:SingleValuedMap{X,Y}}
 end
 
 
+# struct NDifferentiable{N,X,Y} <: Property{Object{SingleValuedMap{X,Y}}} end
+
+# function ∈(x::Object{SingleValuedMap{X,Y}}, ::NDifferentiable{N,X,Y}) where {N,X,Y}
+#     if N == 0
+#         return
+#     end
+#     if N < 0
+#         error("In NDifferentiable{N,X,Y}, the parameter N must be a positive integer")
+#     end
+#     x ∈ Differentiable{X,Y}()
+#     x' ∈ NDifferentiable{N-1,domain(x'),codomain(x')}()
+# end
+
+
 ############################################################################################
 # LOCALLY LIPSCHITZ
 ############################################################################################
 
-struct LocallyLipschitz{X,Y} <: Property{SingleValuedMap{X,Y}}
+struct LocallyLipschitz{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
     clark_subdifferential::Dict{Object{SingleValuedMap{X,Y}}, Object{SetValuedMap{X,X}}}
 
     LocallyLipschitz{X,Y}() where {X,Y} = get!(_CACHE, LocallyLipschitz{X,Y}) do
@@ -158,7 +176,7 @@ function ∈(x::Object{SingleValuedMap{X,Y}}, ::Type{LocallyLipschitz{X,Y}}) whe
 end
 
 function clark_subdifferential(f::Object{T}) where {X, Y, T<:SingleValuedMap{X,Y}}
-    t = f(LocallyLipschitz)
+    t = get(f, LocallyLipschitz)
     if ismissing(t)
         error("Function $f does not have a Clark subdifferential because it is not locally Lipschitz")
     end
@@ -172,7 +190,7 @@ end
 # CONVEX
 ############################################################################################
 
-struct Convex{X,Y} <: Property{SingleValuedMap{X,Y}}
+struct Convex{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
     subdifferential::Dict{Object{SingleValuedMap{X,Y}}, Object{SetValuedMap{X,X}}}
 
     Convex{X,Y}() where {X,Y} = get!(_CACHE, Convex{X,Y}) do
@@ -185,7 +203,7 @@ function ∈(x::Object{SingleValuedMap{X,Y}}, ::Convex{X,Y}) where {X,Y}
 end
 
 function subdifferential(f::Object{T}) where {X, Y, T<:SingleValuedMap{X,Y}}
-    t = f(Convex)
+    t = get(f, Convex)
     if ismissing(t)
         error("Function $f does not have a subdifferential because it is not convex")
     end
@@ -199,7 +217,7 @@ end
 # STRONGLY CONVEX
 ############################################################################################
 
-struct StronglyConvex{X,Y} <: Property{SingleValuedMap{X,Y}}
+struct StronglyConvex{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
     parameter::Number
 end
 
@@ -237,16 +255,89 @@ end
 # abstract type FunctionalProperty <: Property end
 
 
+############################################################################################
+# MAGMA
+############################################################################################
 
-# abstract type AbstractFunction{X,Y} <: Operator{X,Y} end
-# abstract type LinearMap{X,Y} <: AbstractFunction{X,Y} end
-# abstract type SymmetricLinearMap{X} <: LinearMap{X,X} end
-# abstract type SkewSymmetricLinearMap{X} <: LinearMap{X,X} end
-# abstract type DifferentiableFunction{X,Y} <: AbstractFunction{X,Y} end
+export Magma
 
-# abstract type Functional{T<:VectorSpace} <: AbstractFunction{T, Field} end
-# abstract type LocallyLipschitzFunctional{T} <: Functional{T} end
-# abstract type SubdifferentiableFunctional{T} <: LocallyLipschitzFunctional{T} end
-# abstract type DifferentiableFunctional{T} <: LocallyLipschitzFunctional{T} end
-# abstract type TwiceDifferentiableFunctional{T} <: DifferentiableFunctional{T} end
-# abstract type LinearFunctional{T} <: DifferentiableFunctional{T} end
+struct Magma{X} <: Property{X}
+    op::Object{BinaryOperator{X}}
+
+    Magma{X}(s::Symbol) where X = get!(_CACHE, Magma{X}) do
+        new{X}( Atom{X × X → X}(s) )
+    end
+end
+
+∈(::Type{X}, prop::Magma{X}) where X = push!(properties(X), prop)
+
+function op(x::Object{T}, y::Object{T}) where T
+    p = get(T, Magma)
+    if ismissing(p)
+        error("$T is not a magma")
+    else
+        p.op(x,y)
+    end
+end
+
+
+############################################################################################
+# RING
+############################################################################################
+
+struct Ring{X} <: Property{X}
+    zero::Object{X}
+    one::Object{X}
+    plus::Object{BinaryOperator{X}}
+    mult::Object{BinaryOperator{X}}
+
+    Ring{X}() where X = get!(_CACHE, Ring{X}) do
+        zero = Atom{X}(Symbol(0), false)
+        one = Atom{X}(Symbol(1), false)
+        plus = Atom{X × X → X}(:+)
+        mult = Atom{X × X → X}(:*)
+        new{X}( zero, one, plus, mult )
+    end
+end
+
+∈(::Type{X}, ::Ring{X}) where X = push!(properties(X), Ring{X}())
+
+zero(p::Ring) = p.zero
+one(p::Ring) = p.one
+plus(p::Ring) = p.plus
+mult(p::Ring) = p.mult
+
+zero(S::Type{<:Space}) = zero(get(S, Ring))
+one(S::Type{<:Space}) = one(get(S, Ring))
+
+iszero(x::Object{X}) where X = x === zero(X)
+isone(x::Object{X}) where X = x === one(X)
+
+function +(x::Object{T}, y::Object{T}) where T
+    p = get(T, Ring)
+    if ismissing(p)
+        error("$T is not a ring")
+    elseif iszero(x)
+        y
+    elseif iszero(y)
+        x
+    else
+        plus(p)(x,y)
+    end
+end
+
+function *(x::Object{T}, y::Object{T}) where T
+    p = get(T, Ring)
+    if ismissing(p)
+        error("$T is not a ring")
+    elseif isone(x)
+        y
+    elseif isone(y)
+        x
+    else
+        mult(p)(x,y)
+    end
+end
+
+
+

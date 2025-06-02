@@ -20,6 +20,8 @@ A map is a relation between pairs of objects. Maps may be sampled at objects in 
 Some concrete instances are [`SingleValuedMap`](@ref) and [`SetValuedMap`](@ref).
 """
 abstract type Map{X<:Space, Y<:Space} <: Space end
+abstract type AbstractSingleValuedMap{X,Y} <: Map{X,Y} end
+abstract type AbstractSetValuedMap{X,Y} <: Map{X,Y} end
 
 domain(::Type{<:Map{X,Y}}) where {X,Y} = X
 codomain(::Type{<:Map{X,Y}}) where {X,Y} = Y
@@ -35,9 +37,16 @@ end
 
 inputs(f::Object{<:Map}) = inputs(graph(f))
 outputs(f::Object{<:Map}) = outputs(graph(f))
+io(f::Object{<:Map}) = inputs(f) ∪ outputs(f)
+
+# ∘(::Type{T1}, ::Type{T2}) where {X,Y,Z,T1<:Map{X,Y},T2<:Map{Y,Z}} = T{X,Z}
 
 
-struct SetValuedMap{X<:Space, Y<:Space} <: Map{X, Y}
+############################################################################################
+# SET-VALUED MAP
+############################################################################################
+
+struct SetValuedMap{X<:Space, Y<:Space} <: AbstractSetValuedMap{X, Y}
     elements::Objects{SetValuedMap{X,Y}}
     graph::Dict{Object{SetValuedMap{X,Y}}, Graph{X,Y}}
     inv::Dict{Object{SetValuedMap{X,Y}}, Object{SetValuedMap{Y,X}}}
@@ -51,7 +60,31 @@ struct SetValuedMap{X<:Space, Y<:Space} <: Map{X, Y}
     end
 end
 
-struct SingleValuedMap{X<:Space, Y<:Space} <: Map{X, Y}
+⇒(X::Type{<:Space}, Y::Type{<:Space}) = SetValuedMap{X,Y}
+
+function getindex(op::Object{<:AbstractSetValuedMap{X,Y}}, x::Object{X}) where {X, Y}
+    filtered = filter( t -> value(t)[1] === x, elements(graph(op)))
+    mapped = map( t -> t[2], collect(filtered))
+    Objects{Y}(mapped)
+end
+
+inv(f::Object{T}) where {X, Y, T<:AbstractSetValuedMap{X,Y}} = get!(T().inv, f) do
+    f⁻¹ = Atom{Y ⇒ X}(Symbol(label(f), "⁻¹"))
+    for (x,y) ∈ graph(f)
+        push!(graph(f⁻¹), TupleDecomposition(y,x))
+    end
+    get!( (Y ⇒ X)().inv, f⁻¹ ) do
+        f
+    end
+    f⁻¹
+end
+
+
+############################################################################################
+# SINGLE-VALUED MAP
+############################################################################################
+
+struct SingleValuedMap{X<:Space, Y<:Space} <: AbstractSingleValuedMap{X, Y}
     elements::Objects{SingleValuedMap{X,Y}}
     graph::Dict{Object{SingleValuedMap{X,Y}}, Graph{X,Y}}
 
@@ -63,12 +96,9 @@ struct SingleValuedMap{X<:Space, Y<:Space} <: Map{X, Y}
     end
 end
 
-
 →(X::Type{<:Space}, Y::Type{<:Space}) = SingleValuedMap{X,Y}
-⇒(X::Type{<:Space}, Y::Type{<:Space}) = SetValuedMap{X,Y}
 
-
-function getindex(op::Object{SingleValuedMap{X,Y}}, x::Object{X}) where {X, Y}
+function getindex(op::Object{<:AbstractSingleValuedMap{X,Y}}, x::Object{X}) where {X, Y}
     filtered = filter( t -> value(t)[1] === x, elements(graph(op)))
     if isempty(filtered)
         missing
@@ -77,19 +107,19 @@ function getindex(op::Object{SingleValuedMap{X,Y}}, x::Object{X}) where {X, Y}
     end
 end
 
-function getindex(op::Object{SetValuedMap{X,Y}}, x::Object{X}) where {X, Y}
-    filtered = filter( t -> value(t)[1] === x, elements(graph(op)))
-    mapped = map( t -> t[2], collect(filtered))
-    Objects{Y}(mapped)
-end
+# ∘(::Type{SingleValuedMap{X,Y}}, ::Type{SingleValuedMap{Y,Z}}) where {X,Y,Z} = SingleValuedMap{X,Z}
 
+
+############################################################################################
+# EVALUATION
+############################################################################################
 
 """
     f(x)
 
-Evaluate a function or operator at a point in its domain.
+Evaluate a map at a point in its domain.
 
-If the relation is single-valued and it has already been sampled at `x`, then the
+If the map is single-valued and it has already been sampled at `x`, then the
 corresponding point in the codomain is returned. Otherwise, a new point is sampled using
 `Y()`, and a default label is used for the sample. A label may be specified for the sampled 
 point, or it defaults to an intuitive label.
@@ -107,35 +137,25 @@ julia> isequal(A(x), A*x)  # true
 function evaluate end
 
 # For f(x1,x2,...), collect the arguments into an element of the Cartesian product space
-(f::Object)(x::Vararg{Object}) = f(x())
+(f::Object)(x::Vararg{Object}) = f(TupleDecomposition(x...))
 
 
-function (op::Object{SingleValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
+function (op::Object{<:AbstractSingleValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
     if x ∈ inputs(op)
         op[x]
     else
-        y = sample(Y, Symbol(label(op), "(", label(x), ")"))
+        L = ismissing(label(x)) ? missing : Symbol(label(op), "(", label(x), ")")
+        y = sample(Y, L)
         push!(graph(op), TupleDecomposition(x,y))
         y
     end
 end
 
-function (op::Object{SetValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
-    y = sample(Y, Symbol(label(op), "(", label(x), ")"))
+function (op::Object{<:AbstractSetValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
+    L = ismissing(label(x)) ? missing : Symbol(label(op), "(", label(x), ")")
+    y = sample(Y, L)
     push!(graph(op), TupleDecomposition(x,y))
     y
-end
-
-
-inv(f::Object{T}) where {X, Y, T<:SetValuedMap{X,Y}} = get!(T().inv, f) do
-    f⁻¹ = Atom{Y ⇒ X}(Symbol(label(f), "⁻¹"))
-    for (x,y) ∈ graph(f)
-        push!(graph(f⁻¹), TupleDecomposition(y,x))
-    end
-    get!( (Y ⇒ X)().inv, f⁻¹ ) do
-        f
-    end
-    f⁻¹
 end
 
 
@@ -148,3 +168,66 @@ const BinaryOperator{X<:Space} = SingleValuedMap{CartesianProduct{Tuple{X,X}}, X
 
 arity(::Operator) = 1
 arity(::BinaryOperator) = 2
+
+
+############################################################################################
+# LINEAR
+############################################################################################
+
+abstract type AbstractLinearMap{X, Y} <: AbstractSingleValuedMap{X, Y} end
+
+struct LinearMap{X<:Space, Y<:Space} <: AbstractLinearMap{X, Y}
+    elements::Objects{LinearMap{X,Y}}
+    graph::Dict{Object{LinearMap{X,Y}}, Graph{X,Y}}
+    adjoint::Dict{Object{LinearMap{X,Y}}, Object{LinearMap{Y,X}}}
+
+    LinearMap{X,Y}() where {X,Y} = get!(_CACHE, LinearMap{X,Y}) do
+        new{X,Y}(
+            Objects{LinearMap{X,Y}}(),
+            Dict{Object{LinearMap{X,Y}}, Graph{X,Y}}(),
+            Dict{Object{LinearMap{X,Y}}, Object{LinearMap{Y,X}}}()
+        )
+    end
+end
+
+############################################################################################
+# SYMMETRIC
+############################################################################################
+
+abstract type AbstractSymmetricLinearMap{X} <: AbstractLinearMap{X, X} end
+
+struct SymmetricLinearMap{X<:Space} <: AbstractSymmetricLinearMap{X}
+    elements::Objects{SymmetricLinearMap{X}}
+    graph::Dict{Object{SymmetricLinearMap{X}}, Graph{X,X}}
+
+    SymmetricLinearMap{X}() where X = get!(_CACHE, SymmetricLinearMap{X}) do
+        new{X}(
+            Objects{SymmetricLinearMap{X}}(),
+            Dict{Object{SymmetricLinearMap{X}}, Graph{X,X}}()
+        )
+    end
+end
+
+############################################################################################
+# SKEW-SYMMETRIC
+############################################################################################
+
+abstract type AbstractSkewSymmetricLinearMap{X} <: AbstractLinearMap{X, X} end
+
+struct SkewSymmetricLinearMap{X<:Space} <: AbstractSkewSymmetricLinearMap{X}
+    elements::Objects{SkewSymmetricLinearMap{X}}
+    graph::Dict{Object{SkewSymmetricLinearMap{X}}, Graph{X,X}}
+
+    SkewSymmetricLinearMap{X}() where X = get!(_CACHE, SkewSymmetricLinearMap{X}) do
+        new{X}(
+            Objects{SkewSymmetricLinearMap{X}}(),
+            Dict{Object{SkewSymmetricLinearMap{X}}, Graph{X,X}}()
+        )
+    end
+end
+
+
+
+# abstract type Functional{T<:VectorSpace} <: AbstractFunction{T, Field} end
+# abstract type LinearFunctional{T} <: DifferentiableFunctional{T} end
+

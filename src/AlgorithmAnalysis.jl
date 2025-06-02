@@ -34,13 +34,18 @@ export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantR
 export domain, codomain, inputs, outputs, inputs_outputs, inputs_and_outputs, relation
 export samples, canevaluate, isfunction
 
-export Map, SingleValuedMap, SetValuedMap, Operator, BinaryOperator, arity
+export Map, SingleValuedMap, SetValuedMap, Operator, BinaryOperator, arity, io
 
 export elements, @var, cartesian_to_tuple, tuple_to_cartesian, TupleDecomposition
 export clear_cache
 
 # natural
 export N, successor
+
+export AbstractSymmetricLinearMap, SymmetricLinearMap
+export AbstractSkewSymmetricLinearMap, SkewSymmetricLinearMap
+# export NDifferentiable
+
 
 ############################################################################################
 # IMPORTS
@@ -52,7 +57,7 @@ import Zeros: Zero, One, 𝟎, 𝟏
 import AbstractTrees: children, print_tree
 
 import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ∪
-import Base: isempty, iszero, isone, isequal, hash
+import Base: isempty, iszero, isone, isequal, hash, get
 import Base: promote_rule, convert, show, zero, one, zeros, adjoint, hasfield
 import Base: length, Generator, iterate, size, push!, inv, pairs, parent, map, issubset
 import Base: numerator, denominator, empty!, setdiff, getindex, delete!
@@ -70,9 +75,9 @@ include("property.jl")
 # include("constraint.jl")
 # include("algebra.jl")
 include("label.jl")
-# include("evaluate.jl")
-# include("hash.jl")
+# # include("hash.jl")
 include("adjoint.jl")
 include("show.jl")
+# include("analysis.jl")
 
 end

@@ -39,7 +39,7 @@ show(io::IO, ::Differentiable) = print(io, "Differentiable")
 show(io::IO, ::LocallyLipschitz) = print(io, "Locally Lipschitz")
 show(io::IO, ::Convex) = print(io, "Convex")
 show(io::IO, p::StronglyConvex) = print(io, "$(p.parameter)-strongly convex")
-
+show(io::IO, p::Ring) = print(io, "Ring($(zero(p)),$(one(p)),$(plus(p)),$(mult(p)))")
 
 ############################################################################################
 # SPACE
@@ -51,6 +51,7 @@ function show(io::IO, ::MIME"text/plain", x::Space)
     print(io, "Set")
     haslabel(x) && print(io, "\n  Label: ", label(x))
     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
+    !isempty(properties(x)) && print(io, "\n  Properties: ", join(properties(x), ", "))
 end
 
 function show(io::IO, ::MIME"text/plain", x::Subset)
@@ -81,28 +82,6 @@ end
 # function show(io::IO, ::MIME"text/plain", T::Type{<:SetIntersection})
 #     print(io, "Intersection ", join(spaces(T), " ∩ "))
 # end
-
-function subscript(i::Integer)
-    i<0 ? error("$i is negative") : join('₀'+d for d in reverse(digits(i)))
-end
-
-function superscript(i::Integer)
-    if i<0
-        error("$i is negative")
-    end
-    join(
-        if d == 1
-            '\u00B9'
-        elseif d == 2
-            '\u00B2'
-        elseif d == 3
-            '\u00B3'
-        else
-            '⁰'+d
-        end
-        for d in reverse(digits(i))
-    )
-end
 
 show(io::IO, T::Type{<:CartesianProduct}) = print(io, join(spaces(T), " × "))
 # # show(io::IO, T::CartesianPower) = print(io, space(T), superscript(power(T)))

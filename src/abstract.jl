@@ -21,9 +21,9 @@ abstract type Object{T<:Space} end
 """
     Property{T}
 
-A property of objects in space `T`. Properties can be associated with objects to describe actions that can be applied to them.
+A property of objects in `T`. Properties can be associated with objects to describe actions that can be applied to them.
 """
-abstract type Property{T<:Space} end
+abstract type Property{T} end
 
 """
     Decomposition{T}
@@ -54,6 +54,33 @@ abstract type ConstraintSet end
 ############################################################################################
 
 const Objects{T} = Set{Object{T}}
-const Properties = Set{Property}
+const Properties{T} = Set{Property{T}}
 const Constraints = Set{Constraint}
 const Label = Union{Symbol, Missing}
+
+
+############################################################################################
+# UTILS
+############################################################################################
+
+function subscript(i::Integer)
+    i<0 ? error("$i is negative") : join('₀'+d for d in reverse(digits(i)))
+end
+
+function superscript(i::Integer)
+    if i<0
+        error("$i is negative")
+    end
+    join(
+        if d == 1
+            '\u00B9'
+        elseif d == 2
+            '\u00B2'
+        elseif d == 3
+            '\u00B3'
+        else
+            '⁰'+d
+        end
+        for d in reverse(digits(i))
+    )
+end

@@ -1,238 +1,8 @@
 ############################################################################################
-# Neighbors
+# PERFORMANCE ESTIMATION
+############################################################################################
 
-neighbors(x::Object) = Objects(
-    # constraints(x) ∪
-    # flatten(inputs_and_outputs(x)) ∪
-    # ( hasnext(x) ? Objects([next(x)]) : Objects() ) ∪
-    # operators(space(x))
-    neighbors(space(x))
-)
-
-neighbors(s::Space) = objects(structures(s))
-neighbors(x::FunctionSpace) = inputs(relation(x))
-neighbors(objs::Union{Objects,Array{<:Object}}) = mapreduce(neighbors, ∪, objs)
-
-# Get all objects in the graph using graph search
-function nodes(x::Object)
-    visited = Objects()
-    queue = Objects([x])
-    
-    while !isempty(queue)
-        node = pop!(queue)
-        if node ∉ visited
-            push!(visited, node)
-            union!(queue, neighbors(node))
-        end
-    end
-    visited
-end
-
-
-
-# Set of variables in a constraint or set of constraints
-variables(c::Constraint) = variables(expression(c))
-
-function variables(o::OracleOrWrapper)
-    exps = variables(inputs(o) ∪ outputs(o))
-    for a ∈ values(associations(o))
-        union!(vars, variables(unwrap(a)))
-    end
-    exps
-end
-
-function variables(X::Union{ArrayOrSet,Generator})
-    mapreduce(variables, ∪, X; init=Expressions())
-end
-function constraints(X::Union{ArrayOrSet,Generator})
-    prune!(mapreduce(constraints, ∪, X; init=Constraints()))
-end
-function oracles(X::Union{ArrayOrSet,Generator})
-    mapreduce(oracles, ∪, X; init=Oracles())
-end
-
-"""
-    variables_constraints_oracles
-
-Recursively find all variables, constraints, and oracles associated with an expression.
-"""
-function variables_constraints_oracles end
-
-function variables_constraints_oracles(e::Expression)
-    
-    vars = variables(e)
-    orcs = oracles(vars)
-    cons = constraints(vars ∪ orcs)
-    
-    variables_constraints_oracles(vars, cons, orcs)
-end
-
-function variables_constraints_oracles(vars::Expressions, cons::Constraints, orcs::Oracles)
-
-    count = 1
-    
-    while true
-        
-        # get the variables associated with the constraints and the oracles
-        vars_new = variables(cons ∪ orcs)
-
-        # get the constraints associated with the oracles
-        cons_new = constraints(vars ∪ orcs)
-
-        # get the oracles associated with the variables
-        orcs_new = oracles(vars)
-
-        union!( vars_new, variables(filter(!ismissing, next.(vars_new))) )
-
-        # if there are no new variables, constraints, or oracles, then exit
-        if vars_new ⊆ vars && orcs_new ⊆ orcs && cons_new ⊆ cons
-            break
-        end
-
-        # otherwise, append the new information and repeat
-        union!( vars, vars_new )
-        union!( orcs, orcs_new )
-        union!( cons, cons_new )
-        
-        # check for an infinite loop
-        if count > 10
-            error("Iteration limit reached while finding variables, constraints, and oracles")
-        end
-        
-        count += 1
-    end
-
-    @info "Algorithmic objects"
-    info(vars)
-    info(cons)
-    info(orcs)
-    
-    vars, cons, orcs
-end
-
-function info(vars::Expressions)
-
-    # types of variables
-    var_types = Set( typeof(v) for v ∈ vars )
-
-    # dictionary of variables of each type
-    var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
-
-    @info " ⋅ Variables"
-    for var_type ∈ var_types
-        @info "   ⋅ $(length(var_dict[var_type])) variables in $(var_type)"
-        @debug "     ⋅ $(var_dict[var_type])"
-    end
-end
-
-function info(cons::Constraints)
-
-    # types of constraints
-    con_types = Set( typeof(c) for c ∈ cons )
-
-    # dictionary of constraints of each type
-    con_dict = Dict( T => Set{T}( c for c ∈ cons if c isa T ) for T ∈ con_types )
-    
-    @info " ⋅ Constraints"
-    for con_type ∈ con_types
-        @info "   ⋅ $(length(con_dict[con_type])) $(con_type)"
-        @debug "     ⋅ $(con_dict[con_type])"
-    end
-end
-
-function info(orcs::Oracles)
-
-    # types of oracles
-    orc_types = Set( typeof(o) for o ∈ orcs )
-
-    # dictionary of oracles of each type
-    orc_dict = Dict( T => Set{T}( o for o ∈ orcs if o isa T ) for T ∈ orc_types )
-    
-    @info " ⋅ Oracles"
-    for orc_type ∈ orc_types
-        @info "   ⋅ $(length(orc_dict[orc_type])) $(orc_type)"
-        @debug "     ⋅ $(orc_dict[orc_type])"
-    end
-end
-
-isimplementable(e::Expression) = e isa R
-isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
-
-isimplementable(X::Union{ArrayOrSet,Generator}) = all( isimplementable(x) for x ∈ X )
-
-function optvar(e::Expression, optvar_dict::Dict)
-    if hasdecomposition(e)
-        # mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
-        x = 0
-        for (key,val) ∈ weights(e)
-            if haskey(optvar_dict, key)
-                x += val * optvar_dict[key]
-            else
-                x += val * value(key)
-            end
-        end
-        x
-    else
-        optvar_dict[e]
-    end
-end
-
-optvar(m::AbstractArray, optvar_dict::Dict) = [ optvar(a, optvar_dict) for a ∈ m ]
-
-function optcon(model::JuMP.Model, con::Constraint, optvar_dict::Dict)
-    ex = optvar(expression(con), optvar_dict)
-    if con isa Equality
-        JuMP.@constraint(model, 0 == ex )
-    elseif con isa Positive
-        JuMP.@constraint(model, 0 ≤ ex )
-    elseif con isa Semidefinite
-        JuMP.@constraint(model, ex .== ex' )
-        JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
-    else
-        error("Optimization with constraint $con not implemented")
-    end
-end
-
-function variable_dictionary(vars::Expressions)
-    Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ Set( typeof(v) for v ∈ vars ) )
-end
-
-function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions)
-    optvar_dict = Dict{R, JuMP.VariableRef}()
-    for var ∈ vars
-        if var isa R
-            optvar_dict[var] = JuMP.@variable(model)
-        else
-            error("Optimization with variable $var not implemented")
-        end
-    end
-    optvar_dict
-end
-
-function multiplier(model::JuMP.Model, con::ConeConstraint)
-    K = cone(con)
-    sz = size(con)
-    if sz == (1,1)
-        var = JuMP.@variable(model)
-    else
-        var = JuMP.@variable(model, [1:sz[1],1:sz[2]])
-    end
-
-    if con isa Equality
-        # no constraints
-    elseif con isa Positive
-        JuMP.@constraint(model, var .≥ 0 )
-    elseif con isa Semidefinite
-        JuMP.@constraint(model, var .== var' )
-        JuMP.@constraint(model, 0 ≤ var, JuMP.PSDCone() )
-    else
-        error("Optimization with constraint $con not implemented")
-    end
-
-    var
-end
-
-function maximize(performance::Expression)
+function maximize(performance::Object)
 
     @info "PERFORMANCE ESTIMATION"
 
@@ -292,6 +62,242 @@ function maximize(performance::Expression)
 end
 
 
+
+############################################################################################
+# Neighbors
+
+neighbors(x::Object) = Objects{Any}(
+    # constraints(x) ∪
+    # flatten(inputs_and_outputs(x)) ∪
+    # ( hasnext(x) ? Objects([next(x)]) : Objects() ) ∪
+    # operators(space(x))
+    neighbors(space(x))
+)
+
+neighbors(s::Space) = objects(structures(s))
+neighbors(x::Map) = io(x)
+neighbors(::Missing) = Objects{Any}()
+neighbors(objs::Union{Set{<:Object},Array{<:Object}}) = mapreduce(neighbors, ∪, objs)
+
+# Get all objects in the graph using graph search
+function nodes(x::Object)
+    visited = Objects{Any}()
+    queue = Objects{Any}([x])
+    while !isempty(queue)
+        node = pop!(queue)
+        if node ∉ visited
+            push!(visited, node)
+            union!(queue, neighbors(node))
+        end
+    end
+    visited
+end
+
+
+
+# # Set of variables in a constraint or set of constraints
+# variables(c::Constraint) = variables(expression(c))
+
+# function variables(o::OracleOrWrapper)
+#     exps = variables(inputs(o) ∪ outputs(o))
+#     for a ∈ values(associations(o))
+#         union!(vars, variables(unwrap(a)))
+#     end
+#     exps
+# end
+
+# function variables(X::Union{ArrayOrSet,Generator})
+#     mapreduce(variables, ∪, X; init=Objects())
+# end
+# function constraints(X::Union{ArrayOrSet,Generator})
+#     prune!(mapreduce(constraints, ∪, X; init=Constraints()))
+# end
+# function oracles(X::Union{ArrayOrSet,Generator})
+#     mapreduce(oracles, ∪, X; init=Oracles())
+# end
+
+# """
+#     variables_constraints_oracles
+
+# Recursively find all variables, constraints, and oracles associated with an expression.
+# """
+# function variables_constraints_oracles end
+
+# function variables_constraints_oracles(e::Object)
+    
+#     vars = variables(e)
+#     orcs = oracles(vars)
+#     cons = constraints(vars ∪ orcs)
+    
+#     variables_constraints_oracles(vars, cons, orcs)
+# end
+
+# function variables_constraints_oracles(vars::Objects, cons::Constraints, orcs::Oracles)
+
+#     count = 1
+    
+#     while true
+        
+#         # get the variables associated with the constraints and the oracles
+#         vars_new = variables(cons ∪ orcs)
+
+#         # get the constraints associated with the oracles
+#         cons_new = constraints(vars ∪ orcs)
+
+#         # get the oracles associated with the variables
+#         orcs_new = oracles(vars)
+
+#         union!( vars_new, variables(filter(!ismissing, next.(vars_new))) )
+
+#         # if there are no new variables, constraints, or oracles, then exit
+#         if vars_new ⊆ vars && orcs_new ⊆ orcs && cons_new ⊆ cons
+#             break
+#         end
+
+#         # otherwise, append the new information and repeat
+#         union!( vars, vars_new )
+#         union!( orcs, orcs_new )
+#         union!( cons, cons_new )
+        
+#         # check for an infinite loop
+#         if count > 10
+#             error("Iteration limit reached while finding variables, constraints, and oracles")
+#         end
+        
+#         count += 1
+#     end
+
+#     @info "Algorithmic objects"
+#     info(vars)
+#     info(cons)
+#     info(orcs)
+    
+#     vars, cons, orcs
+# end
+
+# function info(vars::Objects)
+
+#     # types of variables
+#     var_types = Set( typeof(v) for v ∈ vars )
+
+#     # dictionary of variables of each type
+#     var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
+
+#     @info " ⋅ Variables"
+#     for var_type ∈ var_types
+#         @info "   ⋅ $(length(var_dict[var_type])) variables in $(var_type)"
+#         @debug "     ⋅ $(var_dict[var_type])"
+#     end
+# end
+
+# function info(cons::Constraints)
+
+#     # types of constraints
+#     con_types = Set( typeof(c) for c ∈ cons )
+
+#     # dictionary of constraints of each type
+#     con_dict = Dict( T => Set{T}( c for c ∈ cons if c isa T ) for T ∈ con_types )
+    
+#     @info " ⋅ Constraints"
+#     for con_type ∈ con_types
+#         @info "   ⋅ $(length(con_dict[con_type])) $(con_type)"
+#         @debug "     ⋅ $(con_dict[con_type])"
+#     end
+# end
+
+# function info(orcs::Oracles)
+
+#     # types of oracles
+#     orc_types = Set( typeof(o) for o ∈ orcs )
+
+#     # dictionary of oracles of each type
+#     orc_dict = Dict( T => Set{T}( o for o ∈ orcs if o isa T ) for T ∈ orc_types )
+    
+#     @info " ⋅ Oracles"
+#     for orc_type ∈ orc_types
+#         @info "   ⋅ $(length(orc_dict[orc_type])) $(orc_type)"
+#         @debug "     ⋅ $(orc_dict[orc_type])"
+#     end
+# end
+
+# isimplementable(e::Object) = e isa R
+# isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
+
+isimplementable(X::Union{Array,Set,Generator}) = all( isimplementable(x) for x ∈ X )
+
+function optvar(e::Object, optvar_dict::Dict)
+    if hasdecomposition(e)
+        # mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
+        x = 0
+        for (key,val) ∈ weights(e)
+            if haskey(optvar_dict, key)
+                x += val * optvar_dict[key]
+            else
+                x += val * value(key)
+            end
+        end
+        x
+    else
+        optvar_dict[e]
+    end
+end
+
+optvar(m::AbstractArray, optvar_dict::Dict) = [ optvar(a, optvar_dict) for a ∈ m ]
+
+function optcon(model::JuMP.Model, con::Constraint, optvar_dict::Dict)
+    ex = optvar(expression(con), optvar_dict)
+    if con isa Equality
+        JuMP.@constraint(model, 0 == ex )
+    elseif con isa Positive
+        JuMP.@constraint(model, 0 ≤ ex )
+    elseif con isa Semidefinite
+        JuMP.@constraint(model, ex .== ex' )
+        JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
+    else
+        error("Optimization with constraint $con not implemented")
+    end
+end
+
+function variable_dictionary(vars::Objects)
+    Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ Set( typeof(v) for v ∈ vars ) )
+end
+
+function optimization_variable_dictionary(model::JuMP.Model, vars::Objects)
+    optvar_dict = Dict{R, JuMP.VariableRef}()
+    for var ∈ vars
+        if var isa R
+            optvar_dict[var] = JuMP.@variable(model)
+        else
+            error("Optimization with variable $var not implemented")
+        end
+    end
+    optvar_dict
+end
+
+function multiplier(model::JuMP.Model, con::ConeConstraint)
+    K = cone(con)
+    sz = size(con)
+    if sz == (1,1)
+        var = JuMP.@variable(model)
+    else
+        var = JuMP.@variable(model, [1:sz[1],1:sz[2]])
+    end
+
+    if con isa Equality
+        # no constraints
+    elseif con isa Positive
+        JuMP.@constraint(model, var .≥ 0 )
+    elseif con isa Semidefinite
+        JuMP.@constraint(model, var .== var' )
+        JuMP.@constraint(model, 0 ≤ var, JuMP.PSDCone() )
+    else
+        error("Optimization with constraint $con not implemented")
+    end
+
+    var
+end
+
+
 function stateupdate(vars)
     x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
     x⁺ = next(x)
@@ -302,7 +308,7 @@ function stateupdate(vars)
     X, X⁺, x, u
 end
 
-function certify(performance::Expression, ρ::Number)
+function certify(performance::Object, ρ::Number)
     
     if !isa(performance, R)
         error("The performance measure must be a real number in $R.")
@@ -340,7 +346,7 @@ function certify(performance::Expression, ρ::Number)
 
         e = expression(con)
 
-        if e isa Expression
+        if e isa Object
             M = vec(linearform( [x; u] => λ * e ))
             N = vec(linearform( [x; u] => μ * e ))
         elseif e isa Vector
@@ -456,7 +462,7 @@ function bsmin( f, a, b, tol=1e-5 )
     return b
 end
 
-function rate(performance::Expression)
+function rate(performance::Object)
 
     @info "CONTROL ANALYSIS"
 
@@ -504,7 +510,7 @@ function createFunctionValues(currentState, nextState, f)
     return [f(s) for s in currentState[1:length(currentState)-1]], [f(s) for s in nextState[1:length(nextState)-1]]
 end
 
-function createMatrix(expression::Expression, vectors, scalars)
+function createMatrix(expression::Object, vectors, scalars)
     #Create matrix M
     dict = weights(selfdecomp(expression)) 
     Q = zeros(length(vectors), length(vectors))
