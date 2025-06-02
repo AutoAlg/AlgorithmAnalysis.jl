@@ -137,7 +137,7 @@ julia> isequal(A(x), A*x)  # true
 function evaluate end
 
 # For f(x1,x2,...), collect the arguments into an element of the Cartesian product space
-(f::Object)(x::Vararg{Object}) = f(TupleDecomposition(x...))
+(f::Object)(x::Vararg{Object}) = f(convert(Object{CartesianProduct}, x))
 
 
 function (op::Object{<:AbstractSingleValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
@@ -146,7 +146,7 @@ function (op::Object{<:AbstractSingleValuedMap{X,Y}})(x::Object{X}) where {X<:Sp
     else
         L = ismissing(label(x)) ? missing : Symbol(label(op), "(", label(x), ")")
         y = sample(Y, L)
-        push!(graph(op), TupleDecomposition(x,y))
+        push!(graph(op), convert(Object{CartesianProduct}, (x,y) ))
         y
     end
 end
@@ -154,7 +154,7 @@ end
 function (op::Object{<:AbstractSetValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
     L = ismissing(label(x)) ? missing : Symbol(label(op), "(", label(x), ")")
     y = sample(Y, L)
-    push!(graph(op), TupleDecomposition(x,y))
+    push!(graph(op), convert(Object{CartesianProduct}, (x,y) ))
     y
 end
 

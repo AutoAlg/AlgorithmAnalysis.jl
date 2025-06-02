@@ -36,7 +36,7 @@ export samples, canevaluate, isfunction
 
 export Map, SingleValuedMap, SetValuedMap, Operator, BinaryOperator, arity, io
 
-export elements, @var, cartesian_to_tuple, tuple_to_cartesian, TupleDecomposition
+export elements, @var, as_tuple
 export clear_cache
 
 # natural

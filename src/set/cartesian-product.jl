@@ -1,4 +1,3 @@
-
 ############################################################################################
 # CARTESIAN PRODUCT
 ############################################################################################
@@ -10,43 +9,24 @@ struct CartesianProduct{T<:Tuple{Vararg{Space}}} <: Space
     function CartesianProduct{T}() where {T<:Tuple{Vararg{Space}}}
         get!(_CACHE, CartesianProduct{T}) do
             new{T}(
-                Set{TupleDecomposition{CartesianProduct{T}}}(),
+                Objects{CartesianProduct{T}}(),
                 Dict{Object{CartesianProduct{T}}, Tuple{Vararg{Object}}}()
             )
         end
     end
 end
 
-"""
-    TupleDecomposition{T} <: Decomposition{T}
-
-A decomposition of an object as a tuple of objects in space `T`. This is the type of object to use for elements of a Cartesian product space.
-"""
-struct TupleDecomposition{T<:CartesianProduct} <: Decomposition{T}
-    value::Tuple{Vararg{Object}}
-
-    function TupleDecomposition(val::Vararg{Object})
-        T = CartesianProduct{Tuple{(space(a) for a ∈ val)...}}
-        new{T}(val)
-    end
+function convert(::Type{Object{CartesianProduct}}, xs::Tuple{Vararg{Object}})
+    T = CartesianProduct{Tuple{(space(x) for x ∈ xs)...}}
+    y = Atom{T}(missing, false)
+    T().dict[y] = xs
+    push!(T, y)
+    y
 end
 
-function convert(::Type{Object{CartesianProduct{T}}}, x::Tuple{Vararg{Object}}) where T
-    TupleDecomposition(x...)
-end
-
-value(x::TupleDecomposition) = x.value
-space(::TupleDecomposition{T}) where T = T
-constraints(x::TupleDecomposition) = mapreduce(constraints, ∪, value(x))
-next(x::TupleDecomposition) = next.(value(x))
-elements(x::TupleDecomposition) = value(x)
-elements(x::TupleDecomposition, ind::Int) = value(x)[ind]
-getindex(x::TupleDecomposition, ind::Int) = value(x)[ind]
-
-length(x::TupleDecomposition) = length(elements(x))
-isempty(x::TupleDecomposition) = isempty(elements(x))
-iterate(x::TupleDecomposition) = iterate(elements(x))
-iterate(x::TupleDecomposition, state::Int) = iterate(elements(x), state)
+as_tuple(x::Object{T}) where {T<:CartesianProduct} = T().dict[x]
+elements(x::Object{<:CartesianProduct}, ind::Int) = as_tuple(x)[ind]
+getindex(x::Object{<:CartesianProduct}, ind::Int) = as_tuple(x)[ind]
 
 spaces(::Type{CartesianProduct{T}}) where T = T
 
@@ -57,24 +37,13 @@ function ×(T1::Type{<:Space}, T2::Type{<:Space})
     CartesianProduct{T}
 end
 
-
-" Convert Tuple{A, B} to Tuple{Object{A}, Object{B}} "
-function cartesian_to_tuple(::Type{T}) where {T<:Tuple{Vararg{Space}}}
-    Tuple{ ( Object{t} for t ∈ fieldtypes(T) )... }
-end
-
-" Convert Tuple{Object{A}, Object{B}} to Tuple{A, B} "
-function tuple_to_cartesian(::Type{T}) where {T<:Tuple{Vararg{Object}}}
-    Tuple{ ( space(t) for t ∈ fieldtypes(T) )... }
-end
-
 elements(T::Type{<:CartesianProduct}, ind::Int) = Set{T}( x[ind] for x ∈ elements(T) )
 elements(S::Subset{<:CartesianProduct}, ind::Int) = elements.(elements(S), ind)
 
-
 function sample(::Type{CartesianProduct{T}}, label::Symbol) where T
     x = Tuple( sample(t, Symbol(label, subscript(i))) for (i,t) ∈ enumerate(fieldtypes(T)) )
-    y = TupleDecomposition(x...)
+    y = Atom{CartesianProduct{T}}(label, false)
+    CartesianProduct{T}().dict[y] = x
     push!(CartesianProduct{T}, y)
     y
 end
