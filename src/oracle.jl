@@ -118,27 +118,6 @@ mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X
     # DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
 end
 
-# mutable struct DualInputFunctional{X1, X2, F<:Field} <: AbstractDifferentiableFunctional{[X1; X2]}
-#     label::String
-#     properties::Properties
-#     relation::SingleValuedRelation{[X1; X2], F}
-#     associations::Associations
-
-#     function DualInputFunctional{X1, X2, F}() where {F<:Field, X1<:VectorSpace{F}, X2<:VectorSpace{F}}
-#         # Notice that we no longer do new{X1, X2}(...); just new(...).
-#         f = new(
-#             "DualInputFunctional{$(X1), $(X2)}",
-#             Properties(),
-#             SingleValuedRelation{[X1, X2], F}(),
-#             # Adjust dictionary keys if needed (here I assume you want two different mappings).
-#             Dict(Gradient => Map{X1, X1}(), Gradient2 => Map{X2, X2}())
-#         )
-#         # If needed, associate the gradient of this oracle with itself.
-#         push!(unwrap(f').associations, GradientOf => f)
-#         push!(unwrap(f'').associations, GradientOf => f)
-#         return f
-#     end
-# end
 """
     TwiceDifferentiableFunctional{X}
 """
@@ -471,24 +450,6 @@ end
 
 domain(w::Wrapper{<:Oracle}) = domain(unwrap(w))
 codomain(w::Wrapper{<:Oracle}) = codomain(unwrap(w))
-
-
-############################################################################################
-# Hierarchy
-
-AbstractTrees.children(d::Union{DataType,UnionAll}) = InteractiveUtils.subtypes(d)
-
-"""
-    hierarchy(datatype)
-    
-Print the subtype hierarchy of a datatype.
-
-# Examples
-```julia-repl
-julia> hierarchy(Oracle)
-```
-"""
-hierarchy(d::DataType) = AbstractTrees.print_tree(d; maxdepth=10)
 
 function get_oracle_input(e::Expression) # Get the oracle and the expression used to create en expression
     if !(e isa Gram) && hasproperty(e, :oracles) && hasmethod(oracles, Tuple{typeof(e)}) # Check if the expression has oracles

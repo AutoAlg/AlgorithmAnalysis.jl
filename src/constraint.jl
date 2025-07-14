@@ -1,12 +1,10 @@
 
-# a constraint expression
-const ConEx = Union{Expression,AbstractArray{<:Expression}}
 
 ############################################################################################
 # Add constraint
 
 "Add a constraint to all variables in an expression."
-function add_constraint!(x::ConEx, c::Constraint)
+function add_constraint!(x::Expression, c::Constraint)
     map(v -> push!(constraints(v), c), collect(variables(x)))
     for o in oracles(variables(x))
         inputs, outputs = inputs_outputs(o)
@@ -47,10 +45,11 @@ Satisfied()
 ```
 """
 struct Satisfied <: Constraint end
+
 """
     Unsatisfied <: Constraint
 
-Represents a constraint that is considered unsatisfied. This type is used to indicate that a particular constraint condition doesn't hold true.
+Represents a constraint that is considered unsatisfied. This type is used to indicate that a particular constraint condition does not hold true.
 
 # Examples
 
@@ -64,6 +63,7 @@ struct Unsatisfied <: Constraint end
 
 ############################################################################################
 # Cone constraint
+
 """
     Cone <: ConstraintSet
 
@@ -71,12 +71,14 @@ An abstract type representing cones in the constraint set framework.
 Cones capture specific properties used to impose constraints.
 """
 abstract type Cone <: ConstraintSet end
+
 """
     PositiveSemidefiniteCone <: Cone
 
 A cone representing the set of positive semidefinite matrices.
 """
 struct PositiveSemidefiniteCone <: Cone end
+
 """
     PositiveOrthant <: Cone
 
@@ -84,6 +86,7 @@ A cone representing the positive orthant.
 It is used to impose non-negativity constraints on variables.
 """
 struct PositiveOrthant <: Cone end
+
 """
     ZeroSet <: Cone
 
@@ -97,7 +100,7 @@ struct ZeroSet <: Cone end
 A constraint that associates an expression with a cone `K` to enforce cone-specific properties.
 
 # Fields
-- `x::ConEx`: The expression to which the constraint is applied.
+- `x::Expression`: The expression to which the constraint is applied.
 
 # Constructor Behavior
 When constructing a `ConeConstraint` with an expression `x`:
@@ -112,7 +115,7 @@ julia> c = ConeConstraint{PositiveOrthant}(x0)
 ```
 """
 struct ConeConstraint{K<:Cone} <: Constraint
-    x::ConEx
+    x::Expression
     
     function ConeConstraint{K}(x) where {K<:Cone}
         if !hasvalue(x)
@@ -124,29 +127,32 @@ struct ConeConstraint{K<:Cone} <: Constraint
         end
     end
 end
-""" Positive
+
+"""
+    Positive
 
 A shortcut for creating a ConeConstraint with the PositiveOrthant cone. Use this constant to impose non-negativity constraints on an expression.
-
 """
 const Positive = ConeConstraint{PositiveOrthant}
-""" Semidefinite
-
-A shortcut for creating a ConeConstraint with the PositiveSemidefiniteCone cone. Use this constant to impose positive semidefiniteness constraints on an expression. 
 
 """
+    Semidefinite
+
+A shortcut for creating a ConeConstraint with the PositiveSemidefiniteCone cone. Use this constant to impose positive semidefiniteness constraints on an expression.
+"""
 const Semidefinite = ConeConstraint{PositiveSemidefiniteCone}
-""" Equality
+
+"""
+    Equality
 
 A shortcut for creating a ConeConstraint with the ZeroSet cone. Use this constant to impose equality (zero) constraints on an expression. 
-
 """
 const Equality = ConeConstraint{ZeroSet}
 
 """
     ∈(x::Expression, ::K) where {K<:Cone}
 
-Creates a cone constraint for an expression `x` using the cone type `K`. In other words, it apply a `ConeConstraint{K}` to expression x.
+Creates a cone constraint for an expression `x` using the cone type `K`.
 
 # Example
 
@@ -203,9 +209,9 @@ julia> cone(c)   # Returns PositiveOrthant
 cone(c::ConeConstraint) = set(c)
 
 """
-    ==(lhs::ConEx, rhs::ConEx)
-    ==(lhs::ConEx, rhs)
-    ==(lhs, rhs::ConEx)
+    ==(lhs::Expression, rhs::Expression)
+    ==(lhs::Expression, rhs)
+    ==(lhs, rhs::Expression)
 
 Defines an equality constraint between expressions by subtracting `rhs` from `lhs` and wrapping the result with the `Equality` constraint.
 This allows you to create a constraint on two expressions to be equal.
@@ -217,14 +223,14 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x == y   # Returns Equality(x - y)
 ```
 """
-==(lhs::ConEx, rhs::ConEx) = Equality(lhs-rhs)
-==(lhs::ConEx, rhs) = Equality(lhs-rhs)
-==(lhs, rhs::ConEx) = Equality(lhs-rhs)
+==(lhs::Expression, rhs::Expression) = Equality(lhs-rhs)
+==(lhs::Expression, rhs) = Equality(lhs-rhs)
+==(lhs, rhs::Expression) = Equality(lhs-rhs)
 
 """
-    ≤(lhs::ConEx, rhs::ConEx)
-    ≤(lhs::ConEx, rhs)
-    ≤(lhs, rhs::ConEx)
+    ≤(lhs::Expression, rhs::Expression)
+    ≤(lhs::Expression, rhs)
+    ≤(lhs, rhs::Expression)
 
 Defines a less-than-or-equal-to constraint between expressions. It creates a constraint by computing `rhs - lhs` and applying the `Positive` cone constraint,
 ensuring that the difference lies within the positive orthant.
@@ -237,14 +243,14 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x ≤ y   # Returns Positive(y - x)
 ```
 """
-≤(lhs::ConEx, rhs::ConEx) = Positive(rhs-lhs)
-≤(lhs::ConEx, rhs) = Positive(rhs-lhs)
-≤(lhs, rhs::ConEx) = Positive(rhs-lhs)
+≤(lhs::Expression, rhs::Expression) = Positive(rhs-lhs)
+≤(lhs::Expression, rhs) = Positive(rhs-lhs)
+≤(lhs, rhs::Expression) = Positive(rhs-lhs)
 
 """
-    ≥(lhs::ConEx, rhs::ConEx)
-    ≥(lhs::ConEx, rhs)
-    ≥(lhs, rhs::ConEx)
+    ≥(lhs::Expression, rhs::Expression)
+    ≥(lhs::Expression, rhs)
+    ≥(lhs, rhs::Expression)
 
 Defines a greater-than-or-equal-to constraint between expressions. It creates a constraint by computing `lhs - rhs` and applying the `Positive` cone constraint,
 ensuring that the difference lies within the positive orthant.
@@ -257,13 +263,13 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x ≥ y   # Returns Positive(x - y)
 ```
 """
-≥(lhs::ConEx, rhs::ConEx) = Positive(lhs-rhs)
-≥(lhs::ConEx, rhs) = Positive(lhs-rhs)
-≥(lhs, rhs::ConEx) = Positive(lhs-rhs)
+≥(lhs::Expression, rhs::Expression) = Positive(lhs-rhs)
+≥(lhs::Expression, rhs) = Positive(lhs-rhs)
+≥(lhs, rhs::Expression) = Positive(lhs-rhs)
 
 """
-    ⪯(lhs::ConEx, rhs::ConEx)
-    ⪯(lhs::ConEx, rhs)
+    ⪯(lhs::Expression, rhs::Expression)
+    ⪯(lhs::Expression, rhs)
     ⪯(lhs, rhs::Expression)
 
 Defines a positive semidefinite constraint on the difference between 2 expressions by applying a `Semidefinite` cone constraint on `rhs - lhs`.
@@ -276,17 +282,16 @@ julia> A, B = Rⁿ(), Rⁿ()
 julia> A ⪯ B   # Returns Semidefinite(B - A)
 ```
 """
-⪯(lhs::ConEx, rhs::ConEx) = Semidefinite(rhs-lhs)
-⪯(lhs::ConEx, rhs) = Semidefinite(rhs-lhs)
+⪯(lhs::Expression, rhs::Expression) = Semidefinite(rhs-lhs)
+⪯(lhs::Expression, rhs) = Semidefinite(rhs-lhs)
 ⪯(lhs, rhs::Expression) = Semidefinite(rhs-lhs)
 
 """
-    ⪰(lhs::ConEx, rhs::ConEx) = Semidefinite(lhs-rhs)
-    ⪰(lhs::ConEx, rhs) = Semidefinite(lhs-rhs)
-    ⪰(lhs, rhs::ConEx) = Semidefinite(lhs-rhs)
+    ⪰(lhs::Expression, rhs::Expression) = Semidefinite(lhs-rhs)
+    ⪰(lhs::Expression, rhs) = Semidefinite(lhs-rhs)
+    ⪰(lhs, rhs::Expression) = Semidefinite(lhs-rhs)
 
-Defines a positive semidefinite constraint on the difference between 2 expressions by applying a `Semidefinite` cone constraint on `lhs - rhs`.
-This allows you to create a constraint on the the difference subtract the right hand side expression `rhs` from the left hand side expression `lhs` to be positive semidefinite.
+Defines a positive semidefinite constraint on the difference between two expressions.
 
 # Example
 
@@ -295,9 +300,9 @@ julia> A, B = Rⁿ(), Rⁿ()
 julia> A ⪯ B   # Returns Semidefinite(B - A)
 ```
 """
-⪰(lhs::ConEx, rhs::ConEx) = Semidefinite(lhs-rhs)
-⪰(lhs::ConEx, rhs) = Semidefinite(lhs-rhs)
-⪰(lhs, rhs::ConEx) = Semidefinite(lhs-rhs)
+⪰(lhs::Expression, rhs::Expression) = Semidefinite(lhs-rhs)
+⪰(lhs::Expression, rhs) = Semidefinite(lhs-rhs)
+⪰(lhs, rhs::Expression) = Semidefinite(lhs-rhs)
 
 
 ############################################################################################
@@ -336,9 +341,9 @@ function check end
 
 check(c::Constraint) = check(expression(c), set(c))
 
-check(x, ::Type{ZeroSet}) = (hasvalue(x) && evaluate(x) == 0)
-check(x, ::Type{PositiveOrthant}) = (hasvalue(x) && evaluate(x) ≥ 0)
-check(x, ::Type{PositiveSemidefiniteCone}) = (hasvalue(x) && evaluate(x) ⪰ 0)
+check(x, ::Type{ZeroSet}) = hasvalue(x) && evaluate(x) == 0
+check(x, ::Type{PositiveOrthant}) = hasvalue(x) && evaluate(x) ≥ 0
+check(x, ::Type{PositiveSemidefiniteCone}) = hasvalue(x) && evaluate(x) ⪰ 0
 
 
 ############################################################################################

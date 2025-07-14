@@ -64,7 +64,6 @@ Concrete subtypes should provide methods for `expression`, `set`, `∈`, `isequa
 """
 abstract type Constraint end
 
-# abstract type Gram end
 """
 
     ConstraintSet
@@ -156,17 +155,11 @@ abstract type Property{T} end
 ############################################################################################
 # Constants
 
-# A set of expressions
-# const Variables = Set{Variable}
-
 # A set of oracles
 const Oracles = Set{Oracle}
 
 # A set of constraints
 const Constraints = Set{Constraint}
-
-# A set of gram matrices
-# const Grams = Set{Gram}
 
 # A set of properties
 const Properties = Set{Property}
@@ -176,9 +169,6 @@ const OracleOrWrapper = Union{Oracle, Wrapper}
 
 # A dictionary of associations between wrappers and oracles
 const Associations = Dict{Type{<:Wrapper}, Oracle}
-
-# An expression is a variable or a decomposition of variables
-# const Expression = Union{Variable, Decomposition{<:Variable}}
 
 # A vector or a decomposition of vectors
 const VectorExpression = Union{AbstractVectorSpace, Decomposition{<:AbstractVectorSpace}}
@@ -190,9 +180,6 @@ const VectorWrapperDecomposition = Union{AbstractVectorSpace, Decomposition{<:Ab
 
 # A set of expressions
 const Expressions = Set{Expression}
-
-# A set of vector expressions
-const VectorExpressions = Set{VectorExpression}
 
 # The type of a next or previous state of type T
 const State{T} = Union{T, Missing}

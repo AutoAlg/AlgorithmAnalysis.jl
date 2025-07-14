@@ -1,6 +1,7 @@
 
 ############################################################################################
 # The zero expression
+
 zero(::T) where {T<:Expression} = T(Zero())
 zero(::Type{T}) where {T<:Expression} = T(Zero())
 
@@ -10,7 +11,11 @@ convert(::Type{T}, ::Zero) where {T<:Expression} = T(Zero())
 ############################################################################################
 # Macro definitions of concrete expression types
 
-"Define a field."
+"""
+    macro field(F)
+
+Defines a field `F`.
+"""
 macro field(s::Symbol)
     quote
         mutable struct $(esc(s)) <: Field
@@ -23,7 +28,11 @@ macro field(s::Symbol)
     end
 end
 
-"Define a vector space over a field."
+"""
+    macro vectorspace(V, F)
+
+Defines a vector space `V` over a field `F`.
+"""
 macro vectorspace(ex::Expr)
     if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
         throw(ArgumentError("@vectorspace: `$(ex)` must be of the form: `V, F` where `V` is a vector space over a field `F`."))
@@ -39,7 +48,11 @@ macro vectorspace(ex::Expr)
     end
 end
 
-"Define a normed vector space over a field."
+"""
+    macro normedvectorspace(V, F)
+
+Defines a normed vector space `V` over a field `F`.
+"""
 macro normedvectorspace(ex::Expr)
     if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
         throw(ArgumentError("@normedvectorspace: `$(ex)` must be of the form: `V, F` where `V` is a normed vector space over a field `F`."))
@@ -55,7 +68,11 @@ macro normedvectorspace(ex::Expr)
     end
 end
 
-"Define an inner product space over a field."
+"""
+    macro innerproductspace(V, F)
+
+Defines an inner product space `V` over a field `F`.
+"""
 macro innerproductspace(ex::Expr)
     if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
         throw(ArgumentError("@innerproductspace: `$(ex)` must be of the form: `V, F` where `V` is an inner product space over a field `F`."))
@@ -78,18 +95,20 @@ macro innerproductspace(ex::Expr)
 end
 
 """
-Custom expression for Gram matrices.
-    Contains a vector the outter product of which forms the Gram matrix.
+    Gram <: Expression
+
+A Gram matrix is a matrix of inner product between all pairs of a set of vectors.
 """
 struct Gram <: Expression
     label:: String 
-    vecs :: Vector{V} where {F<:Field, V<:InnerProductSpace{F}}
     value:: Missing
     constraints::Constraints
     oracles::Oracles
     next::State{Zero}
+    vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}}
+
     function Gram(vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}})
-        new("", vecs, missing, Constraints(), Oracles(), missing)
+        new("", missing, Constraints(), Oracles(), missing, vecs)
     end
 end
 
@@ -139,7 +158,7 @@ constraints(e::Expression) = e.constraints
 """
     oracles(e)
 
-List the oracles that have been sampled at the expression e
+List of oracles that have been sampled at the expression `e`.
 
 # Examples
 ```julia-repl
@@ -148,6 +167,7 @@ julia> oracles(x)
 ```
 """
 oracles(e::Expression) = e.oracles
+
 """
     associations(::Expression)
     associations(e::InnerProductSpace)
@@ -175,7 +195,7 @@ associations(e::InnerProductSpace) = e.associations
 """
     isvariable(e)
 
-Check if the expression e is a variable
+Check if the expression `e` is a variable.
 
 # Examples
 ```julia-repl
@@ -184,6 +204,7 @@ julia> isvariable(x)
 ```
 """
 isvariable(e::Expression) = e.value isa Missing
+
 """
     iszero(e::Expression)
     iszero(o::Oracle) = false
@@ -195,7 +216,6 @@ Check if the expression e is a Zero object
 -- *Oracle**:
 Check wheter an oracle is Zero, only true when it is a ZeroFunctional oracle
 
-
 # Examples
 ```julia-repl
 julia> x = Rⁿ()
@@ -204,10 +224,11 @@ julia> iszero(x)
 
 """
 iszero(e::Expression) = e.value isa Zero
+
 """
     hasdecomposition(e)
 
-Check if the expression e has a decomposition
+Check if the expression `e` has a decomposition.
 
 # Examples
 ```julia-repl
@@ -216,10 +237,11 @@ julia> hasdecomposition(e)
 ```
 """
 hasdecomposition(e::Expression) = e.value isa Decomposition
+
 """
     hasvalue(e)
 
-Check if the expression e or every expression in an array or set of expression has a value
+Check if the expression `e` or every expression in an array or set of expression has a value.
 
 # Examples
 ```julia-repl
@@ -236,7 +258,7 @@ hasvalue(a::ArrayOrSet{Expression}) = all(hasvalue(e) for e ∈ a)
 """
     decomposition(e)
 
-Return the decomposition of the expression e if it has one, throws an error otherwise
+Return the decomposition of the expression `e` if it has one, throws an error otherwise.
 
 # Examples
 ```julia-repl
@@ -251,7 +273,7 @@ end
 """
     value(e)
 
-Return the value of the expression e or an array of expression if it has one, throws an error otherwise
+Return the value of the expression `e` or an array of expression if it has one, throws an error otherwise
 
 # Examples
 ```julia-repl
@@ -268,7 +290,7 @@ value(a::AbstractArray{<:Expression}) = [ value(e) for e ∈ a ]
 """
     value!(e, val)
 
-Assign an expression e a value val or array of expressions with values from an array of values 
+Assign a value to an expression or array of expressions. 
 
 # Examples
 ```julia-repl
@@ -288,7 +310,8 @@ end
 """
     variables(e)
 
-Return variable expressions of an expression e 
+Return variable expression of an expression `e`.
+
 # Examples
 ```julia-repl
 julia> x = Rⁿ()
@@ -306,10 +329,12 @@ function variables(e::Expression)
         Expressions()
     end
 end
+
 """
     selfdecomp(e)
 
-Return the decomposition of an expression e if it has a non-empty decomposition, return its LinearDecomposition otherwise
+Return the decomposition of an expression if it has a non-empty decomposition, return its LinearDecomposition otherwise.
+
 # Examples
 ```julia-repl
 julia> x = Rⁿ()
@@ -324,7 +349,6 @@ function selfdecomp(e::T) where {T<:Expression}
     end
 end
 
-# update
 """
     next!(e1, e2)
 
@@ -337,6 +361,7 @@ julia> next(e1, e2)
 ```
 """
 next!(x::T, y::State{T}) where {T<:Expression} = x.next = y
+
 """
     next(f::AbstractFunction)
     next(f::Oracle)
@@ -377,6 +402,7 @@ julia> next(f')
 
 julia> a = [Rⁿ(), Rⁿ()]
 julia> next(a)
+```
 """
 function next(f::AbstractFunction)
     if f isa LinearFunctional
@@ -400,52 +426,20 @@ function next(f::AbstractFunction)
     end
 end
 
-function next(f::Oracle)
-    return f
-end
-
-function next(f::Wrapper{<:Oracle})
-    return f
-end
-
-function next(d:: Dual{})
-    return d'.next'
-end
+next(f::Oracle) = f
+next(f::Wrapper{<:Oracle}) = f
+next(d:: Dual{}) = d'.next'
+next(::Missing) = missing
 
 function next(x::Expression)
-    if x.next !== missing #|| (!hasdecomposition(x) && isa(x, R))
+    if !ismissing(x.next)
         return x.next
     end
     if !hasdecomposition(x)
-        # orc = nothing
-        # if length(oracles(x)) == 0
-        #     return missing
-        # elseif length(oracles(x)) == 1 && !isnothing(findfirst(ex -> ex === x, inputs_outputs(first(oracles(x)))[2]))
-        #     orc = first(oracles(x))
-        # else
-        #     for o in oracles(x)
-        #         io = inputs_outputs(o)
-        #         index = findfirst(ex -> ex === x, io[2])
-        #         if !isnothing(index)  
-        #             orc = o
-        #         end
-        #     end
-        # end
-        # if isnothing(orc)
-        #     return missing
-        # end
-        # io = inputs_outputs(orc)
-        # index = findfirst(ex -> ex === x, io[2])
-        # nextx = next(io[1][index])
         orc, input = get_oracle_input(x)
-        nextx = next(input) # nextx = next(io[1][index])
-        # if hasfield(typeof(orc), :next) || typeof(orc) == Dual{Rⁿ} || typeof(orc) == LinearFunctional{Rⁿ}
-        #     nextoracle = next(orc)
-        # else
-        #     nextoracle = orc
-        # end
+        nextx = next(input)
         nextoracle = next(orc)
-        if nextoracle === missing || nextx === missing
+        if ismissing(nextoracle) || ismissing(nextx)
             return missing
         end
         nextio = inputs_outputs(nextoracle)
@@ -461,7 +455,7 @@ function next(x::Expression)
     else
         nextx = zero(x)
         for i in collect(keys(weights(decomposition(x))))
-            if i.next === missing
+            if ismissing(i.next)
                 return missing
             end
             nextx = nextx + weights(decomposition(x))[i] * i.next
@@ -475,11 +469,13 @@ next(a::AbstractArray{<:Expression}) = [ next(x) for x ∈ a ]
 """
     update!(p)
 
-Given a pair of expression, update the second expression as the next state of the first expression
+Given a pair of expressions, update the second expression as the next state of the first expression.
+
 # Examples
 ```julia-repl
-julia> a = [Rⁿ(), Rⁿ()]
-julia> next(a)
+julia> x  = Rⁿ()
+julia> x⁺ = Rⁿ()
+julia> update!( x => x⁺ )
 ```
 """
 function update!(p::Pair{T, <:State{T}}) where {T}
@@ -490,7 +486,7 @@ end
 """
     weights(e)
 
-If the expression e have a decomposition, return a dictionary whose entries are variable expressions in e's decomposition and their corresponding weights in e.
+If the expression `e` have a decomposition, return a dictionary whose entries are variable expressions in `e`'s decomposition and their corresponding weights in `e`.
 # Examples
 ```julia-repl
 julia> x0 = Rⁿ()
@@ -499,77 +495,25 @@ julia> weights(x1)
 ```
 """
 weights(e::Expression) = weights(decomposition(e))
-"""
-    size(g::Gram)
-    size(e::Expression)
-    size(c::Constraint)
 
-Return the size of input `e` depending on its type
-- **Gram expression**:
-Return the sie of the Gram matrix if `e` is a Gram matrix expression
 
-- **Expression**:
-Return (1,1) as the size of an expression e
-
-- **Constraint**:
-Return (1,1) as the size of the expression of a constraint `e`
-# Examples
-```julia-repl
-julia> x0 = Rⁿ()
-julia> size(x1)
-```
-"""
-size(e::Expression) = (1,1)
+size(::Expression) = (1,1)
 size(g::Gram) = size(evaluate(g))
-"""
-    length(e::Expression)
-    length(o::Oracle)
 
-Returns the length of the input depending on its type
--- *Expression*:
-Return 1 as the length of an expression
--- *Oracle*:
-Return the number of expression at which the oracle e has been sampled
-
-# Examples
-```julia-repl
-julia> x0 = Rⁿ()
-julia> length(x0)
-
-julia> f = DifferentiableFunctional{Rⁿ}()
-julia> length(f')
-```
-"""
-length(e::Expression) = 1
-
+length(::Expression) = 1
 iterate(e::Expression) = iterate(e,1)
-iterate(e::Expression, state::Int) = (state > length(e) ? nothing : (e, state+1))
+iterate(e::Expression, state::Int) = (state > 1 ? nothing : (e, state+1))
+
 
 ############################################################################################
 # Evaluate
 
 """
     evaluate(e::Expression)
-    evaluate(g::Gram)
 
-Return the an evaluation of an input e depending on its type:
-- **Expression**:  
-  If `e` is an expression which has a value, return the value
-  If `e` is an expression which has a decomposition, return the value of the expressions in the decomposition
-  Otherwise return missing
-  If `e` is an array of expressions, evaluate each element and return an array of values
--**Gram matrix expression**
-Return the Gram matrix
+Evaluates an expression.
 
-# Examples
-```julia-repl
-julia> x0 = Rⁿ()
-julia> x1 = x0 - 0.2*f'(x0) 
-julia> evaluate(x1)
-
-julia> g = Gram([x0,x1])
-julia> evaluate(g)
-```
+If the expression has a value, this returns the value. Otherwise, it returns `missing`.
 """
 function evaluate(e::Expression)
     if hasvalue(e)
@@ -587,29 +531,18 @@ function evaluate(g::Gram)
 end
 
 """
-    ⊂(g1, g2)
+    ⊂(G1, G2)
 
-Return whether gram matrix expression g1 is a strict subset of gram matrix expression g2, or if every elements in g1 is in g2 and there is atleast one element in g2 not in g1
+Returns whether or not Gram matrix `G1` is a strict subset of Gram matrix `G2`.
 """
-# function ⊂(g1::Gram, g2::Gram) # strict subset
-#     v1, v2 = Set(g1.vecs), Set(g2.vecs)
-#     return isempty(setdiff(v1, v2)) && !isempty(setdiff(v2, v1))
-# end
 ⊂(g1::Gram, g2::Gram) = ⊂(Expressions(g1.vecs), Expressions(g2.vecs))
+
 """
     ⊆(g1, g2)
 
-Return whether gram matrix expression g1 is a subset or equalof gram matrix expression g2, or if every elements in g1 is in g2
+Return whether or not Gram matrix `G1` is a subset or equal of Gram matrix `G2`.
 """
-# function ⊆(g1::Gram, g2::Gram) # subset or equal
-#     v1, v2 = Set(g1.vecs), Set(g2.vecs)
-#     return isempty(setdiff(v1, v2))
-# end
 ⊆(g1::Gram, g2::Gram) = ⊆(Expressions(g1.vecs), Expressions(g2.vecs))
 
-function ⊂(s1::Expressions, s2::Expressions) # strict subset
-    return isempty(setdiff(s1, s2)) && !isempty(setdiff(s2, s1))
-end
-function ⊆(s1::Expressions, s2::Expressions) # subset or equal
-    return isempty(setdiff(s1, s2))
-end
+⊂(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2)) && !isempty(setdiff(s2, s1))
+⊆(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2))

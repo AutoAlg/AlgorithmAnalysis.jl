@@ -138,7 +138,7 @@ show(io::IO, p::SmoothStronglyConvex) = print(io, "$(p.b)-smooth, $(p.a)-strongl
 show(io::IO, o::Oracle) = print(io, label(o))
 show(io::IO, w::Wrapper) = show(io, unwrap(w))
 
-function show(io::IO, mime::MIME"text/plain", o::Oracle)
+function show(io::IO, ::MIME"text/plain", o::Oracle)
     print(io, "\nOracle")
     print(io, "\n  Description: $(description(o))")
     print(io, "\n  Label: $(label(o))")

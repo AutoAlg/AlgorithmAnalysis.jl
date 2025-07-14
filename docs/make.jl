@@ -7,7 +7,7 @@ makedocs(
     sitename = "AlgorithmAnalysis",
     format = Documenter.HTML(edit_link="master", prettyurls=false),
     modules = [AlgorithmAnalysis],
-    # checkdocs = :exports,
+    checkdocs = :exports,
     pages = [
         "Introduction" => "index.md",
         "Manual" => "manual/index.md",
@@ -16,6 +16,7 @@ makedocs(
         "Developer Guide" => "developers/index.md"
     ]
 )
+
 
 # Documenter can also automatically deploy documentation to gh-pages.
 # See "Hosting Documentation" and deploydocs() in the Documenter manual

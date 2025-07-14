@@ -16,9 +16,8 @@ function variables(o::OracleOrWrapper)
     vars
 end
 
-function variables(X::Union{ArrayOrSet,Generator})
-    mapreduce(variables, ∪, X; init=Expressions())
-end
+variables(X::Union{ArrayOrSet,Generator}) = mapreduce(variables, ∪, X; init=Expressions())
+
 # function constraints(X::Union{ArrayOrSet,Generator})
 #     cons = Constraints()
 #     for c ∈ X
@@ -37,28 +36,6 @@ end
 function oracles(X::Union{ArrayOrSet,Generator})
     mapreduce(oracles, ∪, X; init=Oracles())
 end
-
-# function grams(s::Set, X::Union{ArrayOrSet,Generator})
-#     for i in X
-#         push!(s, gram(i))
-#     end
-#     s
-# end
-# function push!(s::Set, g::Gram)
-#     push = true
-#     for i in s
-#         if grams_compare(g, i)
-#             delete!(s,i)
-#         end
-#         if grams_compare(i, g)
-#             push = false
-#         end
-#     end
-#     if push
-#         push!(s, g)
-#     end
-#     s
-# end
 
 """
     constraints_oracles
@@ -186,7 +163,6 @@ end
 
 isimplementable(e::Expression) = e isa R
 isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
-
 isimplementable(X::Union{ArrayOrSet,Generator}) = all( isimplementable(x) for x ∈ X )
 
 function optvar(e::Expression, optvar_dict::Dict)
@@ -261,9 +237,15 @@ function multiplier(model::JuMP.Model, con::ConeConstraint)
     var
 end
 
-function maximize(performance::Expression)
+"""
+    maximize(performance)
 
-    @info "PERFORMANCE ESTIMATION"
+Use the performance estimation methodology to find the worst-case value of the performance measure.
+
+## Requirements
+- The performance measure must be a real expression (that is, an element of `R`).
+"""
+function maximize(performance::Expression)
 
     if !isa(performance, R)
         error("The performance measure must be a real number in $R.")
@@ -320,122 +302,68 @@ function maximize(performance::Expression)
     @info "Analysis complete! Use `evaluate()` to obtain the value of any expression in the algorithm."
 end
 
-
 function stateupdate(vars)
     x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
     real_vars = collect(v for v ∈ vars if v isa R)
     x⁺ = next(x)
     # u  = collect(setdiff(variables(x⁺), variables(vars)))
     u  = collect(v for v ∈ vars if ismissing(next(v)) && v isa R)
-    # u  = collect(setdiff(variables(real_vars), variables(x)))
+    # u  = setdiff(variables(real_vars), variables(x))
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
     X, X⁺, x, u
 end
-# function certifyTMM(performance::Expression, ρ::Number, q0s, qs1, q01)
-#     if !isa(performance, R)
-#         error("The performance measure must be a real number in $R.")
-#     end
-#     vars, cons, orcs = variables_constraints_oracles(performance)
-#     vars = collect(vars)
-#     X, X⁺, x, u = stateupdate(vars)
 
-#     model = JuMP.Model(SCS.Optimizer)
-#     JuMP.set_silent(model)
-#     # optimization variables
-#     JuMP.@variable(model, P[1:length([x;u])])
-#     L1 = vec(linearform([x;u] => 10*performance+q0s))*P
-#     L2 = vec(linearform([x;u] => -((1-ρ^2)*qs1 + ρ^2*q01)))*P
+function nonnegative(λ, e, vars)
+    if e isa Gram
+        e = evaluate(e)
+    end
+    if e isa Expression
+        vec(linearform(vars => λ * e))
+    elseif e isa Vector
+        vec(linearform(vars => λ' * e))
+    elseif e isa Matrix
+        vec(linearform(vars => la.tr(λ * e)))
+    end
+end
 
-#     JuMP.@constraint(model, L1 .== 0 )
-#     JuMP.@constraint(model, L2 .== 0 )
-#     JuMP.optimize!(model)
-#     JuMP.termination_status(model) == JuMP.OPTIMAL
-# end
-# function certify(performance::Expression, ρ::Number, L::Number, A::Oracle)
-#     vars, cons, orcs = variables_constraints_oracles(performance)
-#     vars = collect(vars)
-#     X, X⁺, x, u = stateupdate(vars)
-#     # optimization problem
-#     model = JuMP.Model(SCS.Optimizer)
-#     JuMP.set_silent(model)
-#     # optimization variables
-#     JuMP.@variable(model, P[1:length(x)])
-#     # Lyapunov function
-#     V = X'*P
-#     V⁺ = X⁺'*P
-#     𝒫 = vec(linearform( [x; u] => performance ))
-#     L1 = 𝒫 - V
-#     L2 = V⁺ - ρ^2*V
-#     # optimization constraints
-#     for con ∈ cons
-#         λ = multiplier(model, con)
-#         μ = multiplier(model, con)
-#         e = expression(con)
-#         if e isa Gram
-#             e = evaluate(e)
-#         end
-#         if e isa Expression
-#             M = vec(linearform( [x; u] => λ * e ))
-#             N = vec(linearform( [x; u] => μ * e ))
-#         elseif e isa Vector
-#             M = vec(linearform( [x; u] => λ' * e ))
-#             N = vec(linearform( [x; u] => μ' * e ))
-#         elseif e isa Matrix
-#             M = vec(linearform( [x; u] => la.tr(λ * e) ))
-#             N = vec(linearform( [x; u] => la.tr(μ * e) ))
-#         end
-#         L1 += M
-#         L2 += N
-#     end
-#     JuMP.@constraint(model, L1 .== 0 )
-#     JuMP.@constraint(model, L2 .== 0 )
+"""
+    certify(performance, rate)
 
-#     JuMP.optimize!(model)
+Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the specified rate.
 
-#     JuMP.termination_status(model) == JuMP.OPTIMAL
-# end
+## Requirements
+- The performance measure must be a real expression (that is, an element of `R`).
+"""
 function certify(performance::Expression, ρ::Number)
     if !isa(performance, R)
         error("The performance measure must be a real number in $R.")
     end
     # variables, constraints, and oracles associated with the performance measure
-    vars, cons, orcs = variables_constraints_oracles(performance)
-    # order the variables
+    vars, cons, _ = variables_constraints_oracles(performance)
     vars = collect(vars)
     X, X⁺, x, u = stateupdate(vars) 
-    # optimization problem
     model = JuMP.Model(SCS.Optimizer)
     JuMP.set_silent(model)
-    # optimization variables
     JuMP.@variable(model, P[1:length(x)])
+
     # Lyapunov function
     V = X'*P
     V⁺ = X⁺'*P
+
+    # performance measure
     𝒫 = vec(linearform( [x; u] => performance ))
+
+    # linear forms
     L1 = 𝒫 - V
-    L2 = V⁺ - ρ^2*V
-    # optimization constraints
+    L2 = V⁺ - ρ*V
     for con ∈ cons
         λ = multiplier(model, con)
         μ = multiplier(model, con)
         e = expression(con)
-        if e isa Gram
-            e = evaluate(e)
-        end
-        if e isa Expression
-            M = vec(linearform( [x; u] => λ * e ))
-            N = vec(linearform( [x; u] => μ * e ))
-        elseif e isa Vector
-            M = vec(linearform( [x; u] => λ' * e ))
-            N = vec(linearform( [x; u] => μ' * e ))
-        elseif e isa Matrix
-            M = vec(linearform( [x; u] => la.tr(λ * e) ))
-            N = vec(linearform( [x; u] => la.tr(μ * e) ))
-        end
-        L1 += M
-        L2 += N
+        L1 += nonnegative(λ, e, [x; u])
+        L2 += nonnegative(μ, e, [x; u])
     end
     JuMP.@constraint(model, L1 .== 0 )
     JuMP.@constraint(model, L2 .== 0 )
@@ -445,48 +373,7 @@ function certify(performance::Expression, ρ::Number)
     JuMP.termination_status(model) == JuMP.OPTIMAL
 end
 
-# function solve(X,Xp,Q,ℳ,ρ)
-    
-#     # dimensions
-#     n = size(X,1)
-#     m = size(X,2)-n
-
-#     # optimization problem
-#     model = JuMP.Model(SCS.Optimizer)
-
-#     JuMP.set_silent(model)
-    
-#     # variables
-#     JuMP.@variable(model, P[1:n,1:n], Symmetric )
-#     JuMP.@variable(model, λ1[1:length(ℳ)] ≥ 0)
-#     JuMP.@variable(model, λ2[1:length(ℳ)] ≥ 0)
-#     JuMP.@variable(model, G1[1:n+m,1:n+m], PSD )
-#     JuMP.@variable(model, G2[1:n+m,1:n+m], PSD )
-    
-#     # multipliers
-#     Π1 = sum( first(p)*last(p) for p ∈ zip(λ1,ℳ) )
-#     Π2 = sum( first(p)*last(p) for p ∈ zip(λ2,ℳ) )
-
-#     # constraints
-#     JuMP.@constraint(model, 0 .== Xp'*P*Xp - ρ^2*(X'*P*X) + Π1 + G1 )
-#     JuMP.@constraint(model, 0 .== X'*(Q-P)*X + Π2 + G2 )
-
-#     JuMP.optimize!(model)
-    
-#     return JuMP.termination_status(model)
-# end
-
-# eye(n) = Matrix{Float64}(la.I, n, n)
-
-# tr(A) = sum(la.diag(A))
-
-function linearform(p::Pair)
-    A = [ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
-    # if !isequal(last(p), A*first(p))
-    #     error("The expression $(last(p)) is not a linear form in the variable $(first(p))")
-    # end
-    A
-end
+linearform(p::Pair) = [ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
 
 # function linearform(G::GramMatrix{V}, x::F) where {F<:Field, V<:InnerProductSpace{F}}
 #     if any(!isvariable(a) for a ∈ decomposition(G))
@@ -498,16 +385,6 @@ end
 #     end
 #     A
 # end
-
-# function quadraticform(p::Pair)
-#     Q = Float64[ get(weights(selfdecomp(last(p))), x'*y, 0) for x ∈ first(p), y ∈ first(p) ]
-#     if !isequal(last(p), first(p)'*Q*first(p))
-#         error("The expression $(last(p)) is not quadratic in the variable $(first(p))")
-#     end
-#     Q
-# end
-
-
 
 """
     Bisection search to find minimum
@@ -538,132 +415,22 @@ function bsmin( f, a, b, tol=1e-5 )
     return b
 end
 
-# function rate(performance::Expression)
-#     @info "CONTROL ANALYSIS"
-#     if !isa(performance, R)
-#         error("The performance measure must be a real number in $R")
-#     end
-#     @info "Finding the rate of convergence of performance measure $performance"
-#     bsmin( ρ -> certify(performance,ρ), 0, 1 )
-# end
+"""
+    rate(performance)
 
-function rate(performance::Expression, tracker=0)
-    # @info "CONTROL ANALYSIS"
+Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the fastest possible rate.
+
+## Requirements
+- The performance measure must be a real expression (that is, an element of `R`).
+"""
+function rate(performance::Expression, lb=0)
     if !isa(performance, R)
         error("The performance measure must be a real number in $R")
     end
-    @info "Finding the rate of convergence of performance measure $performance"
-    if tracker > 0 && !certify(performance, tracker)
-        @info "Searching for ρ between $tracker and 1"
-        bsmin( ρ -> certify(performance,ρ), tracker, 1 )
-    else
-        @info "Searching for ρ between 0 and 1"
-        bsmin( ρ -> certify(performance,ρ), 0, 1 )
-    end
+    @info "Finding the convergence rate of $performance"
+    @info "Searching for ρ between $lb and 1"
+    bsmin( ρ -> certify(performance,ρ), lb, 1 )
 end
-
-
-function analysis(currentState, nextState)
-    currentVariables, nextVariables = Set(), Set()
-    for i in range(1, length(currentState))
-        currentVariables = union(currentVariables, keys(selfdecomp(currentState[i]).weights))
-        nextVariables = union(nextVariables, keys(selfdecomp(nextState[i]).weights))
-    end
-    algorithmInputs = collect(union(setdiff(currentVariables, nextVariables), setdiff(nextVariables, currentVariables)))
-    
-    A = zeros(length(currentState),length(currentState))
-    B = zeros(length(currentState), length(algorithmInputs))
-    C = zeros(length(algorithmInputs), length(currentState))
-    for i in range(1, length(nextState))
-        decomp = selfdecomp(nextState[i]).weights
-        for j in range(1, length(currentState))
-            A[i, j] = get(decomp, currentState[j], 0)
-        end
-        for j in range(1, length(algorithmInputs))
-            B[i, j] = get(decomp, algorithmInputs[j], 0)
-        end
-    end
-    for i in range(1, length(algorithmInputs))
-        decomp = selfdecomp(algorithmInputs[i]).weights
-        for j in range(1, length(currentState))
-            C[i, j] = get(decomp, currentState[j], 0)
-        end
-    end 
-    return A, B, C, algorithmInputs
-end
-
-function createFunctionValues(currentState, nextState, f)
-    return [f(s) for s in currentState[1:length(currentState)-1]], [f(s) for s in nextState[1:length(nextState)-1]]
-end
-
-function createMatrix(expression::Expression, vectors, scalars)
-    #Create matrix M
-    dict = weights(selfdecomp(expression)) 
-    Q = zeros(length(vectors), length(vectors))
-    for i in range(1,length(vectors))
-        for j in range(1,length(vectors))
-            Q[i,j] = get(dict, vectors[i]'*vectors[j], 0)
-        end
-    end
-    q = zeros(length(scalars))
-    for i in range(1,length(scalars))
-        q[i] = get(dict, scalars[i], 0)
-    end
-    return Q, q
-end
-
-function solve(A,B,M,m,Q,q,fcs,fns,rho)
-    # state dimension
-    n = size(A,1); #number of states
-    nn = size(B,2) #number of inputs
-    P = cvx.Variable(n,n);#Variable(nn, nn); #P
-    p = cvx.Variable(n,1)
-
-    numberOfConstraints = length(M)
-    liftingDimension = length(fcs)
-
-    λ1 = cvx.Variable(numberOfConstraints, 1); #lambda1
-    λ2 = cvx.Variable(numberOfConstraints, 1); #lamnda2
-
-    μ1 = cvx.Variable(numberOfConstraints, 1); #lambda1
-    μ2 = cvx.Variable(numberOfConstraints, 1); #lamnda2
-
-    Π1 = zeros(n+nn, n+nn)
-    Π2 = zeros(n+nn, n+nn)
-
-    π1 = zeros(size(m,1), size(m,2))
-    π2 = zeros(size(m,1), size(m,2))
-    
-    problem = cvx.satisfy();
-    for i in range(start = 1, stop = length(M))
-        Π1 = Π1 + λ1[i]*M[i]
-        Π2 = Π2 + λ2[i]*M[i]
-        problem.constraints += (λ1[i] >= 0)
-        problem.constraints += (λ2[i] >= 0)
-    end
-
-    for i in range(start = 1, stop = length(m))
-        π1 = π1 + μ1[i]*m[i]
-        π2 = π2 + μ2[i]*m[i]
-        problem.constraints += (μ1[i] >= 0)
-        problem.constraints += (μ2[i] >= 0)
-    end
-
-    #decrease conditions
-    # problem.constraints += P in :SDP
-    # problem.constraints += LinearAlgebra.tr(P) >= 1
-    problem.constraints += (-[A B]'P*[A B] + rho^2*[LinearAlgebra.I zeros(n,nn)]'*P*[LinearAlgebra.I zeros(n,nn)] - Π1) in :SDP;
-    problem.constraints += -p'*fns + rho^2*p'*fcs + π1
-    
-    problem.constraints += [P zeros(n,nn); zeros(m, n+nn)] - Q - Π2 in :SDP
-    problem.constraints += p - q - π2 in :SDP
-
-    cvx.solve!(problem, SCS.Optimizer, silent_solver = true);
-    return problem.status
-end
-
-createConstraintMatrix(constraint::Constraint, vectors, scalars) = createMatrix(expression(constraint), vectors, scalars)
-createConstraintMatrix(cons::Constraints, vectors, scalars) = [createConstraintMatrix(constraint, vectors, scalars) for constraint in prune!(cons)]
 
 function lift(state::Expression, dimension::Int)
     initial_state, initial_inputs = get_states_inputs(state)

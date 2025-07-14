@@ -46,7 +46,7 @@ end
 # Multi-valued relation
 
 "A relation is a subset of the Cartesian product of its domain `X` and codomain `Y`."
-mutable struct MultiValuedRelation{X,Y}
+mutable struct MultiValuedRelation{X,Y} <: Relation{X,Y}
   pairs::Set{Pair{X,Y}}
 
   # Construct an empty multi-valued relation.
@@ -90,24 +90,6 @@ SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
 # WARNING: must use Dict(pairs(r)) instead of r.pairs to avoid odd behavior after setting the value of the keys
 (r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(Dict(pairs(r)), x, missing)
 
-# ## Testing Dual Input
-# mutable struct DualInputRelation{X1, X2, Y} <: Relation{Tuple{X1, X2}, Y}
-#     pairs::Dict{Tuple{X1, X2}, Y}
-
-#     # Construct an empty dual-input relation.
-#     DualInputRelation{X1, X2, Y}() where {X1, X2, Y} = new(Dict{Tuple{X1, X2}, Y}())
-
-#     # Construct a dual-input relation from a dictionary of pairs.
-#     DualInputRelation(d::Dict{Tuple{X1, X2}, Y}) where {X1, X2, Y} = new(d)
-# end
-
-# Construct a relation from a generator of pairs.
-# DualInputRelation(g::Generator) = DualInputRelation(Dict(p for p ∈ g))
-
-# # Evaluate a dual-input relation at a pair of inputs.
-# # Returns a value in the codomain or `missing`.
-# (r::DualInputRelation{X1, X2, Y})(x::Tuple{X1, X2}) where {X1, X2, Y} =
-#     get(r.pairs, x, missing)
 
 ############################################################################################
 # Constant relation
@@ -150,11 +132,7 @@ samples(r::Relation) = pairs(r)
 
 ############################################################################################
 # sample
-# function  sample(r::SingleValuedRelation{[X1; X2], F}, ::Vector{InnerProductSpace{F}}, label::String = "")
-#     y = codomain(r)(label)
-#     push!(r, x => y)
-#     y
-# end
+
 function sample(r::MultiValuedRelation{X,Y}, x::X, label::String = "") where {X,Y}
     y = codomain(r)(label)
     push!(r, x => y)

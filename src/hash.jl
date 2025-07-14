@@ -18,8 +18,8 @@ function hash(e::Expression, h::UInt)
 end
 hash(x::LinearDecomposition, h::UInt) = hash(weights(x), hash(:LinearDecomposition, h))
 hash(c::Constraint, h::UInt) = hash(set(c), hash(expression(c), hash(:Constraint, h)))
-hash(c::Satisfied, h::UInt) = objectid(c)
-hash(c::Unsatisfied, h::UInt) = objectid(c)
+hash(c::Satisfied, ::UInt) = objectid(c)
+hash(c::Unsatisfied, ::UInt) = objectid(c)
 
 function hash(a::AbstractArray{<:Expression}, h::UInt)
     h = hash(size(a), hash(:AbstractArray, h))

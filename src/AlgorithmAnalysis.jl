@@ -7,7 +7,7 @@ module AlgorithmAnalysis
 
 # abstract types
 export Constraint, Constraints, ConstraintSet
-export Variable, Variables, Expression, Expressions, Field, Reals, Subset
+export Variable, Variables, Expression, Expressions, Field, Reals
 export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
 export ScalarValue, VectorValue
 export R, Rⁿ, Rᵐ
@@ -22,11 +22,11 @@ export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
 export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
-export ⪯, ⪰
-export Gram, evaluate, ⊂, ⊆, prune_grams, gram_to_constraint
+export ⪯, ⪰, ⊂, ⊆
+export Gram, evaluate, prune_grams, gram_to_constraint
 
 # relation
-export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation#, DualInputRelation
+export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
 export domain, codomain, inputs, outputs, inputs_outputs
 
 # oracle
@@ -53,7 +53,7 @@ export get_oracle_input
 export Wrapper, unwrap
 export Dual
 export Transpose, AbstractDifferential, AbstractSubdifferential, TransposeOf
-export Subdifferential, Gradient, Gradient2, Hessian, GradientOf
+export Subdifferential, Gradient, Hessian, GradientOf
 
 # decompositions
 export Decomposition, EmptyDecomposition, LinearDecomposition
@@ -84,35 +84,30 @@ export Co, Weakly, PropertyOrWrapper
 
 # solve
 export maximize, lift, project, variables, constraints, variables_constraints_oracles
-export transform!
 
 # primitives
 export first_order_stationary_point
 
-# other
-export hierarchy
-
 # analysis
-export stateupdate, getmatrix, getparams, solve, bsmin, rate, eye, certify, certifyTMM, grams
-export quadraticform, linearform, tr, optvar, optcon, maximize
+export maximize, certify, rate
+export stateupdate, getmatrix, getparams, solve, eye, grams
+export quadraticform, linearform, tr, optvar, optcon
 export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
 export get_states_inputs, get_formulas, lift
 
 ############################################################################################
 # Import
 
-# import Convex as cvx
 import JuMP
 import SCS
 import MosekTools
-import SDPA
 import LinearAlgebra as la
 import InteractiveUtils
 import AbstractTrees
 import Zeros: Zero
 import MathOptInterface as MOI
 
-import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊂, ⊆
+import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊆
 import Base: isempty, iszero, isequal
 import Base: promote_rule, convert, show, zero, zeros, adjoint
 import Base: length, Generator, iterate, size, push!, inv, pairs

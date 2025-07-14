@@ -42,9 +42,6 @@ adjoint(o::AbstractSkewSymmetricLinearMap) = LinearDecomposition{typeof(o)}(Dict
 adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
 adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
 
-# adjoint(o::DualInputFunctional) = Gradient{typeof(o)}(o) # Creates the gradient mapping for the first input.
-# adjoint(o::Gradient{<:DualInputFunctional}) = Gradient2{typeof(o.parent)}(o.parent) # Creates the gradient mapping for the second input.
-
 function adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional})
     Hessian{typeof(o.parent)}(o.parent)
 end

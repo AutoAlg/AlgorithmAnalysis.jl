@@ -1,7 +1,13 @@
 # API
 
-## Expressions
+## Analysis methods
+```@docs
+maximize
+certify
+rate
+```
 
+## Expressions
 
 ```@docs
 Expression
@@ -54,8 +60,6 @@ next!
 next
 update!
 weights
-size
-length
 evaluate
 ⊂
 ⊆
@@ -173,16 +177,9 @@ unwrap
 ```@docs
 adjoint
 hash
-hierarchy
 ConstantRelation
 SingleValuedRelation
 MultiValuedRelation
 Dual
-```
-
-### Analysis methods
-```@docs
-bsmin
 variables_constraints_oracles
 ```
-

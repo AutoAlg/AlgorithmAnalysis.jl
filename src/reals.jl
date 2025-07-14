@@ -28,7 +28,6 @@ A real inner product space.
 convert(::Type{R}, x::Number) = R(x)
 promote_rule(::Type{R}, ::Type{<:Number}) = R
 
-# +(x::R, y::R) = LinearDecomposition{R}( Dict( R(1) => value(x) + value(y) ) )
 +(x::Number, y::R) = +(promote(x,y)...)
 +(x::R, y::Number) = y + x
 -(x::Number, y::R) = x + (-y)

@@ -149,7 +149,6 @@ julia> defaultlabel(Type{f'}, label(f))
 defaultlabel(::Type{Transpose}, label::String) = label * "*"
 defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
 defaultlabel(::Type{Gradient}, label::String) = "∇" * label
-defaultlabel(::Type{Gradient2}, label::String) = "∇2" * label
 defaultlabel(::Type{Hessian}, label::String) = "∇²" * label
 
 defaultlabel(o::AbstractOperator, x) = "$(label(o))($(label(x)))"
