@@ -9,7 +9,7 @@ module AlgorithmAnalysis
 export Constraint, Constraints, ConstraintSet
 export Variable, Variables, Expression, Expressions, Field, Reals
 export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
-export ScalarValue, VectorValue
+export ScalarValue, VectorValue, Object, Objects
 export R, Rⁿ, Rᵐ
 
 # expression
@@ -23,7 +23,7 @@ export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
 export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
 export ⪯, ⪰, ⊂, ⊆
-export Gram, evaluate, prune_grams, gram_to_constraint
+export Gram, evaluate, gram_to_constraint
 
 # relation
 export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
@@ -93,7 +93,7 @@ export maximize, certify, rate
 export stateupdate, getmatrix, getparams, solve, eye, grams
 export quadraticform, linearform, tr, optvar, optcon
 export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
-export get_states_inputs, get_formulas, lift
+export get_states_inputs, get_formulas, lift, neighbors, nodes
 
 ############################################################################################
 # Import

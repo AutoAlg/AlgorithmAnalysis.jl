@@ -193,3 +193,6 @@ const VectorValue{T} = Union{Vector,Zero,Decomposition{T},Missing}
 const ArrayOrSet{T} = Union{AbstractArray{<:T}, AbstractSet{<:T}}
 
 const DecompositionValue = Union{Number, JuMP.VariableRef, JuMP.AffExpr}
+
+const Object = Union{Expression, Constraint, Oracle, Wrapper}
+const Objects = Set{Object}

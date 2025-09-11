@@ -60,6 +60,8 @@ Unsatisfied()
 """
 struct Unsatisfied <: Constraint end
 
+expression(::Satisfied) = Expressions()
+expression(::Unsatisfied) = Expressions()
 
 ############################################################################################
 # Cone constraint
@@ -354,10 +356,11 @@ check(x, ::Type{PositiveSemidefiniteCone}) = hasvalue(x) && evaluate(x) ⪰ 0
 
 Prune a set of constraints by removing any constraints that are satisfied.
 """
-prune!(s::Constraints) = setdiff!(s, Set([Satisfied()]))
-function prune_grams(s::Constraints)
+function prune!(cons::Constraints)
+    cons = setdiff!(cons, Set([Satisfied()]))
+
     pruned = Constraints()
-    for c in s
+    for c in cons
         if expression(c) isa Gram
             to_remove = Constraints()  # Store constraints to remove
             should_add = true
@@ -383,7 +386,7 @@ function prune_grams(s::Constraints)
         end
     end
     # pruned = gram_to_constraint(pruned)
-    return pruned
+    pruned
 end
 # prune!(s::Constraints) = setdiff!(s, Set([Satisfied()]))
 # function prune!(s::Constraints)

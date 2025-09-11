@@ -37,6 +37,29 @@ function oracles(X::Union{ArrayOrSet,Generator})
     mapreduce(oracles, ∪, X; init=Oracles())
 end
 
+
+############################################################################################
+# Neighbors
+
+neighbors(x::Expression) = variables(x) ∪ constraints(x) ∪ oracles(x)
+neighbors(x::Constraint) = variables(x)
+neighbors(x::Oracle) = variables(x) ∪ constraints(x)
+
+# Get all objects in the graph using graph search
+function nodes(x::Object)
+    visited = Objects()
+    queue = Objects([x])
+    while !isempty(queue)
+        node = pop!(queue)
+        if node ∉ visited
+            push!(visited, node)
+            union!(queue, neighbors(node))
+        end
+    end
+    visited
+end
+
+
 """
     constraints_oracles
 
@@ -44,72 +67,15 @@ Recursively find all variables, constraints, and oracles associated with an expr
 """
 function variables_constraints_oracles end
 
-function variables_constraints_oracles(e::Expression)
-    
-    vars = variables(e)
-    orcs = oracles(vars)
-    cons = constraints(vars ∪ orcs)
-    
-    variables_constraints_oracles(vars, cons, orcs)
-end
+function variables_constraints_oracles(x::Object)
+    xs = nodes(x)
 
-function variables_constraints_oracles(vars::Expressions, cons::Constraints, orcs::Oracles)
-    count = 1
-    while true
-        # get the variables associated with the constraints and the oracles
-        vars_new = variables(cons ∪ orcs)
+    vars = Expressions( v for v ∈ xs if v isa Expression )
+    cons = Constraints( c for c ∈ xs if c isa Constraint )
+    orcs = Oracles( o for o ∈ xs if o isa Oracle )
 
-        # get the constraints associated with the oracles
-        cons_new = constraints(vars ∪ orcs)
-
-        # get the oracles associated with the variables
-        orcs_new = oracles(vars)
-
-        union!( vars_new, variables(filter(!ismissing, next.(vars_new))) )
-
-        # if there are no new variables, constraints, or oracles, then exit
-        if vars_new ⊆ vars && orcs_new ⊆ orcs# && cons_new ⊆ cons
-            non_grams_new = Constraints()
-            subset_or_equal = 0
-            for coni in cons_new
-                if expression(coni) isa Gram
-                    subset_or_equal += 1
-                    for conj in cons
-                        if expression(conj) isa Gram && issetequal(expression(conj).vecs, expression(coni).vecs)
-                            subset_or_equal -= 1
-                            break
-                        end
-                    end
-                else
-                    push!(non_grams_new, coni)
-                end
-            end
-            if subset_or_equal == 0 && non_grams_new ⊆ cons
-                break
-            end
-        end
-
-        # otherwise, append the new information and repeat
-        union!( vars, vars_new )
-        union!( orcs, orcs_new )
-        union!( cons, cons_new )
-
-        
-        # check for an infinite loop
-        if count > 10
-            error("Iteration limit reached while finding variables, constraints, and oracles")
-        end
-        
-        count += 1
-    end
-    # info(cons)
     cons = prune!(cons)
-    cons = prune_grams(cons)
-    # @info "Algorithmic objects"
-    # info(vars)
-    # info(cons)
-    # info(orcs)
-    
+
     vars, cons, orcs
 end
 
