@@ -314,9 +314,7 @@ function constraints(o::AbstractLinearFunctional, ::Linear)
             update!( v'*w => next(v)'*next(w) )
         end
     end
-    # Constraints([ vecs ⊗ vecs ⪰ 0 ])
-    # Gram(vecs)
-    Constraints([ Gram(vecs) ⪰ 0 ])
+    Constraints([ vecs ⊗ vecs ⪰ 0 ])
 end
 
 function gram end

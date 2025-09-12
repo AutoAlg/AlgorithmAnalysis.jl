@@ -1,7 +1,7 @@
-using BlackBoxOptimization
+using AlgorithmAnalysis
 using Test
 
-@testset "BlackBoxOptimization.jl" begin
+@testset "AlgorithmAnalysis.jl" begin
 
   # ###############################################################################
   # # Relation
@@ -19,4 +19,19 @@ using Test
   # @test r2 ∘ r1 == Relation( Set([ 1 => 5 ]) )
   # @test r1 + inv(r2) == Relation( Set([ 2 => 10.0 ]) )
   # @test r2 + inv(r1) == Relation( Set([ 2.0 => 6 ]) )
+
+  @test begin
+    m,L = 1,10
+    α = 2 / (L + m)
+    @algorithm begin
+        f = DifferentiableFunctional{Rⁿ}()
+        xs = first_order_stationary_point(f)
+        f' ∈ SectorBounded(m, L, xs, f'(xs))
+        x0 = Rⁿ()
+        x1 = x0 - α * f'(x0)
+        x0 => x1
+        performance = (x0 - xs)^2
+    end
+    rate(performance) ≈ ((L-m)/(L+m))^2
+  end
 end

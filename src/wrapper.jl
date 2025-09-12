@@ -35,16 +35,6 @@ end
 
 
 ############################################################################################
-# Subset
-
-# struct Subset{T}
-#     properties::Properties
-
-#     Subset(T) = new{T}(Set{Property{T}}())
-# end
-
-
-############################################################################################
 # Unwrap
 
 """
@@ -54,6 +44,3 @@ Unwrap a wrapper (get the object that it wraps).
 """
 unwrap(x) = x
 unwrap(w::W) where {W<:Wrapper} = w.parent.associations[Base.typename(W).wrapper]
-
-
-iszero(w::Wrapper) = iszero(unwrap(w))

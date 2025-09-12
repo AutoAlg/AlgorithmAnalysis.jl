@@ -5,21 +5,9 @@
 +(::EmptyDecomposition{T}, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
 *(::Any, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
 
-function +(x1::Gram, x2::Number)
-    if x2 == 0
-        return x1
-    else
-        return missing
-    end
-end
++(x1::Gram, x2::Number) = iszero(x2) ? x1 : missing
 
-function -(x1::Gram, x2::Gram)
-    if issetequal(x1.vecs, x2.vecs)
-        return 0
-    else
-        return missing
-    end
-end
+-(x1::Gram, x2::Gram) = issetequal(x1.vecs, x2.vecs) ? 0 : missing
 
 function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
     dict = mergewith(+, weights(x1), weights(x2))
@@ -85,23 +73,4 @@ julia> y = [ Rⁿ(); Rⁿ() ]
 julia> G = x ⊗ y
 ```
 """
-function ⊗(x1::Vector{V}, x2::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}}
-    F[ x'*y for x ∈ x1, y ∈ x2 ]
-end
-
-# +(::Missing, ::Any) = missing
-# +(::Any, ::Missing) = missing
-# -(::Missing, ::Any) = missing
-# -(::Any, ::Missing) = missing
-# *(::Missing, ::Any) = missing
-# *(::Any, ::Missing) = missing
-# /(::Missing, ::Any) = missing
-# /(::Any, ::Missing) = missing
-
-# # Matrix-Number addition and subtraction
-# function +(x::AbstractArray, y::Number)
-#     iszero(y) ? x : error("Addition of array and number is ill-defined")
-# end
-# +(x::Number, y::AbstractArray) = y + x
-# -(x::AbstractArray, y::Number) = x + (-y)
-# -(x::Number, y::AbstractArray) = x + (-y)
+⊗(x1::Vector{V}, x2::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}} = Gram(x1,x2)

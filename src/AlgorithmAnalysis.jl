@@ -14,7 +14,8 @@ export R, Rⁿ, Rᵐ
 
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
-export label, label!, getlabel, value, value!, decomposition, selfdecomp, hasvalue, defaultlabel
+export label, label!, getlabel, value, value!, decomposition, selfdecomp
+export hasvalue, defaultlabel, vecs1, vec2
 export isvariable, hasdecomposition, previous, previous!, next, next!, update, update!
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
@@ -22,7 +23,7 @@ export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 export expression, set, add_constraint!
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
 export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
-export ⪯, ⪰, ⊂, ⊆
+export ⪯, ⪰, ⊆
 export Gram, evaluate, gram_to_constraint
 
 # relation

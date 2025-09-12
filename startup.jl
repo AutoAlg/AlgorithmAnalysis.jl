@@ -10,7 +10,7 @@ import SCS
 import LinearAlgebra as la
 using AbstractTrees
 
-m, L = 1, 10
+m,L = 1,10
 α = 2 / (L + m)
 @algorithm begin
     f = DifferentiableFunctional{Rⁿ}()
@@ -21,7 +21,7 @@ m, L = 1, 10
     x0 => x1
     performance = (x0 - xs)^2
 end
-rate(performance)
+@show rate(performance)
 
 # GD
 function GD(m, L, prev_rate=0)
