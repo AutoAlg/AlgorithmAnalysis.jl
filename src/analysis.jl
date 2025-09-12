@@ -309,7 +309,7 @@ function certify(performance::Expression, ρ::Number)
     # variables, constraints, and oracles associated with the performance measure
     vars, cons, _ = variables_constraints_oracles(performance)
     vars = collect(vars)
-    X, X⁺, x, u = stateupdate(vars) 
+    X, X⁺, x, u = stateupdate(vars)
     model = JuMP.Model(SCS.Optimizer)
     JuMP.set_silent(model)
     JuMP.@variable(model, P[1:length(x)])
@@ -324,6 +324,11 @@ function certify(performance::Expression, ρ::Number)
     # linear forms
     L1 = 𝒫 - V
     L2 = V⁺ - ρ*V
+
+    # stochastic case?
+    # L1 = -V
+    # L2 = V⁺ - ρ*V + 𝒫
+
     for con ∈ cons
         λ = multiplier(model, con)
         μ = multiplier(model, con)
