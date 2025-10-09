@@ -135,7 +135,8 @@ function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
         T(label, value, Constraints(), Oracles(), missing)
     end
 end
-function (::Type{T})(value::VectorValue{T}) where {T<:VectorSpace}
+# AFTER
+function (::Type{T})(value::Union{Missing, Zero, Decomposition, Vector}) where {T<:VectorSpace}
     if isempty(value)
         label = "Variable{$T}"
     elseif iszero(value)

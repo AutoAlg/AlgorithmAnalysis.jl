@@ -95,6 +95,9 @@ export quadraticform, linearform, tr, optvar, optcon
 export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
 export get_states_inputs, get_formulas, lift, neighbors, nodes
 
+# Stochastic 
+export GaussianRV, expectation, variance
+
 ############################################################################################
 # Import
 
@@ -113,6 +116,7 @@ import Base: promote_rule, convert, show, zero, zeros, adjoint
 import Base: length, Generator, iterate, size, push!, inv, pairs
 
 
+
 ############################################################################################
 # Include
 
@@ -125,13 +129,14 @@ include("relation.jl")
 include("oracle.jl")
 include("adjoint.jl")
 include("interpolation.jl")
-include("show.jl")
+include("reals.jl")
 include("label.jl")
 include("primitives.jl")
 include("algorithms.jl")
 include("hash.jl")
 include("algebra.jl")
-include("reals.jl")
 include("analysis.jl")
+include("stochastic.jl")
+include("show.jl")
 
 end

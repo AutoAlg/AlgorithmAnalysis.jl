@@ -1,0 +1,4081 @@
+cd("C:\\Users\\nlam1\\.julia\\dev\\BlackBoxOptimization.jl")
+
+using PackageCompiler
+
+PackageCompiler.create_sysimage(
+    [
+        :Convex,
+        :SCS,
+        :LinearAlgebra,
+        # :InteractiveUtils,
+        :AbstractTrees,
+        :Zeros,
+        :Revise,
+    ];
+    sysimage_path = "image.so",
+)"""
+    Operator{X,Y}()
+
+An operator from `X` to `Y`.
+
+An operator is a multi-valued function, so each element of `X` maps to a subset of `Y`.
+"""
+mutable struct Operator{X,Y} <: AbstractOperator{X,Y}
+    label::String
+    properties::Properties
+    relation::MultiValuedRelation{X,Y}
+    
+    Operator{X,Y}() where {X,Y} = new{X,Y}("Operator{$X,$Y}", Properties(), MultiValuedRelation{X,Y}())
+end
+
+"""
+    Map{X,Y}()
+
+A map from `X` to `Y`.
+
+A map is a single-valued function, so each element of `X` maps to a single element of `Y`.
+"""
+mutable struct Map{X,Y} <: AbstractFunction{X,Y}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,Y}
+    associations::Associations
+    
+    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}(), Associations())
+end
+
+"""
+    ConstantMap{X,Y}
+
+A constant map from `X` to `Y`.
+
+For a constant map, there is a unique element of `Y` such that any element of `X` maps to this element.
+"""
+mutable struct ConstantMap{X,Y} <: AbstractFunction{X,Y}
+    label::String
+    properties::Properties
+    relation::ConstantRelation{X,Y}
+    
+    ConstantMap{X,Y}(value = missing) where {X,Y} = new{X,Y}("ConstantMap{$X,$Y}", Properties(), ConstantRelation{X,Y}(value))
+end
+
+"""
+    LinearMap{X,Y}()
+"""
+mutable struct LinearMap{X,Y} <: AbstractLinearMap{X,Y}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,Y}
+    associations::Associations
+    
+    LinearMap{X,Y}() where {X,Y} = new{X,Y}("LinearMap{$X,$Y}", Properties([Linear()]), SingleValuedRelation{X,Y}(), Dict(Transpose => Map{Y,X}()))
+end
+
+"""
+    SymmetricLinearMap{X}
+"""
+mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,X}
+    
+    SymmetricLinearMap{X}() where {X} = new{X}("SymmetricLinearMap{$X}", Properties([Symmetric()]), SingleValuedRelation{X,X}())
+end
+
+"""
+    SkewSymmetricLinearMap{X}
+"""
+mutable struct SkewSymmetricLinearMap{X} <: AbstractSkewSymmetricLinearMap{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,X}
+    
+    SkewSymmetricLinearMap{X}() where {X} = new{X}("SkewSymmetricLinearMap{$X}", Properties([SkewSymmetric()]), SingleValuedRelation{X,X}())
+end
+
+"""
+    Functional{X}
+"""
+mutable struct Functional{X} <: AbstractFunctional{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,<:Field}
+    
+    Functional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("Functional{$X}", Properties(), SingleValuedRelation{X,F}())
+end
+
+"""
+    SubdifferentiableFunctional{X}
+"""
+mutable struct SubdifferentiableFunctional{X} <: AbstractSubdifferentiableFunctional{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,<:Field}
+    associations::Associations
+    
+    SubdifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("SubdifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Subdifferential => Operator{X,X}()))
+end
+
+"""
+    DifferentiableFunctional{X}
+"""
+mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,<:Field}
+    associations::Associations
+    
+    function DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
+        f = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+        push!(unwrap(f').associations, GradientOf => f)
+        f
+    end
+    # DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+end
+
+"""
+    TwiceDifferentiableFunctional{X}
+"""
+mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,<:Field}
+    associations::Associations
+    
+    TwiceDifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("TwiceDifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}(), Hessian => Map{X,SymmetricLinearMap{X}}()))
+end
+
+"""
+    QuadraticFunctional{X}
+"""
+mutable struct QuadraticFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,<:Field}
+    associations::Associations
+    
+    QuadraticFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("QuadraticFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => LinearMap{X,X}(), Hessian => SymmetricLinearMap{X}()))
+end
+
+"""
+    LinearFunctional{X}
+"""
+mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,<:Field}
+
+    function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
+        f = new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
+        # push!(unwrap(f').associations, TransposeOf => f) # new
+        f #new
+    end
+end
+
+"""
+    ZeroFunctional{X}
+"""
+mutable struct ZeroFunctional{X} <: AbstractLinearFunctional{X}
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{X,<:Field}
+
+    ZeroFunctional{X}() where {X} = new{X}("ZeroFunctional{$X}", Properties())  # [Linear()]
+end
+
+
+iszero(o::Oracle) = false
+iszero(o::ZeroFunctional) = true
+
+# function (::Type{T})(p::Pair) where {T<:Oracle}
+#     if T <: AbstractFunctional
+#         if p.second <: Scalar && p.first <: Point{p.second}
+#         T{Expression{p.first}}()
+#         else
+#         error("A functional must be a map from a vector space to its underlying field.")
+#         end
+#     else
+#         T{p.first,p.second}()
+#     end
+# end
+
+# (::Type{T})(X) where {T<:AbstractFunctional} = T{X}()
+
+
+############################################################################################
+# Methods
+
+"""
+    oracle(o)
+
+Get the oracle associated with a wrapper.
+
+# Examples
+```julia-repl
+julia> A = LinearOperator{Rⁿ}()
+julia> oracle(A') == A.transpose  # true
+```
+"""
+# oracle(o::Oracle) = o
+# oracle(w::Wrapper{<:Oracle}) = unwrap(w)
+
+"""
+    relation(o)
+
+The relation associated with an oracle (or its wrapper).
+"""
+relation(o::OracleOrWrapper) = unwrap(o).relation
+
+function associations(o::OracleOrWrapper)
+    hasproperty(unwrap(o), :associations) ? unwrap(o).associations : Associations()
+end
+
+"""
+    samples(o)
+
+Get the samples associated with an oracle (or its wrapper).
+
+The set of samples is a `Relation`. Iterating an oracle iterates over its samples.
+"""
+samples(o::OracleOrWrapper) = samples(relation(o))
+
+description(w::W) where {W<:Wrapper{<:Oracle}} = "$(string(Base.typename(W).wrapper)) of $(label(w.parent))"
+description(o::Operator) = "Operator from $(domain(o)) to $(codomain(o))"
+description(o::Map) = "Map from $(domain(o)) to $(codomain(o))"
+description(o::ConstantMap) = "Constant map from $(domain(o)) to $(codomain(o))"
+description(o::LinearMap) = "Linear map from $(domain(o)) to $(codomain(o))"
+description(o::SymmetricLinearMap) = "Symmetric linear map from $(domain(o)) to $(codomain(o))"
+description(o::SkewSymmetricLinearMap) = "Skew-symmetric linear map from $(domain(o)) to $(codomain(o))"
+description(o::Functional) = "Functional on $(domain(o))"
+description(o::DifferentiableFunctional) = "Differentiable functional on $(domain(o))"
+description(o::SubdifferentiableFunctional) = "Subdifferentiable functional on $(domain(o))"
+description(o::TwiceDifferentiableFunctional) = "Twice differentiable functional on $(domain(o))"
+description(o::QuadraticFunctional) = "Quadratic functional on $(domain(o))"
+description(o::LinearFunctional) = "Linear functional on $(domain(o))"
+description(o::ZeroFunctional) = "Zero functional on $(domain(o))"
+
+
+############################################################################################
+# Iterate
+
+length(o::OracleOrWrapper) = length(samples(o))
+
+iterate(o::OracleOrWrapper) = iterate(samples(o))
+iterate(o::OracleOrWrapper, state::Int) = iterate(samples(o), state)
+
+
+############################################################################################
+# Sample
+
+"""
+    sample(o, x, l = "")
+
+Sample an oracle (or its wrapper) at a point in its domain.
+
+If the relation is single-valued and it has already been sampled at `x`, then the
+corresponding point in the codomain is returned. Otherwise, a new point is sampled using
+`Y()`, and a default label is used for the sample. A label may be specified for the sampled 
+point, or it defaults to an intuitive label.
+
+**Important:** Do not call `sample` directly. Instead, use `o(x)` to sample an oracle at a
+point. For linear maps, `o*x` may also be used to denote sampling.
+
+# Examples
+```julia-repl
+julia> A = LinearFunctional{Rⁿ}()
+julia> x = Rⁿ()
+julia> isequal(A(x), A*x)  # true
+```
+"""
+function sample end
+
+sample(w::Wrapper, x, l::String = "") = sample(unwrap(w), x, l)
+
+function sample(o::Oracle, x, l::String = "")
+    if iszero(o) || iszero(x)
+        return codomain(o)(Zero())
+    end
+    y = sample(relation(o), x)
+    label!(y, isempty(l) ? defaultlabel(o,x) : l)
+    push!(x.oracles, o)
+    push!(y.oracles, o)
+    y
+end
+
+sample(::ZeroFunctional{X}, ::X) where {F<:Field, X<:InnerProductSpace{F}} = F(Zero())
+
+function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
+    # if x is zero, then return the scalar zero
+    if (iszero(o) || iszero(x))
+        y = F(Zero())
+    # else if x has an empty decomposition, sample it directly
+    elseif isempty(decomposition(x))
+        if hash(o') > hash(x)
+            y = sample(relation(o), x)
+            label!(y, defaultlabel(o,x))
+        else
+            y = sample(relation(x), o)
+            label!(y, defaultlabel(x,o))
+        end
+        push!(x.oracles, o)
+        push!(y.oracles, o)
+    # otherwise, sample each element of the decomposition
+    else
+        y = F(Zero())
+        for (key,value) ∈ weights(selfdecomp(x))
+            if hash(o') > hash(key)
+                y0 = sample(relation(o), key)
+                label!(y0, defaultlabel(o, key))
+                y += value*y0
+            else
+                y0 = sample(key, relation(o))
+                label!(y0, defaultlabel(key, o))
+                y += value*y0
+            end
+            push!(key.oracles, o)
+            push!(y0.oracles, o)
+        end
+    end
+    y
+end
+
+# function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:InnerProductSpace{F}}
+    
+#     if iszero(x) || iszero(o)
+#         F(0)
+#     else
+#         y = sample(relation(o), x)
+#         label!(y, isempty(label) ? defaultlabel(o,x) : label)
+#         push!(x.oracles, o)
+#         push!(y.oracles, o)
+#         y
+#     end
+# end
+
+# function sample(o::LinearDecomposition, x)
+#     y = Zero()
+#     for (key,value) ∈ weights(o)
+#         y0 = sample(relation(key), x)
+#         label!(y0, defaultlabel(key, x))
+#         push!(key.oracles, o)
+#         push!(y0.oracles, o)
+#         y += value*y0
+#     end
+#     y
+# end
+
+# Sample a linear function of linear functionals by taking a linear combination of samples of each functional
+# function sample(o::LinearDecomposition{T}, x::X) where {F<:Field, X<:VectorSpace{F}, T<:AbstractLinearFunctional{X}}
+#     mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=F(0) )
+# end
+
+# function sample(o::LinearDecomposition, x)
+#     mapreduce( p -> last(p)*sample(first(p), x), +, weights(o); init=Zero() )
+# end
+
+# Overload () to denote sampling
+# """
+#     (o::OracleOrWrapper)(x) = sample(o,x)
+# This function overloads () to sample an oracle. To sample oracle `f'` at expression `x0`, use f'(x0)
+
+# ```julia-repl
+# julia> x0 = Rⁿ()
+# julia> f = DifferentiableFunctional{Rⁿ}()
+# julia> f'(x0)
+# """
+(o::OracleOrWrapper)(x) = sample(o,x)
+
+# For linear maps, also use * to denote sampling
+# """
+#     *(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},OrWrapper{AbstractSymmetricLinearMap},Dual}, x) = sample(o,x)
+# This function overloads * to sample a linear map oracle. To sample oracle `Σ'` at expression `x0`, use Σ*x0
+
+# ```julia-repl
+# julia> x0 = Rⁿ()
+# julia> Σ = SymmetricLinearMap{Rⁿ}()
+# julia> Σ*x0
+# """
+*(o::Union{OrWrapper{AbstractLinearMap},OrWrapper{AbstractLinearFunctional},OrWrapper{AbstractSymmetricLinearMap},Dual}, x) = sample(o,x)
+
+function *(o::Dual{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
+    if iszero(o) || iszero(x)
+        F(Zero())
+    else
+        y = F(Zero())
+        for (key1,val1) ∈ weights(selfdecomp(o')), (key2,val2) ∈ weights(selfdecomp(x))
+            # Inner product ordering done by hash
+            if hash(key2) < hash(key1)
+                orc = unwrap(key2')
+                y0 = sample(relation(orc), key1)
+                label!(y0, defaultlabel(key2', key1))
+                push!(key1.oracles, orc)
+                push!(y0.oracles, orc)
+                y += val1 * val2 * y0
+            else
+                orc = unwrap(key1')
+                y0 = sample(relation(orc), key2)
+                label!(y0, defaultlabel(key1', key2))
+                push!(key2.oracles, orc)
+                push!(y0.oracles, orc)
+                y += val1 * val2 * y0
+            end
+        end
+        y
+    end
+end
+
+
+############################################################################################
+# Properties
+
+properties(o::OracleOrWrapper) = unwrap(o).properties
+
+"""
+    ∈(o::OracleOrWrapper, property::Property)
+    ∈(o::OracleOrWrapper, properties::Properties)
+Push a property or set of properties onto an Oracle.
+
+# Examples
+```julia-repl
+f = DifferentiableFunctional{Rⁿ}()
+f ∈ SmoothStronglyConvex(1, 10) # Push the property of being 1 smooth 10 strongly convex onto Oracle `f`
+```
+"""
+∈(o::OracleOrWrapper, property::Property) = push!(properties(o), property)
+∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties)
+
+
+############################################################################################
+# Inputs / outputs
+
+inputs(o::OracleOrWrapper) = Set(first(p) for p ∈ unwrap(o))
+outputs(o::OracleOrWrapper) = Set(last(p) for p ∈ unwrap(o))
+
+inputs(s::Set{<:OracleOrWrapper}) = mapreduce(inputs, ∪, s)
+outputs(s::Set{<:OracleOrWrapper}) = mapreduce(outputs, ∪, s)
+
+domain(::AbstractOperator{X,Y}) where {X,Y} = X
+codomain(::AbstractOperator{X,Y}) where {X,Y} = Y
+codomain(::AbstractFunctional{X}) where {F<:Field, X<:VectorSpace{F}} = F
+
+function inputs_outputs(o::OracleOrWrapper)
+    pairs = collect(samples(o))
+    ([first(p) for p ∈ pairs], [last(p) for p ∈ pairs])
+end
+
+domain(w::Wrapper{<:Oracle}) = domain(unwrap(w))
+codomain(w::Wrapper{<:Oracle}) = codomain(unwrap(w))
+
+function get_oracle_input(e::Expression) # Get the oracle and the expression used to create en expression
+    if !(e isa Gram) && hasproperty(e, :oracles) && hasmethod(oracles, Tuple{typeof(e)}) # Check if the expression has oracles
+        if length((oracles(e))) > 0
+            for o in oracles(e)
+                io = inputs_outputs(o)
+                index = findfirst(isequal(e), io[2])
+                if !isnothing(index)  
+                    return o, io[1][index] # Return the oracle and the sampled expression
+                end
+            end
+        end
+    end
+    return missing, missing
+    # error("No oracle had the expression $(e) as an output") # No oracle was found
+end
+############################################################################################
+# The zero expression
+
+zero(::T) where {T<:Expression} = T(Zero())
+zero(::Type{T}) where {T<:Expression} = T(Zero())
+
+convert(::Type{T}, ::Zero) where {T<:Expression} = T(Zero())
+
+
+############################################################################################
+# Macro definitions of concrete expression types
+
+"""
+    macro field(F)
+
+Defines a field `F`.
+"""
+macro field(s::Symbol)
+    quote
+        mutable struct $(esc(s)) <: Field
+            label::String
+            value::ScalarValue{$(esc(s))}
+            constraints::Constraints
+            oracles::Oracles
+            next::State{$(esc(s))}
+        end
+    end
+end
+
+"""
+    macro vectorspace(V, F)
+
+Defines a vector space `V` over a field `F`.
+"""
+macro vectorspace(ex::Expr)
+    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+        throw(ArgumentError("@vectorspace: `$(ex)` must be of the form: `V, F` where `V` is a vector space over a field `F`."))
+    end
+    quote
+        mutable struct $(esc(ex.args[1])) <: VectorSpace{$(esc(ex.args[2]))}
+            label::String
+            value::VectorValue{$(esc(ex.args[1]))}
+            constraints::Constraints
+            oracles::Oracles
+            next::State{$(esc(ex.args[1]))}
+        end
+    end
+end
+
+"""
+    macro normedvectorspace(V, F)
+
+Defines a normed vector space `V` over a field `F`.
+"""
+macro normedvectorspace(ex::Expr)
+    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+        throw(ArgumentError("@normedvectorspace: `$(ex)` must be of the form: `V, F` where `V` is a normed vector space over a field `F`."))
+    end
+    quote
+        mutable struct $(esc(ex.args[1])) <: NormedVectorSpace{$(esc(ex.args[2]))}
+            label::String
+            value::VectorValue{$(esc(ex.args[1]))}
+            constraints::Constraints
+            oracles::Oracles
+            next::State{$(esc(ex.args[1]))}
+        end
+    end
+end
+
+"""
+    macro innerproductspace(V, F)
+
+Defines an inner product space `V` over a field `F`.
+"""
+macro innerproductspace(ex::Expr)
+    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+        throw(ArgumentError("@innerproductspace: `$(ex)` must be of the form: `V, F` where `V` is an inner product space over a field `F`."))
+    end
+    quote
+        mutable struct $(esc(ex.args[1])) <: InnerProductSpace{$(esc(ex.args[2]))}
+            label::String
+            value::VectorValue{$(esc(ex.args[1]))}
+            constraints::Constraints
+            oracles::Oracles
+            next::State{$(esc(ex.args[1]))}
+            associations::Associations
+
+            function $(esc(ex.args[1]))(label::String, value::VectorValue, constraints::Constraints, oracles::Oracles, next::State)
+                associations = Dict(Dual => LinearFunctional{$(esc(ex.args[1]))}())
+                new(label, value, constraints, oracles, next, associations)
+            end
+        end
+    end
+end
+
+"""
+    Gram <: Expression
+
+A Gram matrix is a matrix of inner product between all pairs of a set of vectors.
+"""
+struct Gram <: Expression
+    label:: String 
+    value:: Missing
+    constraints::Constraints
+    oracles::Oracles
+    next::State{Zero}
+    vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}}
+
+    function Gram(vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}})
+        new("", missing, Constraints(), Oracles(), missing, vecs)
+    end
+end
+
+############################################################################################
+# Constructors
+
+# label
+function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
+    T(label, missing, Constraints(), Oracles(), missing)
+end
+
+# value
+function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
+    if isempty(value)
+        label = "Variable{$T}"
+    elseif iszero(value)
+        label = "0"
+    else
+        label = ""
+    end
+    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
+        first(keys(weights(value)))
+    else
+        T(label, value, Constraints(), Oracles(), missing)
+    end
+end
+function (::Type{T})(value::VectorValue{T}) where {T<:VectorSpace}
+    if isempty(value)
+        label = "Variable{$T}"
+    elseif iszero(value)
+        label = "0"
+    else
+        label = ""
+    end
+    if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
+        first(keys(weights(value)))
+    else
+        T(label, value, Constraints(), Oracles(), missing)
+    end
+end
+
+
+############################################################################################
+# Methods
+constraints(e::Expression) = e.constraints
+
+"""
+    oracles(e)
+
+List of oracles that have been sampled at the expression `e`.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> oracles(x)
+```
+"""
+oracles(e::Expression) = e.oracles
+
+"""
+    associations(::Expression)
+    associations(e::InnerProductSpace)
+    associations(o::Oracle)
+
+List the associations of an input e depending on its type:
+-- *Expression*
+If the input is an expression, return an empty set of associations.
+-- *InnerProductSpace Expression*:
+If the input is an inner product space expression, return its associations field.
+-- *Oracle*:
+If the input is an oracle,  return the set of oracles associated with the oracle `o` if it has a `associations` property, otherwise return an empty set of associations.
+
+
+# Examples
+```julia-repl
+julia> e = Rⁿ()
+julia> associations(e)
+```
+"""
+associations(::Expression) = Associations()
+associations(e::InnerProductSpace) = e.associations
+
+# types of expressions
+"""
+    isvariable(e)
+
+Check if the expression `e` is a variable.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> isvariable(x)
+```
+"""
+isvariable(e::Expression) = e.value isa Missing
+
+"""
+    iszero(e::Expression)
+    iszero(o::Oracle) = false
+    iszero(o::ZeroFunctional) = true
+
+Check if an input is zero depending on its type
+-- *Expression**:
+Check if the expression e is a Zero object
+-- *Oracle**:
+Check wheter an oracle is Zero, only true when it is a ZeroFunctional oracle
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> iszero(x)
+```
+
+"""
+iszero(e::Expression) = e.value isa Zero
+
+"""
+    hasdecomposition(e)
+
+Check if the expression `e` has a decomposition.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> hasdecomposition(e)
+```
+"""
+hasdecomposition(e::Expression) = e.value isa Decomposition
+
+"""
+    hasvalue(e)
+
+Check if the expression `e` or every expression in an array or set of expression has a value.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> hasvalue(x)
+
+julia> x = [Rⁿ(), Rⁿ()]
+julia> hasvalue(x)
+```
+"""
+hasvalue(e::Expression) = !isvariable(e) && !hasdecomposition(e)
+hasvalue(a::ArrayOrSet{Expression}) = all(hasvalue(e) for e ∈ a)
+
+"""
+    decomposition(e)
+
+Return the decomposition of the expression `e` if it has one, throws an error otherwise.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> decomposition(x)
+```
+"""
+function decomposition(e::Expression)
+    hasdecomposition(e) ? e.value : error("Expression $e does not have a decomposition")
+end
+
+"""
+    value(e)
+
+Return the value of the expression `e` or an array of expression if it has one, throws an error otherwise
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> value(x)
+```
+"""
+function value(e::Expression)
+    hasvalue(e) ? e.value : error("Expression $e does not have a value")
+end
+
+value(a::AbstractArray{<:Expression}) = [ value(e) for e ∈ a ]
+
+"""
+    value!(e, val)
+
+Assign a value to an expression or array of expressions. 
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> value!(x,val)
+```
+"""
+value!(e::Expression, val) = (e.value = val)
+function value!(a::AbstractArray{<:Expression}, val::AbstractArray)
+    if size(a) ≠ size(val)
+        error("Sizes incompatible for assignment")
+    else
+        foreach( (e,v) -> value!(e, v), zip(a,val) )
+    end
+end
+
+"""
+    variables(e)
+
+Return variable expression of an expression `e`.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> variables(x)
+```
+"""
+function variables(e::Expression)
+    if hasdecomposition(e)
+        variables(decomposition(e))
+    elseif e isa Gram
+        Set(e.vecs)
+    elseif isvariable(e)
+        Expressions([e])
+    else
+        Expressions()
+    end
+end
+
+"""
+    selfdecomp(e)
+
+Return the decomposition of an expression if it has a non-empty decomposition, return its LinearDecomposition otherwise.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> selfdecomp(x)
+```
+"""
+function selfdecomp(e::T) where {T<:Expression}
+    if hasdecomposition(e) && !isempty(decomposition(e))
+        decomposition(e)
+    else
+        LinearDecomposition(e)
+    end
+end
+
+"""
+    next!(e1, e2)
+
+Set the expression e2 as the next field of the expression e1
+# Examples
+```julia-repl
+julia> e1 = Rⁿ()
+julia> e2 = Rⁿ()
+julia> next(e1, e2)
+```
+"""
+next!(x::T, y::State{T}) where {T<:Expression} = x.next = y
+
+"""
+    next(f::AbstractFunction)
+    next(f::Oracle)
+    next(f::Wrapper{<:Oracle})
+    next(d:: Dual{})
+    next(e::Expression)
+    next(a::AbstractArray{<:Expression})
+    next(o::Oracle)
+
+Return the next state of the input `x`. The behavior of `next` depends on the type and structure of `x`:
+
+- **AbstractFunction (`f`)**:
+If `f` is an abstract function that returns itself when sampled at an expression `e`
+- **Expression (`e`)**:  
+  If `e` has a `next` field, return it.  
+  If `e` was created by sampling an oracle at another expression `x`, and `x` has a `next` state, return the oracle sampled at `next(x)`.  
+  If `e` has a decomposition where all variable expressions have a `next` field, return a new expression constructed from the next state of each component.  
+  Otherwise, return `missing`.
+  If `e` is the transpose of `e'`, and `f'` is the next state of `e'`, return the transpose of `f'`.
+
+- **Oracle (`o`)**:  
+  Return the oracle itself, assuming it represents its own next state.
+
+- **Array or set of expressions (`a`)**:  
+  Return a collection containing the next state of each expression in `a`.
+
+# Examples
+```julia-repl
+julia> e = Rⁿ()
+julia> next(e)
+
+julia> e = e'
+julia> next(e)
+
+julia> f = DifferentiableFunctional{Rⁿ}()
+julia> f ∈ SmoothStronglyConvex(m, L)
+julia> next(f')
+
+julia> a = [Rⁿ(), Rⁿ()]
+julia> next(a)
+```
+"""
+function next(f::AbstractFunction)
+    if f isa LinearFunctional
+        io = inputs_outputs(f)
+        index = findfirst(ex -> ex === f, io[2])
+        if index === nothing
+            return missing
+        end
+        nextx = next(io[1][index])
+        if nextx === missing
+            return missing
+        end
+        for i in eachindex(io[2])
+            if nextx === io[1][i] || (hasdecomposition(nextx) && hasdecomposition(io[1][i]) && abs(sum(collect(values(weights(nextx - io[1][i]))))) < 1e-10)
+                return io[2][i]
+            end
+        end
+        return missing
+    else
+        return f
+    end
+end
+
+next(f::Oracle) = f
+next(f::Wrapper{<:Oracle}) = f
+next(d:: Dual{}) = d'.next'
+next(::Missing) = missing
+
+function next(x::Expression)
+    if !ismissing(x.next)
+        return x.next
+    end
+    if !hasdecomposition(x)
+        orc, input = get_oracle_input(x)
+        nextx = next(input)
+        nextoracle = next(orc)
+        if ismissing(nextoracle) || ismissing(nextx)
+            return missing
+        end
+        nextio = inputs_outputs(nextoracle)
+        for i in eachindex(nextio[1])
+            if nextx === nextio[1][i] || iszero(nextx - nextio[1][i]) || (hasdecomposition(nextx) && hasdecomposition(nextio[1][i]) && abs(sum(collect(values(weights(nextx - nextio[1][i]))))) < 1e-10)
+                if hasfield(typeof(x), :next)
+                    next!(x, nextio[2][i])
+                end
+                return nextio[2][i]
+            end
+        end
+        return missing
+    else
+        nextx = zero(x)
+        for i in collect(keys(weights(decomposition(x))))
+            if ismissing(i.next)
+                return missing
+            end
+            nextx = nextx + weights(decomposition(x))[i] * i.next
+        end
+        next!(x, nextx)
+        return nextx
+    end   
+end
+next(a::AbstractArray{<:Expression}) = [ next(x) for x ∈ a ]
+
+"""
+    update!(p)
+
+Given a pair of expressions, update the second expression as the next state of the first expression.
+
+# Examples
+```julia-repl
+julia> x  = Rⁿ()
+julia> x⁺ = Rⁿ()
+julia> update!( x => x⁺ )
+```
+"""
+function update!(p::Pair{T, <:State{T}}) where {T}
+    next!(first(p), last(p))
+    nothing
+end
+
+"""
+    weights(e)
+
+If the expression `e` have a decomposition, return a dictionary whose entries are variable expressions in `e`'s decomposition and their corresponding weights in `e`.
+# Examples
+```julia-repl
+julia> x0 = Rⁿ()
+julia> x1 = x0 - 0.2*f'(x0) 
+julia> weights(x1)
+```
+"""
+weights(e::Expression) = weights(decomposition(e))
+
+
+size(::Expression) = (1,1)
+size(g::Gram) = size(evaluate(g))
+
+length(::Expression) = 1
+iterate(e::Expression) = iterate(e,1)
+iterate(e::Expression, state::Int) = (state > 1 ? nothing : (e, state+1))
+
+
+############################################################################################
+# Evaluate
+
+"""
+    evaluate(e::Expression)
+
+Evaluates an expression.
+
+If the expression has a value, this returns the value. Otherwise, it returns `missing`.
+"""
+function evaluate(e::Expression)
+    if hasvalue(e)
+        value(e)
+    elseif hasdecomposition(e)
+        evaluate(decomposition(e))
+    else
+        missing
+    end
+end
+evaluate(x::LinearDecomposition) = mapreduce(p -> last(p)*evaluate(first(p)), +, weights(x))
+evaluate(a::AbstractArray{<:Expression}) = [ evaluate(e) for e ∈ a ]
+function evaluate(g::Gram)
+    return g.vecs ⊗ g.vecs
+end
+
+"""
+    ⊂(G1, G2)
+
+Returns whether or not Gram matrix `G1` is a strict subset of Gram matrix `G2`.
+"""
+⊂(g1::Gram, g2::Gram) = ⊂(Expressions(g1.vecs), Expressions(g2.vecs))
+
+"""
+    ⊆(g1, g2)
+
+Return whether or not Gram matrix `G1` is a subset or equal of Gram matrix `G2`.
+"""
+⊆(g1::Gram, g2::Gram) = ⊆(Expressions(g1.vecs), Expressions(g2.vecs))
+
+⊂(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2)) && !isempty(setdiff(s2, s1))
+⊆(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2))
+import Base.hash
+
+"""
+    hash(x, h::UInt)
+
+Hash of an expression. Custom types must provide specialized methods for this function due to [this issue](https://github.com/JuliaLang/julia/issues/10267).
+"""
+function hash end
+
+hash(e::Oracle, h::UInt) = hash(relation(e), h)
+
+function hash(e::Expression, h::UInt)
+    if !ismissing(e.value)
+        hash(e.value, hash(:Expression, h))
+    else
+        hash(objectid(e), h)
+    end
+end
+hash(x::LinearDecomposition, h::UInt) = hash(weights(x), hash(:LinearDecomposition, h))
+hash(c::Constraint, h::UInt) = hash(set(c), hash(expression(c), hash(:Constraint, h)))
+hash(c::Satisfied, ::UInt) = objectid(c)
+hash(c::Unsatisfied, ::UInt) = objectid(c)
+
+function hash(a::AbstractArray{<:Expression}, h::UInt)
+    h = hash(size(a), hash(:AbstractArray, h))
+    for x ∈ a
+        h = hash(x, h)
+    end
+    h
+end
+
+
+############################################################################################
+# IsEqual
+
+isequal(::Expression, ::Any) = false
+isequal(::Any, ::Expression) = false
+isequal(::Expression, ::Expression) = false
+
+function isequal(x1::T, x2::T) where {T<:Expression}
+    if !isdefined(x1, :value) || !isdefined(x2, :value)
+        false 
+    elseif !ismissing(x1.value) && !ismissing(x2.value)
+        isequal(x1.value, x2.value)
+    elseif ismissing(x1.value) && ismissing(x2.value)
+        x1 ≡ x2
+    else
+        false
+    end
+end
+
+function isequal(x1::AbstractArray{<:Expression}, x2::Expression)
+    length(x1) == 1 && isequal(x1[1], x2) ? true : false
+end
+isequal(x1::Expression, x2::AbstractArray{<:Expression}) = isequal(x2,x1)
+
+function isequal(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
+    isequal(weights(x1), weights(x2))
+end
+function isequal(a1::AbstractArray{T}, a2::AbstractArray{T}) where {T<:Expression}
+    isequal(size(a1), size(a2)) && all( isequal(a1[i],a2[i]) for i ∈ eachindex(a1) )
+end
+
+isequal(x::T, y::Wrapper{T}) where {T} = isequal(x, unwrap(y))
+isequal(x::Wrapper{T}, y::T) where {T} = isequal(unwrap(x), y)
+
+function isequal(lhs::Constraint, rhs::Constraint)
+    isequal( set(lhs), set(rhs) ) && isequal( expression(lhs), expression(rhs) )
+end
+isequal(::Satisfied, ::Satisfied) = true
+isequal(::Unsatisfied, ::Unsatisfied) = true
+isequal(::Satisfied, ::Constraint) = false
+isequal(::Unsatisfied, ::Constraint) = false
+isequal(::Constraint, ::Satisfied) = false
+isequal(::Constraint, ::Unsatisfied) = false"""
+    label(x)
+
+Get the label of an `Expression` or `Oracle`.
+"""
+function label end
+
+"""
+    label!(x, s::String)
+
+Set the label of an `Expression` or `Oracle` (or its `Wrapper`).
+
+When an oracle is sampled at a point using [`sample`](@ref), the labels of the oracle and the
+point at which it is sampled is used to automatically create an intuitive label.
+
+For oracles, this function recursively labels all suboracles.
+- The main suboracle uses the same label.
+- Other suboracles (accessed via the `adjoint`) are given intuitive labels. For example:
+    - the adjoint of a linear map with label `A` is `A*`
+    - the subdifferential of a functional with label `f` is `∂f`
+    - the gradient of a functional with label `f` is `∇f`
+    - the Hessian of a functional with label `f` is `∇²f`
+
+See also: [`@algorithm`](@ref).
+
+```julia-repl
+julia> f = QuadraticFunctional{Rⁿ}()
+julia> label!(f, "f")  # label the function
+julia> label(f)        # "f"
+julia> label(f')       # "∇f"
+julia> label(f'')      # "∇²f"
+julia> x = Rⁿ()        # construct a vector
+julia> label!(x, "x")  # label the point
+julia> y = f(x)        # sample the function at a point
+julia> label(y)        # "f(x)"
+```
+"""
+function label! end
+
+label(x::Union{Expression,Oracle}) = x.label
+label(w::Wrapper) = label(unwrap(w))
+
+"""
+    description(e::Expression)
+    description(o::Oracle)
+
+Return the label information of an input depending on its type:
+-- **Expression**
+Return the label of an expression
+-- **Oracle**
+Return the label and type information of an oracle
+
+```julia-repl
+julia> x0 = Rⁿ()
+julia> label(x0, "x0")
+julia> description(x0) # Returns "x0"
+"""
+description(e::Expression) = (isempty(label(e)) ? description(decomposition(e)) : label(e))
+function description(d::LinearDecomposition)
+    isempty(d) && return "(empty)"
+    str = ""
+    first = true
+    for (key, value) ∈ weights(d)
+        if first
+            first = false
+            if value == 1
+                str *= string(key)
+            elseif value == -1
+                str *= "-" * string(key)
+            else
+                str *= string(value) * " " * string(key)
+            end
+        else
+            if value == 1
+                str *= " + " * string(key)
+            elseif value == -1
+                str *= " - " * string(key)
+            elseif value ≥ 0
+                str *= " + " * string(value) * " " * string(key)
+            else
+                str *= " - " * string(-value) * " " * string(key)
+            end
+        end
+    end
+    str
+end
+
+############################################################################################
+# Expressions
+
+label!(::Any, ::String) = nothing
+
+label!(e::Expression, label::String) = (e.label=label; nothing)
+# label!(x::InnerProductSpace, label::String) = (x.label=label; label!(x.dual,label*"*"); nothing)
+
+function label!(x::InnerProductSpace, label::String)
+    x.label = label
+    label!(x.associations[Dual],label*"*")
+    nothing
+end
+
+############################################################################################
+# Oracles
+
+# label!(o::Oracle, label::String) = (o.label=label; map(p -> label!(last(p), defaultlabel(first(p), label)), collect(associations(o))); nothing)
+function label!(o::Oracle, label::String)
+    o.label = label
+    for a ∈ associations(o)
+        if hasmethod(defaultlabel, (Type{first(a)}, String))
+        # if applicable(defaultlabel, first(a), label)
+            label!(last(a), defaultlabel(first(a), label))
+        end
+    end
+    nothing
+end
+
+"""
+    defaultlabel(T, label)
+
+Create a label for an expression depending on its type `T`` and its label `label`
+- **Transpose**:  
+  For a transpose expression of an expression labeled `e`, return label string `e*`
+
+- **Subdifferential**:  
+  For the subdifferential of a functional labeled `f`, return label string `∂f`
+
+- **Gradient**:  
+    For the Gradient of a functional labeled `f`, return label string `∇f`
+    
+- **Hessian**:  
+    For the Hessian of a functional labeled `f`, return label string `∇²f`
+
+- **AbstractOperator**:
+    For an abstract operator labeled `f` applied on an expression labeled `e`, return label string `f(e)`
+
+- **ConstantMap**:
+    For an ConstantMap label `Σ`, return its label string `Σ`
+
+- **InnerProduct**:
+    For an inner product between expressions labeled `e1` and `e2` , return label string `<e1, e2>`
+
+- **Norm**:
+    For an inner product between an expression labeled `e1` and its transpose labeled `e1*`, return label string `|e1|²`
+
+```julia-repl
+julia> f = QuadraticFunctional{Rⁿ}()
+julia> defaultlabel(Type{f'}, label(f))
+"""
+defaultlabel(::Type{Transpose}, label::String) = label * "*"
+defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
+defaultlabel(::Type{Gradient}, label::String) = "∇" * label
+defaultlabel(::Type{Hessian}, label::String) = "∇²" * label
+
+defaultlabel(o::AbstractOperator, x) = "$(label(o))($(label(x)))"
+defaultlabel(o::ConstantMap, ::Any) = label(o)
+
+function defaultlabel(o::AbstractLinearFunctional{X}, x::X) where {X<:InnerProductSpace}
+    "⟨"*label(x)*","*label(o)*"⟩"
+end
+
+function defaultlabel(w::Dual{X}, x::X) where {X}
+    isequal(w', x) ? "|"*label(x)*"|²" : "⟨"*label(x)*","*label(w')*"⟩"
+end
+
+############################################################################################
+# Algorithm macro
+
+"""
+    @algorithm
+
+Automatic labeling of types `Expression` and `Oracle`.
+
+This macro evaluates the right-hand side of the assignment, binds the expression to the
+symbol on the left-hand side, and then calls `label!` to label the expression with the
+symbol from the left-hand side.
+
+The macro can be used on single assignment expressions or on a block of expressions.
+
+Any non-assignment expressions are evaluated without labeling.
+
+```julia-repl
+julia> @algorithm a = R()  # define and label a scalar
+julia> label(a)            # "a"
+julia> @algorithm begin
+julia>     x = Rⁿ()        # define and label a set of variables
+julia>     y = Rᵐ()
+julia> end
+```
+"""
+macro algorithm(ex::Expr)
+    _algorithm(ex)
+end
+
+_algorithm(x::LineNumberNode) = x
+_algorithm(x::Symbol) = x
+
+function _algorithm(ex::Expr)
+
+    # if the expression is a block, call the macro on each argument in the block
+    if ex.head == :block
+        Expr(:block, [ _algorithm(arg) for arg ∈ ex.args ]...)
+
+    # else if the expression is a for loop, evalaute the macro on each line of the loop
+    elseif ex.head == :for
+        val = esc(ex.args[1].args[1])
+        vals = esc(ex.args[1].args[2])
+        expr = ex.args[2]
+
+        quote
+            for $val in $vals
+                $(_algorithm(expr))
+            end
+        end
+    else
+    
+        # if the expression is a pair, then update the pair
+        if ex.head == :call && ex.args[1] == :(=>)
+            lhs = esc(ex.args[2])
+            rhs = esc(ex.args[3])
+            quote
+                update!( $lhs => $rhs )
+            end
+            
+        # else if the expression is not an assignment, then just evaluate it
+        elseif ex.head ≠ :(=)
+            :($(esc(ex)))
+        
+        # otherwise the expression is an assignment, so evaluate and label it
+        else
+            eval_and_label(ex)
+        end
+    end
+end
+
+eval_and_label(x::Expression) = :($(esc(x)))
+
+function eval_and_label(ex::Expr)
+    
+    # if the lhs is a symbol
+    if ex.args[1] isa Symbol
+
+        lhs = esc(ex.args[1])
+        rhs = esc(ex.args[2])
+        str = string(ex.args[1])
+
+        quote
+            $lhs = $rhs
+            label!($lhs, $str)
+        end
+
+    # else if the lhs is an element of an array (evalutes the index)
+    elseif ex.args[1] isa Expr && ex.args[1].head == :ref
+
+        lhs = esc(ex.args[1])
+        rhs = esc(ex.args[2])
+        sym = string(ex.args[1].args[1])
+        ind = esc(ex.args[1].args[2])
+        
+        quote
+            $lhs = $rhs
+            label!($lhs, $sym * "[" * string($ind) * "]")
+        end
+
+    # else if the lhs is a tuple, then label each element in the tuple
+    elseif ex.args[1] isa Expr && ex.args[1].head == :tuple
+
+        lhs = esc(ex.args[1])
+        rhs = esc(ex.args[2])
+
+        quote
+            $lhs = $rhs
+            label!.($lhs, $([string(x) for x ∈ ex.args[1].args]))
+        end
+
+    else
+        throw(ArgumentError("@algorithm: `$ex` does not have the correct left-hand side."))
+    end
+end############################################################################################
+# DECOMPOSITION
+
+"""
+    EmptyDecomposition
+
+An empty decomposition.
+"""
+struct EmptyDecomposition{T} <: Decomposition{T} end
+
+Decomposition{T}() where{T} = EmptyDecomposition{T}()
+
+
+"""
+    LinearDecomposition
+
+Decomposition of an expression as a linear function of other expressions.
+
+# Fields
+    weights::Dict{T, Number}
+
+# Constructors
+    LinearDecomposition{T}()
+    LinearDecomposition{T}(x)
+    LinearDecomposition{T}(weights)
+"""
+mutable struct LinearDecomposition{T} <: AbstractLinearDecomposition{T}
+    label::String
+    weights::Dict{T, DecompositionValue}
+
+    LinearDecomposition{T}() where {T} = new{T}("",Dict{T,DecompositionValue}())
+
+    LinearDecomposition(x::T) where {T} = new{T}("",Dict{T,DecompositionValue}(x=>1))
+
+    function LinearDecomposition{T}(weights::Dict{<:T,<:DecompositionValue}) where {T}
+        new{T}( "", Dict{T,DecompositionValue}(weights) )
+    end
+end
+
+label(x::Decomposition) = x.label
+label(::EmptyDecomposition) = "Empty decomposition"
+label!(x::Decomposition, label::String) = (x.label=label; nothing)
+label!(::EmptyDecomposition, label::String) = nothing
+
+"Weights of a linear decomposition."
+weights(x::LinearDecomposition) = x.weights
+
+"Check if a decomposition is empty."
+isempty(x::LinearDecomposition) = isempty(weights(x))
+isempty(::EmptyDecomposition) = true
+
+iszero(::Decomposition) = false
+
+prune(d::Dict) = filter( p -> !iszero(first(p)) && !iszero(last(p)), d )
+
+prune(x::LinearDecomposition{T}) where {T} = isempty(weights(x)) ? T(Zero()) : x
+
+value(x::LinearDecomposition) = mapreduce( p->last(p)*value(first(p)), +, weights(x); init=Zero() )
+
+function variables(x::LinearDecomposition)
+    mapreduce( v -> !hasvalue(v) ? variables(v) : Expressions(), ∪, keys(weights(x)); init=Expressions())
+end
+
+function constant(x::LinearDecomposition)
+    y = Zero()
+    for (key,val) ∈ weights(x)
+        if hasvalue(key)
+            y += val * value(key)
+        end
+    end
+    y
+end
+
+zero(::LinearDecomposition) = Zero()
+############################################################################################
+# ALGEBRA
+
+# Decompositions
++(::EmptyDecomposition{T}, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
+*(::Any, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
+
+function +(x1::Gram, x2::Number)
+    if x2 == 0
+        return x1
+    else
+        return missing
+    end
+end
+
+function -(x1::Gram, x2::Gram)
+    if issetequal(x1.vecs, x2.vecs)
+        return 0
+    else
+        return missing
+    end
+end
+
+function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
+    dict = mergewith(+, weights(x1), weights(x2))
+    for (key,value) ∈ dict
+        if iszero(key) || iszero(value)
+            delete!(dict, key)
+        end
+    end
+    LinearDecomposition{T}(dict)
+end
+
+function *(a::DecompositionValue, x::LinearDecomposition{T}) where {T}
+    new_weights = Dict{T,DecompositionValue}(keys(weights(x)) .=> map(x->a*x, values(weights(x))))
+    LinearDecomposition{T}( new_weights )
+end
+
+# Expressions in a vector space
+function +(e1::T, e2::T) where {T<:AbstractVectorSpace}
+    if iszero(e1)
+        e2
+    elseif iszero(e2)
+        e1
+    elseif hasvalue(e1) && hasvalue(e2)
+        T( value(e1) + value(e2) )
+    else
+        decomp = selfdecomp(e1) + selfdecomp(e2)
+        isempty(decomp) ? T(Zero()) : T(decomp)
+    end
+end
+
+function *(a::DecompositionValue, e::T) where {T<:AbstractVectorSpace}
+    hasvalue(e) ? T( a*value(e) ) : T( a*selfdecomp(e) )
+end
+
+-(e1::AbstractVectorSpace, ::Zero) = e1
+-(e1::Gram, e2::Number) = e1 + (-e2)
++(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = +(promote(e1,e2)...)
+-(e1::AbstractVectorSpace, e2::AbstractVectorSpace) = e1 + (-e2)
+-(e::AbstractVectorSpace) = -1*e
+*(e::AbstractVectorSpace, a::Any) = a*e
+/(e::AbstractVectorSpace, a::Any) = (1/a)*e
+
+# Squared norm of a vector in a normed vector space
+function ^(v::OrWrapper{NormedVectorSpace}, n::Int)
+    if n == 2
+        squarednorm(v)
+    else
+        error("Can only compute squared norm of vectors.")
+    end
+end
+
+squarednorm(v::OrWrapper{InnerProductSpace}) = v'*v
+
+"""
+    x ⊗ y
+
+Outer product (Gram matrix) of two vectors whose elements are themselves vectors in the same inner product space.
+
+# Examples
+```julia-repl
+julia> x = [ Rⁿ(); Rⁿ(); Rⁿ() ]
+julia> y = [ Rⁿ(); Rⁿ() ]
+julia> G = x ⊗ y
+```
+"""
+function ⊗(x1::Vector{V}, x2::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}}
+    F[ x'*y for x ∈ x1, y ∈ x2 ]
+end
+
+# +(::Missing, ::Any) = missing
+# +(::Any, ::Missing) = missing
+# -(::Missing, ::Any) = missing
+# -(::Any, ::Missing) = missing
+# *(::Missing, ::Any) = missing
+# *(::Any, ::Missing) = missing
+# /(::Missing, ::Any) = missing
+# /(::Any, ::Missing) = missing
+
+# # Matrix-Number addition and subtraction
+# function +(x::AbstractArray, y::Number)
+#     iszero(y) ? x : error("Addition of array and number is ill-defined")
+# end
+# +(x::Number, y::AbstractArray) = y + x
+# -(x::AbstractArray, y::Number) = x + (-y)
+# -(x::Number, y::AbstractArray) = x + (-y)
+
+module AlgorithmAnalysis
+
+
+############################################################################################
+# Export
+
+# abstract types
+export Constraint, Constraints, ConstraintSet
+export Variable, Variables, Expression, Expressions, Field, Reals
+export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
+export ScalarValue, VectorValue, Object, Objects
+export R, Rⁿ, Rᵐ
+
+# expression
+export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
+export label, label!, getlabel, value, value!, decomposition, selfdecomp, hasvalue, defaultlabel
+export isvariable, hasdecomposition, previous, previous!, next, next!, update, update!
+export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
+
+# constraint
+export expression, set, add_constraint!
+export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
+export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
+export ⪯, ⪰, ⊂, ⊆
+export Gram, evaluate, gram_to_constraint
+
+# relation
+export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
+export domain, codomain, inputs, outputs, inputs_outputs
+
+# oracle
+export Oracle, Oracles, DualOracle, FunctionOracle, OperatorOracle, Functional
+export ConvexFunction, DifferentiableFunction
+export Operator, ContinuousOperator, LinearOperator
+export oracle, oracles, superoracle, suboracle, suboracles, sample, samples, relation, get_oracle
+export associations, description, relation
+
+export AbstractOperator, AbstractFunction, AbstractLinearMap, AbstractLocallyLipschitzFunctional
+export AbstractSymmetricLinearMap, AbstractSkewSymmetricLinearMap
+export AbstractFunctional, AbstractSubdifferentiableFunctional
+export AbstractDifferentiableFunctional, AbstractTwiceDifferentiableFunctional
+export AbstractInfinitelyDifferentiableFunctional, AbstractLinearFunctional
+
+export Operator, Map, LinearMap, SymmetricLinearMap, SkewSymmetricLinearMap
+export Functional, SubdifferentiableFunctional, DifferentiableFunctional, DualInputFunctional
+export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
+export LinearFunctional, ZeroFunctional
+
+export get_oracle_input
+
+# wrappers
+export Wrapper, unwrap
+export Dual
+export Transpose, AbstractDifferential, AbstractSubdifferential, TransposeOf
+export Subdifferential, Gradient, Hessian, GradientOf
+
+# decompositions
+export Decomposition, EmptyDecomposition, LinearDecomposition
+
+# interpolation
+export FunctionClass, OperatorClass
+export Convex, SmoothStronglyConvex, ConvexIndicator, StronglyConvex, Smooth
+export QuadraticGrowth, Lipschitz
+export LinearOperator, Monotone, Symmetric, Eigenvalues, SkewSymmetric, Cocoercive
+export StronglyMonotone, MaxSingularValue
+export triplets, Triplets, interpolate, allvecs, gram
+
+# properties
+export Property, Properties
+export OperatorClass, FunctionClass, OnePointOperatorClass, TwoPointOperatorClass
+export Monotone, Comonotone, WeaklyMonotone, WeaklyComonotone
+export AbstractQuadraticConstraint, AbstractPointwiseQuadraticConstraint, AbstractIncrementalQuadraticConstraint
+export PointwiseQuadraticConstraint, IncrementalQuadraticConstraint
+export AbstractLinearQuadraticConstraint, AbstractTwoPointLinearQuadraticConstraint, TwoPointLinearQuadraticConstraint
+export SlopeRestricted, SectorBounded
+export reference, quadraticform, linearquadraticform
+export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded, WeaklyRelativelyCobounded
+export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded, Convex
+export Linear, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
+export Monotonicity, RelativeBoundedness, Boundedness
+export propertyof, properties
+export Co, Weakly, PropertyOrWrapper
+
+# solve
+export maximize, lift, project, variables, constraints, variables_constraints_oracles
+
+# primitives
+export first_order_stationary_point
+
+# analysis
+export maximize, certify, rate
+export stateupdate, getmatrix, getparams, solve, eye, grams
+export quadraticform, linearform, tr, optvar, optcon
+export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
+export get_states_inputs, get_formulas, lift, neighbors, nodes
+
+############################################################################################
+# Import
+
+import JuMP
+import SCS
+import MosekTools
+import LinearAlgebra as la
+import InteractiveUtils
+import AbstractTrees
+import Zeros: Zero
+import MathOptInterface as MOI
+
+import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊆
+import Base: isempty, iszero, isequal
+import Base: promote_rule, convert, show, zero, zeros, adjoint
+import Base: length, Generator, iterate, size, push!, inv, pairs
+
+
+############################################################################################
+# Include
+
+include("abstract.jl")
+include("wrapper.jl")
+include("decomposition.jl")
+include("expression.jl")
+include("constraint.jl")
+include("relation.jl")
+include("oracle.jl")
+include("adjoint.jl")
+include("interpolation.jl")
+include("show.jl")
+include("label.jl")
+include("primitives.jl")
+include("algorithms.jl")
+include("hash.jl")
+include("algebra.jl")
+include("reals.jl")
+include("analysis.jl")
+
+end
+
+############################################################################################
+# Stationary points
+
+function first_order_stationary_point(o::AbstractLocallyLipschitzFunctional{X}) where {F<:Field, X<:VectorSpace{F}}
+  x, f, g = X(), F(), X(Zero())
+  push!(relation(o'), x => g)
+  push!(relation(o), x => f)
+  next!(x, x)
+  next!(f, f)
+  next!(g, g)
+  x
+end
+
+# function first_order_stationary_point(o::DifferentiableFunction{X,F}) where {X,F}
+#   x, f, g = X(), F(), zero(X)
+#   push!(o, x => f, x => g)
+#   x, f, g
+# end
+
+# function prox(o::ConvexFunction{X,F}, z::X, γ::Real) where {X,F}
+#   f, g = F(), X()
+#   x = z - γ*g
+#   push!(o, x => f, x => g)
+#   x, f, g
+# end
+
+# function inexact_gradient(o::ConvexFunction{X,Y}, x0::X, γ::Real, ε::Real) where {X,Y} end
+
+# function inexact_prox(o::ConvexFunction{X,Y}, x0::X, γ::Real) where {X,Y} end
+
+# function linesearch(o::ConvexFunction{X,Y}, x0::X, dirs) where {X,Y} end
+
+# function epsilon_subgradient(o::ConvexFunction{X,Y}, x0::X, γ::Real) where {X,Y} end
+
+# function bregman_gradient(mirror_map::ConvexFunction{X,F}, gx0, sx0, γ) where {X,F}
+#   x, hx = X(), F()
+
+#   sx = sx0 - γ*gx0
+
+#   push!(mirror_map, x => hx, x => sx)
+
+#   x, sx, hx
+# end
+
+# function bregman_prox(mirror_map::ConvexFunction{X,F}, min_function::ConvexFunction{X,F}, sx0, γ) where {X,F}
+#   x, fx, gx = X(), F(), X()
+
+#   sx = sx0 - γ*gx
+#   hx = F()
+
+#   push!(min_function, x => fx, x => gx)
+#   push!(mirror_map, x => hx, x => sx)
+
+#   x, sx, hx, gx, fx
+# end
+
+
+# function linear_optimization(dir, o::ConvexFunction{X,F}) where {X,F}
+#   x, g, f = X(), -dir, F()
+#   push!(o, x => f, x => g)
+#   x, f, g
+# end
+############################################################################################
+# WRAPPER
+
+"Wrapper for the dual of a vector in an inner product space."
+struct Dual{T} <: Wrapper{T}
+    parent::T
+end
+
+"Wrapper for the transpose of a linear map."
+struct Transpose{T<:AbstractLinearMap} <: Wrapper{T}
+    parent::T
+end
+
+abstract type AbstractDifferential{T} <: Wrapper{T} end
+abstract type AbstractSubdifferential{T} <: AbstractDifferential{T} end
+
+"Generic wrapper for the subdifferential of a subdifferentiable functional."
+struct Subdifferential{T<:AbstractSubdifferentiableFunctional} <: AbstractSubdifferential{T}
+    parent::T
+end
+
+"Generic wrapper for the gradient of a differentiable functional."
+struct Gradient{T<:AbstractDifferentiableFunctional} <: AbstractSubdifferential{T}
+    parent::T
+end
+
+struct GradientOf{T<:AbstractDifferentiableFunctional} <: Wrapper{T}
+    parent::T
+end
+
+"Generic wrapper for the Hessian of a twice-differentiable functional."
+struct Hessian{T<:AbstractTwiceDifferentiableFunctional} <: AbstractDifferential{T}
+    parent::T
+end
+
+
+############################################################################################
+# Subset
+
+# struct Subset{T}
+#     properties::Properties
+
+#     Subset(T) = new{T}(Set{Property{T}}())
+# end
+
+
+############################################################################################
+# Unwrap
+
+"""
+    unwrap(w)
+
+Unwrap a wrapper (get the object that it wraps).
+"""
+unwrap(x) = x
+unwrap(w::W) where {W<:Wrapper} = w.parent.associations[Base.typename(W).wrapper]
+
+
+iszero(w::Wrapper) = iszero(unwrap(w))
+"""
+    Relation{X,Y}
+
+A relation is a subset of the product space X × Y.
+"""
+abstract type Relation{X,Y} end
+
+# A set of relations.
+const Relations = Set{Relation}
+
+# Domain of a relation.
+domain(::Relation{X,Y}) where {X,Y} = X
+
+# Codomain of a relation.
+codomain(::Relation{X,Y}) where {X,Y} = Y
+
+# Check equality of two relations.
+==(r1::Relation, r2::Relation) = isequal(pairs(r1),pairs(r2))
+
+# Number of elements in a relation.
+length(r::Relation) = length(pairs(r))
+
+# Inputs of a relation.
+inputs(r::Relation) = Set(first(p) for p ∈ pairs(r))
+
+# Outputs of a relation.
+outputs(r::Relation) = Set(last(p) for p ∈ pairs(r))
+
+# Vectors of inputs and outputs of a relation.
+function inputs_outputs(r::Relation)
+    v = collect(pairs(r))
+    [first(p) for p ∈ v], [last(p) for p ∈ v]
+end
+
+# Iterate over the pairs of a relation.
+iterate(r::Relation) = iterate(r,1)
+function iterate(r::Relation, state::Int)
+    if state > length(r)
+        nothing
+    else
+        collect(pairs(r))[state], state+1
+    end
+end
+
+############################################################################################
+# Multi-valued relation
+
+"A relation is a subset of the Cartesian product of its domain `X` and codomain `Y`."
+mutable struct MultiValuedRelation{X,Y} <: Relation{X,Y}
+  pairs::Set{Pair{X,Y}}
+
+  # Construct an empty multi-valued relation.
+  MultiValuedRelation{X,Y}() where {X,Y} = new(Set{Pair{X,Y}}())
+
+  # Construct a multi-valued relation from a set of input-output pairs.
+  MultiValuedRelation(s::Set{Pair{X,Y}}) where {X,Y} = new{X,Y}(s)
+  MultiValuedRelation{X,Y}(s::Set{Pair{<:X,<:Y}}) where {X,Y} = new(s)
+end
+
+# Construct a multi-valued relation from a generator of pairs of points.
+MultiValuedRelation(g::Generator) = MultiValuedRelation(Set(p for p ∈ g))
+
+# Evaluate a multi-valued relation at a point (or set of points) in its domain. Returns a set of points in the codomain. To evaluate a relation `r` at a point `y` in its codomain, use `inv(r)(y)`.
+(r::MultiValuedRelation{X,Y})(x::X) where {X,Y} = Set{Y}(last(p) for p ∈ pairs(r) if isequal(first(p),x))
+(r::MultiValuedRelation{X,Y})(s::Set{X}) where {X,Y} = union([r(x) for x ∈ s]...)
+(r::MultiValuedRelation{X,Y})(v::Vector{X}) where {X,Y} = r(Set(v))
+
+
+############################################################################################
+# Single-valued relation
+
+"A single-valued relation (also known as a function) is a relation in which there is a unique element of the codomain associated with each element of the domain."
+mutable struct SingleValuedRelation{X,Y} <: Relation{X,Y}
+    pairs::Dict{X,Y}
+
+    # Construct an empty relation.
+    SingleValuedRelation{X,Y}() where {X,Y} = new(Dict{X,Y}())
+
+    # Construct a relation from a set of input-output pairs.
+    SingleValuedRelation(d::Dict{X,Y}) where {X,Y} = new{X,Y}(d)
+    SingleValuedRelation{X,Y}(d::Dict{X,Y}) where {X,Y} = new(d)
+end
+
+# Construct a relation from a generator of pairs of points.
+SingleValuedRelation(g::Generator) = SingleValuedRelation(Dict(p for p ∈ g))
+
+# Evaluate a single-valued relation at a point in its domain.
+# Returns a point in the codomain or `missing`.
+#
+# WARNING: must use Dict(pairs(r)) instead of r.pairs to avoid odd behavior after setting the value of the keys
+(r::SingleValuedRelation{X,Y})(x::X) where {X,Y} = get(Dict(pairs(r)), x, missing)
+
+
+############################################################################################
+# Constant relation
+
+"A constant relation is a relation in which there is a unique element of the codomain that is associated with any element of the domain."
+mutable struct ConstantRelation{X,Y} <: Relation{X,Y}
+    inputs::Set{X}
+    output::Y
+
+    # Construct an empty relation.
+    ConstantRelation{X,Y}() where {X,Y} = new(Dict{X,Y}())
+    ConstantRelation{X,Y}(::Missing) where {X,Y} = new(Dict{X,Y}())
+
+    # Construct a relation from a set of input-output pairs.
+    ConstantRelation(x::Set{X}, y::Y) where {X,Y} = new{X,Y}(x, y)
+    ConstantRelation{X,Y}(x::Set{<:X}, y::Y) where {X,Y} = new(x, y)
+end
+
+# Evaluate a constant relation at a point in its domain.
+(r::ConstantRelation{X,Y})(::X) where {X,Y} = r.output
+
+
+############################################################################################
+# push!
+
+push!(r::MultiValuedRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = push!(r.pairs, p)
+push!(r::SingleValuedRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = push!(r.pairs, p)
+push!(r::ConstantRelation{X,Y}, p::Pair{X,Y}) where {X,Y} = isequal(r.output, last(p)) ? r.output : error("Cannot add the point $(last(p)) to the constant relation $r")
+
+
+############################################################################################
+# pairs / samples
+
+pairs(r::MultiValuedRelation) = r.pairs
+pairs(r::SingleValuedRelation{X,Y}) where {X,Y} = Set{Pair{X,Y}}(first(p) => last(p) for p ∈ collect(r.pairs))
+pairs(r::ConstantRelation{X,Y}) where {X,Y} = Set{Pair{X,Y}}(x => r.output for x ∈ r.inputs)
+
+samples(r::Relation) = pairs(r)
+
+
+############################################################################################
+# sample
+
+function sample(r::MultiValuedRelation{X,Y}, x::X, label::String = "") where {X,Y}
+    y = codomain(r)(label)
+    push!(r, x => y)
+    y
+end
+
+function sample(r::SingleValuedRelation{X,Y}, x::X, label::String = "") where {X, Y}
+    if x ∈ inputs(r)
+        r(x)
+    else
+        y = codomain(r)(label)
+        push!(r, x => y)
+        y
+    end
+end
+
+sample(r::ConstantRelation{X,Y}, ::X) where {X,Y} = r.output
+
+
+############################################################################################
+# operations
+
+# invert a relation
+inv(r::Relation) = Relation(reverse(p) for p ∈ pairs(r))
+
+# composition of two relations, unicode ∘ can be typed with \\circ[Tab]
+function ∘(r1::Relation{Y,Z}, r2::Relation{X,Y}) where {X,Y,Z}
+    r = Relation{X,Z}()
+    r2inv = inv(r2)
+    for y ∈ collect(inputs(r1) ∩ outputs(r2))
+        for x ∈ collect(r2inv(y)), z ∈ collect(r1(y))
+        push!(r, x => z)
+        end
+    end
+    r
+end
+
+# sum of two relations
+function +(r1::Relation{X,Y}, r2::Relation{X,Y}) where {X,Y}
+    r = Relation{X,Y}()
+    for x ∈ collect(inputs(r1) ∩ inputs(r2))
+        for y1 ∈ collect(r1(x)), y2 ∈ collect(r2(x))
+        push!(r, x => y1 + y2)
+        end
+    end
+    r
+end
+
+# scale a relation
+*(a::Number, r::Relation) = Relation( first(p) => a*last(p) for p ∈ r )
+
+# negate a relation
+-(r::Relation) = (-1)*r
+
+# sum of a relation and an element of its codomain
++(r::Relation{X,Y}, y) where {X,Y} = Relation( first(p) => last(p) + y for p ∈ r )
++(y, r::Relation{X,Y}) where {X,Y} = r + y
+############################################################################################
+# Decompositions
+
+show(io::IO, ::EmptyDecomposition{T}) where {T} = print(io, "Empty decomposition in $(T)")
+
+function show(io::IO, x::LinearDecomposition)
+    isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
+    first = true
+    for (key, value) ∈ weights(x)
+        if first
+            first = false
+            if value == 1
+                print(io, key)
+            elseif value == -1
+                print(io, "-", key)
+            else
+                print(io, value, " ", key)
+            end
+        else
+            if value == 1
+                print(io, " + ", key)
+            elseif value == -1
+                print(io, " - ", key)
+            elseif value ≥ 0
+                print(io, " + ", value, " ", key)
+            else
+                print(io, " - ", -value, " ", key)
+            end
+        end
+    end
+end
+
+function show(io::IO, ::MIME"text/plain", x::LinearDecomposition{T}) where {T}
+    print(io, "\nLinear decomposition over $T: ")
+    isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
+    foreach( p -> print(io, "\n", "  "^get(io, :indent, 1), p.first, " → ", p.second), collect(weights(x)))
+end
+
+
+############################################################################################
+# Expressions
+
+function show(io::IO, e::Expression)
+    if iszero(e)
+        print(io, "𝟎")
+    elseif e isa Gram
+        print(io, "Gram matrix of vector $(e.vecs)")
+    elseif hasvalue(e)
+        print(io, value(e))
+    elseif !isempty(label(e))
+        print(io, label(e))
+    else
+        print(io, description(e))
+    end
+end
+
+elementname(::Type{<:VectorSpace}) = "vector"
+elementname(::Type{<:Field}) = "scalar"
+elementname(::Type{<:Gram}) = "gram matrix"
+
+function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
+    if iszero(e)
+        print(io, "\nZero $(lowercase(elementname(T))) in $(typeof(e))")
+    # elseif hasvalue(e)
+    #     print(io, value(e))
+    else
+        print(io, "\n$(uppercasefirst(elementname(T))) in $(typeof(e))")
+        isdefined(e, :vecs) && print(io, "\n Value: $(e.vecs) ⊗ $(e.vecs)")
+        !isempty(label(e)) && print(io, "\n  Label: ", label(e))
+        hasvalue(e) && print(io, "\n  Value: ", value(e))
+        hasdecomposition(e) && print(io, "\n  Decomposition: ", decomposition(e))
+        !isempty(constraints(e)) && print(io, "\n  Constraints: ", join(constraints(e), ", "))
+        !isempty(oracles(e)) && print(io, "\n  Oracles: ", join(oracles(e), ", "))
+        !ismissing(next(e)) && print(io, "\n  Next: ", next(e))
+        !isempty(associations(e)) && print(io, "\n  Associations: ", join(associations(e),", "))
+    end
+end
+
+show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", last(p))
+
+# Associations
+# show(io::IO, a::Associations) = print(io, a...)
+
+
+############################################################################################
+# Constraints
+
+show(io::IO, c::Equality) = print(io, "0 = ", expression(c))
+show(io::IO, c::Positive) = print(io, "0 ≤ ", expression(c))
+show(io::IO, c::Semidefinite) = print(io, "0 ⪯ ", expression(c))
+
+function show(io::IO, mime::MIME"text/plain", C::Constraints)
+    prune!(C)
+    if isempty(C)
+        print(io, "Empty set of constraints")
+    else
+        print(io, "Set of constraints with $(length(C)) elements:")
+        for c ∈ C
+            print(io, "\n  ", c)
+        end
+    end
+end
+
+
+############################################################################################
+# Relation
+
+description(::SingleValuedRelation) = "Single-valued relation"
+description(::MultiValuedRelation) = "Multi-valued relation"
+description(::ConstantRelation) = "Constant relation"
+
+function show(io::IO, r::Relation)
+    print(io, "\n$(description(r)) on $(domain(r)) x $(codomain(r))")
+    foreach(p -> print(io, "\n  ", first(p), " → ", last(p)), collect(samples(r)))
+end
+
+
+############################################################################################
+# Properties
+
+function show(io::IO, P::Properties)
+    if isempty(P)
+        print(io, "Empty set of properties")
+    else
+        first = true
+        for p ∈ P
+            first ? (print(io, p); first = false) : print(io, ", ", p)
+        end
+    end
+end
+
+show(io::IO, p::SmoothStronglyConvex) = print(io, "$(p.b)-smooth, $(p.a)-strongly convex")
+
+
+############################################################################################
+# Oracles
+
+show(io::IO, o::Oracle) = print(io, label(o))
+show(io::IO, w::Wrapper) = show(io, unwrap(w))
+
+function show(io::IO, ::MIME"text/plain", o::Oracle)
+    print(io, "\nOracle")
+    print(io, "\n  Description: $(description(o))")
+    print(io, "\n  Label: $(label(o))")
+    print(io, "\n  Properties: $(properties(o))")
+    !isempty(associations(o)) && print(io, "\n  Associations: ", join(associations(o),", "))
+    # print(io, "\n  Associations: ")
+    # if isempty(associations(o))
+    #     print(io, "No associations")
+    # else
+    #     for a ∈ associations(o)
+    #         print(io, "\n    $(first(a)) => $(last(a))")
+    #     end
+    # end
+end
+
+show(io::IO, mime::MIME"text/plain", w::Wrapper) = show(io, mime, unwrap(w))
+############################################################################################
+# Real numbers
+
+"""
+    R <: Field
+
+The field of real numbers.
+"""
+@field R
+
+"""
+    Rⁿ <: InnerProductSpace
+
+A real inner product space.
+"""
+@innerproductspace Rⁿ, R
+
+"""
+    Rᵐ <: InnerProductSpace
+
+A real inner product space.
+"""
+@innerproductspace Rᵐ, R
+
+@innerproductspace X, R
+
+
+convert(::Type{R}, x::Number) = R(x)
+promote_rule(::Type{R}, ::Type{<:Number}) = R
+
++(x::Number, y::R) = +(promote(x,y)...)
++(x::R, y::Number) = y + x
+-(x::Number, y::R) = x + (-y)
+-(x::R, y::Number) = x + (-y)
+
+function *(X::Matrix{<:Union{JuMP.VariableRef,JuMP.AffExpr}}, Y::Matrix{R})
+    if size(X)[2] != size(Y)[1]
+        error("Matrix dimensions do not agree for matrix multiplication, dimensions are $(size(X)) and $(size(Y))")
+    end
+    Z = Matrix{R}(undef, size(X)[1], size(Y)[2])
+    for i = 1:size(X)[1], j = 1:size(Y)[2]
+        Z[i,j] = R(Zero())
+        for k = 1:size(X)[2]
+            Z[i,j] += X[i,k]*Y[k,j]
+        end
+    end
+    Z
+end
+
+zero(::R) = R(0)
+
+zero(::Type{JuMP.GenericAffExpr}) = JuMP.AffExpr(0)
+zero(::Type{JuMP.GenericAffExpr{_A, JuMP.VariableRef} where _A}) = JuMP.AffExpr(0)
+
+iszero(e::R) = e.value isa Zero || (e.value isa Number && iszero(e.value))############################################################################################
+# Abstract types
+
+"""
+    Expression
+
+An abstract expression.
+
+An expression can be a constant (nonzero or zero), a variable (with known or unknown value), or a decomposition of other expressions.
+
+A subtype is [`AbstractVectorSpace`](@ref).
+"""
+abstract type Expression end
+
+"""
+    AbstractVectorSpace <: Expression
+
+An abstract vector space.
+
+Some subtypes are [`Field`](@ref) and [`VectorSpace`](@ref).
+"""
+abstract type AbstractVectorSpace <: Expression end
+
+"""
+    Field <: AbstractVectorSpace
+
+An abstract field.
+
+An element of a field is a scalar. A scalar is an expression that can be an affine function of other scalars and inner products of points in an inner product space over the field.
+
+Use [`@field]`](@ref) to construct a field.
+"""
+abstract type Field <: AbstractVectorSpace end
+
+"""
+    VectorSpace{F<:Field} <: Expression
+
+An abstract vector space.
+
+A vector is an expression that can be a linear function of other vectors.
+"""
+abstract type VectorSpace{F<:Field} <: AbstractVectorSpace end
+
+"""
+    NormedVectorSpace{F<:Field} <: VectorSpace{F}
+
+An abstract normed vector space. The squared norm of a vector produces a scalar.
+"""
+abstract type NormedVectorSpace{F<:Field} <: VectorSpace{F} end
+
+"""
+    InnerProductSpace{F<:Field} <: NormedVectorSpace{F}
+
+An abstract inner product space. The inner product of two vectors produces a scalar, and the squared norm is the inner product of a vector with itself.
+"""
+abstract type InnerProductSpace{F<:Field} <: NormedVectorSpace{F} end
+
+"""
+    Constraint
+
+An abstract constraint that consists of an [`Expression`](@ref) belonging to a [`ConstraintSet`](@ref).
+
+Concrete subtypes should provide methods for `expression`, `set`, `∈`, `isequal`, and `check`.
+"""
+abstract type Constraint end
+
+"""
+
+    ConstraintSet
+
+An abstract set for use in a [`Constraint`](@ref).
+"""
+abstract type ConstraintSet end
+
+"""
+    Oracle
+
+An oracle is a relation between pairs of expressions. Oracles may be sampled at expressions in their domain to produce output expressions in their codomain. Oracles may also have other associated oracles; for instance, a linear operator has an associated adjoint. Each operator can be sampled at a point in its domain, and it can have a set of properties.
+
+Any concrete subtype of `Oracle` must have the following fields:
+    label::String
+    properties::Properties
+
+Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
+"""
+abstract type Oracle end
+
+"""
+    Wrapper{T}
+
+Wrapper for an object of type `T`.
+
+Every concrete subtype must have a field `parent::T` that stores the object being wrapped.
+"""
+abstract type Wrapper{T} end
+
+"""
+    Decomposition{T}
+
+Decomposition of an object of type `T` in terms of other objects.
+"""
+abstract type Decomposition{T} end
+
+
+############################################################################################
+# Oracles
+
+abstract type AbstractOperator{X,Y} <: Oracle end
+abstract type AbstractFunction{X,Y} <: AbstractOperator{X,Y} end
+abstract type AbstractLinearMap{X,Y} <: AbstractFunction{X,Y} end
+abstract type AbstractSymmetricLinearMap{X} <: AbstractLinearMap{X,X} end
+abstract type AbstractSkewSymmetricLinearMap{X} <: AbstractLinearMap{X,X} end
+abstract type AbstractFunctional{X} <: AbstractFunction{X,F where F} end
+abstract type AbstractLocallyLipschitzFunctional{X} <: AbstractFunctional{X} end
+abstract type AbstractSubdifferentiableFunctional{X} <: AbstractLocallyLipschitzFunctional{X} end
+abstract type AbstractDifferentiableFunctional{X} <: AbstractLocallyLipschitzFunctional{X} end
+abstract type AbstractTwiceDifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X} end
+abstract type AbstractInfinitelyDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X} end
+abstract type AbstractLinearFunctional{X} <: AbstractInfinitelyDifferentiableFunctional{X} end
+
+
+############################################################################################
+# Decompositions
+
+abstract type AbstractLinearDecomposition{T} <: Decomposition{T} end
+
+
+############################################################################################
+# Properties of oracles
+
+"""
+    Property{T}
+
+Property of objects of type `T`.
+"""
+abstract type Property{T} end
+
+# abstract type OnePointProperty <: Property end
+# abstract type TwoPointProperty <: Property end
+# abstract type AllPointProperty <: Property end
+
+# abstract type OperatorProperty <: Property end
+# abstract type FunctionProperty <: Property end
+
+# abstract type InnerProductSpaceProperty <: OperatorProperty end
+# abstract type NormedVectorSpaceProperty <: OperatorProperty end
+# abstract type Monotonicity <: InnerProductSpaceProperty end
+# abstract type RelativeBoundedness <: NormedVectorSpaceProperty end
+# abstract type Boundedness <: NormedVectorSpaceProperty end
+# abstract type LinearMapProperty <: Property end
+# abstract type SquareLinearMapProperty <: Property end
+# abstract type FunctionalProperty <: Property end
+
+
+############################################################################################
+# Constants
+
+# A set of oracles
+const Oracles = Set{Oracle}
+
+# A set of constraints
+const Constraints = Set{Constraint}
+
+# A set of properties
+const Properties = Set{Property}
+
+# An oracle or a wrapper of an oracle
+const OracleOrWrapper = Union{Oracle, Wrapper}
+
+# A dictionary of associations between wrappers and oracles
+const Associations = Dict{Type{<:Wrapper}, Oracle}
+
+# A vector or a decomposition of vectors
+const VectorExpression = Union{AbstractVectorSpace, Decomposition{<:AbstractVectorSpace}}
+
+# A vector or a wrapper of a vector
+const VectorOrWrapper = Union{AbstractVectorSpace, Wrapper{<:AbstractVectorSpace}}
+
+const VectorWrapperDecomposition = Union{AbstractVectorSpace, Decomposition{<:AbstractVectorSpace}, Wrapper{<:AbstractVectorSpace}, Decomposition{<:Wrapper{<:AbstractVectorSpace}}}
+
+# A set of expressions
+const Expressions = Set{Expression}
+
+# The type of a next or previous state of type T
+const State{T} = Union{T, Missing}
+
+# An object of type T or a wrapper of that type
+const OrWrapper{T} = Union{T, Wrapper{<:T}}
+
+const ScalarValue{T} = Union{Number,Decomposition{T},Missing}
+const VectorValue{T} = Union{Vector,Zero,Decomposition{T},Missing}
+
+const ArrayOrSet{T} = Union{AbstractArray{<:T}, AbstractSet{<:T}}
+
+const DecompositionValue = Union{Number, JuMP.VariableRef, JuMP.AffExpr}
+
+const Object = Union{Expression, Constraint, Oracle, Wrapper}
+const Objects = Set{Object}
+
+############################################################################################
+# Add constraint
+
+"Add a constraint to all variables in an expression."
+function add_constraint!(x::Expression, c::Constraint)
+    map(v -> push!(constraints(v), c), collect(variables(x)))
+    for o in oracles(variables(x))
+        inputs, outputs = inputs_outputs(o)
+        for e in inputs ∪ outputs
+            push!(constraints(e), c)
+        end
+    end
+    # for o in oracles(x)
+    #     push!(constraints(o), c)
+    #     for a in associations(o)
+    #         push!(constraints(last(a)), c)
+    #     end
+    # end
+end
+
+
+############################################################################################
+# Constraint
+
+function ∈(x::Expression, s::ConstraintSet)
+    error("∈ not implemented for expression $(typeof(x)) and set $(typeof(s)).")
+end
+expression(c::Constraint) = error("expression not implemented for constraint $(typeof(c)).")
+set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
+
+size(c::Constraint) = size(expression(c))
+
+"""
+    Satisfied <: Constraint
+
+Represents a constraint that is considered satisfied. This type is used to indicate that a particular constraint condition holds true.
+
+# Examples
+
+```julia-repl
+julia> c = Satisfied()
+Satisfied()
+```
+"""
+struct Satisfied <: Constraint end
+
+"""
+    Unsatisfied <: Constraint
+
+Represents a constraint that is considered unsatisfied. This type is used to indicate that a particular constraint condition does not hold true.
+
+# Examples
+
+```julia-repl
+julia> c = Unsatisfied()
+Unsatisfied()
+```
+"""
+struct Unsatisfied <: Constraint end
+
+expression(::Satisfied) = Expressions()
+expression(::Unsatisfied) = Expressions()
+
+############################################################################################
+# Cone constraint
+
+"""
+    Cone <: ConstraintSet
+
+An abstract type representing cones in the constraint set framework.
+Cones capture specific properties used to impose constraints.
+"""
+abstract type Cone <: ConstraintSet end
+
+"""
+    PositiveSemidefiniteCone <: Cone
+
+A cone representing the set of positive semidefinite matrices.
+"""
+struct PositiveSemidefiniteCone <: Cone end
+
+"""
+    PositiveOrthant <: Cone
+
+A cone representing the positive orthant.
+It is used to impose non-negativity constraints on variables.
+"""
+struct PositiveOrthant <: Cone end
+
+"""
+    ZeroSet <: Cone
+
+A cone representing the zero set, used to enforce equality constraints (i.e. requiring a variable to be exactly zero).
+"""
+struct ZeroSet <: Cone end
+
+"""
+    ConeConstraint{K<:Cone} <: Constraint
+
+A constraint that associates an expression with a cone `K` to enforce cone-specific properties.
+
+# Fields
+- `x::Expression`: The expression to which the constraint is applied.
+
+# Constructor Behavior
+When constructing a `ConeConstraint` with an expression `x`:
+- **If** `x` does not already have an associated value (i.e. `!hasvalue(x)` is `true`), a new `ConeConstraint` is created, registered via `add_constraint!(x, this)`, and returned.
+- **Otherwise**, the function checks if `x` satisfies the constraint for cone `K` using `check(x, K)`. It returns `Satisfied()` if the check passes, or `Unsatisfied()` if it fails.
+
+# Example
+
+```julia-repl
+julia> x0 = Rⁿ()
+julia> c = ConeConstraint{PositiveOrthant}(x0)
+```
+"""
+struct ConeConstraint{K<:Cone} <: Constraint
+    x::Expression
+    
+    function ConeConstraint{K}(x) where {K<:Cone}
+        if !hasvalue(x)
+            this = new(x)
+            add_constraint!(x, this)
+            this
+        else
+            check(x,K) ? Satisfied() : Unsatisfied()
+        end
+    end
+end
+
+"""
+    Positive
+
+A shortcut for creating a ConeConstraint with the PositiveOrthant cone. Use this constant to impose non-negativity constraints on an expression.
+"""
+const Positive = ConeConstraint{PositiveOrthant}
+
+"""
+    Semidefinite
+
+A shortcut for creating a ConeConstraint with the PositiveSemidefiniteCone cone. Use this constant to impose positive semidefiniteness constraints on an expression.
+"""
+const Semidefinite = ConeConstraint{PositiveSemidefiniteCone}
+
+"""
+    Equality
+
+A shortcut for creating a ConeConstraint with the ZeroSet cone. Use this constant to impose equality (zero) constraints on an expression. 
+"""
+const Equality = ConeConstraint{ZeroSet}
+
+"""
+    ∈(x::Expression, ::K) where {K<:Cone}
+
+Creates a cone constraint for an expression `x` using the cone type `K`.
+
+# Example
+
+```julia-repl
+julia> x0 = Rⁿ()
+julia> x ∈ PositiveOrthant   # Returns a ConeConstraint{PositiveOrthant}(x)
+```
+"""
+∈(x::Expression, ::K) where {K<:Cone} = ConeConstraint{K}(x)
+
+"""
+    expression(c::ConeConstraint)
+
+Extracts and returns the underlying expression `x` stored in a cone constraint `c`.
+
+# Example
+
+```julia-repl
+julia> x0 = Rⁿ()
+julia> c = ConeConstraint{PositiveOrthant}(x0)
+julia> expression(c)   # Returns the expression associated with the constraint
+```
+"""
+expression(c::ConeConstraint) = c.x
+
+"""
+    set(::ConeConstraint{K}) where {K<:Cone}
+
+Returns the cone type `K` associated with the given cone constraint. This function allows you to query the cone that the constraint is enforcing.
+
+# Example
+
+```julia-repl
+julia> x0 = Rⁿ()
+julia> c = ConeConstraint{PositiveOrthant}(x0)
+julia> set(c)   # Returns PositiveOrthant
+```
+"""
+set(::ConeConstraint{K}) where {K<:Cone} = K
+
+"""
+    cone(c::ConeConstraint)
+
+Alias for `set(c)`. Returns the cone type associated with the cone constraint `c`.
+
+# Example
+
+```julia-repl
+julia> x0 = Rⁿ()
+julia> c = ConeConstraint{PositiveOrthant}(x0)
+julia> cone(c)   # Returns PositiveOrthant
+```
+"""
+cone(c::ConeConstraint) = set(c)
+
+"""
+    ==(lhs::Expression, rhs::Expression)
+    ==(lhs::Expression, rhs)
+    ==(lhs, rhs::Expression)
+
+Defines an equality constraint between expressions by subtracting `rhs` from `lhs` and wrapping the result with the `Equality` constraint.
+This allows you to create a constraint on two expressions to be equal.
+
+# Example
+
+```julia-repl
+julia> x, y = Rⁿ(), Rⁿ()
+julia> x == y   # Returns Equality(x - y)
+```
+"""
+==(lhs::Expression, rhs::Expression) = Equality(lhs-rhs)
+==(lhs::Expression, rhs) = Equality(lhs-rhs)
+==(lhs, rhs::Expression) = Equality(lhs-rhs)
+
+"""
+    ≤(lhs::Expression, rhs::Expression)
+    ≤(lhs::Expression, rhs)
+    ≤(lhs, rhs::Expression)
+
+Defines a less-than-or-equal-to constraint between expressions. It creates a constraint by computing `rhs - lhs` and applying the `Positive` cone constraint,
+ensuring that the difference lies within the positive orthant.
+This allows you to create a constraint on the left hand side expression `lhs` to be smaller or equal to the the right hand side expression `rhs`.
+
+# Example
+
+```julia-repl
+julia> x, y = Rⁿ(), Rⁿ()
+julia> x ≤ y   # Returns Positive(y - x)
+```
+"""
+≤(lhs::Expression, rhs::Expression) = Positive(rhs-lhs)
+≤(lhs::Expression, rhs) = Positive(rhs-lhs)
+≤(lhs, rhs::Expression) = Positive(rhs-lhs)
+
+"""
+    ≥(lhs::Expression, rhs::Expression)
+    ≥(lhs::Expression, rhs)
+    ≥(lhs, rhs::Expression)
+
+Defines a greater-than-or-equal-to constraint between expressions. It creates a constraint by computing `lhs - rhs` and applying the `Positive` cone constraint,
+ensuring that the difference lies within the positive orthant.
+This allows you to create a constraint on the left hand side expression `lhs` to be greater or equal to the the right hand side expression `rhs`.
+
+# Example
+
+```julia-repl
+julia> x, y = Rⁿ(), Rⁿ()
+julia> x ≥ y   # Returns Positive(x - y)
+```
+"""
+≥(lhs::Expression, rhs::Expression) = Positive(lhs-rhs)
+≥(lhs::Expression, rhs) = Positive(lhs-rhs)
+≥(lhs, rhs::Expression) = Positive(lhs-rhs)
+
+"""
+    ⪯(lhs::Expression, rhs::Expression)
+    ⪯(lhs::Expression, rhs)
+    ⪯(lhs, rhs::Expression)
+
+Defines a positive semidefinite constraint on the difference between 2 expressions by applying a `Semidefinite` cone constraint on `rhs - lhs`.
+This allows you to create a constraint on the the difference subtract the left hand side expression `lhs` from the right hand side expression `rhs` to be positive semidefinite.
+
+# Example
+
+```julia-repl
+julia> A, B = Rⁿ(), Rⁿ()
+julia> A ⪯ B   # Returns Semidefinite(B - A)
+```
+"""
+⪯(lhs::Expression, rhs::Expression) = Semidefinite(rhs-lhs)
+⪯(lhs::Expression, rhs) = Semidefinite(rhs-lhs)
+⪯(lhs, rhs::Expression) = Semidefinite(rhs-lhs)
+
+"""
+    ⪰(lhs::Expression, rhs::Expression) = Semidefinite(lhs-rhs)
+    ⪰(lhs::Expression, rhs) = Semidefinite(lhs-rhs)
+    ⪰(lhs, rhs::Expression) = Semidefinite(lhs-rhs)
+
+Defines a positive semidefinite constraint on the difference between two expressions.
+
+# Example
+
+```julia-repl
+julia> A, B = Rⁿ(), Rⁿ()
+julia> A ⪯ B   # Returns Semidefinite(B - A)
+```
+"""
+⪰(lhs::Expression, rhs::Expression) = Semidefinite(lhs-rhs)
+⪰(lhs::Expression, rhs) = Semidefinite(lhs-rhs)
+⪰(lhs, rhs::Expression) = Semidefinite(lhs-rhs)
+
+
+############################################################################################
+# Duality
+
+# dual cones
+dual(::Type{PositiveSemidefiniteCone}) = PositiveSemidefiniteCone
+dual(::Type{PositiveOrthant}) = PositiveOrthant
+dual(::Type{ZeroSet}) = Any
+
+function dual(c::Positive, G, model)
+    JuMP.@variable(model, λ[1:length(x)] ≥ 0)
+    M = linearform(G, expression(c))
+    
+    λ*M
+end
+
+function dual(c::Semidefinite, G, model)
+    JuMP.@variable(model, λ[1:length(x)] ≥ 0)
+    M = linearform(G, expression(c))
+    
+    λ*M
+end
+
+
+############################################################################################
+# Check
+
+"""
+    check(c::Constraint)
+    check(x::Expression, S::ConstraintSet)
+
+Check whether or not a constraint is satisfied.
+"""
+function check end
+
+check(c::Constraint) = check(expression(c), set(c))
+
+check(x, ::Type{ZeroSet}) = hasvalue(x) && evaluate(x) == 0
+check(x, ::Type{PositiveOrthant}) = hasvalue(x) && evaluate(x) ≥ 0
+check(x, ::Type{PositiveSemidefiniteCone}) = hasvalue(x) && evaluate(x) ⪰ 0
+
+
+############################################################################################
+# Prune
+
+"""
+    prune!(s)
+
+Prune a set of constraints by removing any constraints that are satisfied.
+"""
+function prune!(cons::Constraints)
+    cons = setdiff!(cons, Set([Satisfied()]))
+
+    pruned = Constraints()
+    for c in cons
+        if expression(c) isa Gram
+            to_remove = Constraints()  # Store constraints to remove
+            should_add = true
+            for existing_c in pruned
+                if expression(existing_c) isa Gram
+                    if expression(existing_c) ⊂ expression(c) # Existing is a strict subset → Mark it for removal
+                        push!(to_remove, existing_c)
+                    end
+                    if expression(c) ⊆ expression(existing_c)  # New one is a subset of existing
+                        should_add = false  # Don't add the new one
+                        break
+                    end
+                end
+            end
+            for r in to_remove # Remove outdated constraints
+                delete!(pruned, r)
+            end
+            if should_add # Add the new constraint if it is not a subset of any existing one
+                push!(pruned, c)
+            end
+        else
+            push!(pruned, c)  # Keep non-Gram constraints
+        end
+    end
+    # pruned = gram_to_constraint(pruned)
+    pruned
+end
+# prune!(s::Constraints) = setdiff!(s, Set([Satisfied()]))
+# function prune!(s::Constraints)
+#     filtered = Constraints()
+#     for c in s
+#         if expression(c) isa Gram
+#             push!(filtered, ConeConstraint{cone(c)}(evaluate(expression(c))))
+#         else
+#             push!(filtered, c)
+#         end
+#     end
+#     setdiff!(filtered, Set([Satisfied()]))
+# end
+############################################################################################
+# Properties
+
+abstract type AbstractQuadraticConstraint <: Property{AbstractOperator} end
+abstract type AbstractPointwiseQuadraticConstraint <: AbstractQuadraticConstraint end
+abstract type AbstractIncrementalQuadraticConstraint <: AbstractQuadraticConstraint end
+
+abstract type AbstractLinearQuadraticConstraint <: Property{AbstractLocallyLipschitzFunctional} end
+abstract type AbstractTwoPointLinearQuadraticConstraint <: AbstractLinearQuadraticConstraint end
+
+# ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
+"""
+    PointwiseQuadraticConstraint(M, x, y)
+
+A generic pointwise quadratic constraint.
+"""
+struct PointwiseQuadraticConstraint <: AbstractPointwiseQuadraticConstraint
+    M::Matrix{Real}
+    x::VectorSpace
+    y::VectorSpace
+end
+
+"""
+    IncrementalQuadraticConstraint(M)
+
+A generic incremental quadratic constraint.
+"""
+struct IncrementalQuadraticConstraint <: AbstractIncrementalQuadraticConstraint
+    M::Matrix{Real}
+end
+
+# """
+#     PointwiseLinearQuadraticConstraint(M, m, x, y, f)
+
+# A generic pointwise linear--quadratic constraint.
+# """
+# struct PointwiseLinearQuadraticConstraint <: AbstractPointwiseLinearQuadraticConstraint
+#     M::Matrix{Real}
+#     m::Vector{Real}
+#     x::VectorSpace
+#     y::VectorSpace
+#     f::Field
+# end
+
+"""
+    TwoPointLinearQuadraticConstraint(M, m)
+
+A generic incremental linear--quadratic constraint.
+"""
+struct TwoPointLinearQuadraticConstraint <: AbstractTwoPointLinearQuadraticConstraint
+    M::Matrix{Real}
+    m::Vector{Real}
+end
+
+"""
+    SlopeRestricted(a,b)
+
+A slope-restricted constraint.
+"""
+struct SlopeRestricted <: AbstractIncrementalQuadraticConstraint
+    a::Real
+    b::Real
+end
+
+"""
+SectorBounded(a,b)
+
+A sector-bounded constraint.
+"""
+struct SectorBounded <: AbstractPointwiseQuadraticConstraint
+    a::Real
+    b::Real
+    x::VectorSpace
+    y::VectorSpace
+end
+
+# ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
+"""
+    Monotone
+
+
+"""
+struct Monotone{a,b} <: Property{AbstractOperator} end
+struct Comonotone{a,b} <: Property{AbstractOperator} end                       # a ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖yi-yj‖²
+struct WeaklyMonotone{a,b,xs,ys} <: Property{AbstractOperator} end             # a ‖x -xs‖² ≤ (x -xs)'*(y -ys) ≤ b ‖x -xs‖²
+struct WeaklyComonotone{a,b,xs,ys} <: Property{AbstractOperator} end           # a ‖y -ys‖² ≤ (x -xs)'*(y -ys) ≤ b ‖y -ys‖²
+
+"""
+    RelativelyBounded(a,b,x,y)
+
+The property that an operator is relatively bounded.
+
+``a^2\\,\\|x_i-x_j\\|^2 \\leq \\|y_i-y_j\\|^2 \\leq b^2\\,\\|x_i-x_j\\|^2``
+"""
+struct RelativelyBounded <: Property{AbstractOperator} # a² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ b² ‖xi-xj‖²
+    a::Real
+    b::Real
+    x::Union{NormedVectorSpace, Missing}
+    y::Union{NormedVectorSpace, Missing}
+    
+    RelativelyBounded(a,b,x=missing,y=missing) = new(a,b,x,y)
+end
+
+struct Bounded{b} <: Property{NormedVectorSpace} end                            # ‖xi-xj‖² ≤ b²
+# struct Cobounded{b} <: Property{NormedVectorSpace} end                          # ‖yi-yj‖² ≤ b²
+struct WeaklyBounded{b,xs} <: Property{NormedVectorSpace} end                   # ‖x -xs‖² ≤ b²
+# struct WeaklyCobounded{b,ys} <: Property{NormedVectorSpace} end                 # ‖y -ys‖² ≤ b²
+struct Convex <: Property{VectorSpace} end
+
+"Linearity property. Applies to AbstractLinearMap oracles."
+struct Linear <: Property{AbstractLinearMap} end                       # X ⊗ V = Y ⊗ U (or x'*v = y'*u for (x,y) ∈ r and (u,v) ∈ r')
+struct Symmetric <: Property{AbstractSymmetricLinearMap} end           # X ⊗ Y = Y ⊗ X and U ⊗ V = V ⊗ U (or xi'*yj == yi'*xj for (xi,yi) and (xj,yj) ∈ r ∪ r')
+struct SkewSymmetric <: Property{AbstractSkewSymmetricLinearMap} end   # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
+struct MaxSingularValue{b} <: Property{AbstractLinearMap} end          # Y ⊗ Y ⪯ b² (X ⊗ X) and V ⊗ V ⪯ b² (U ⊗ U)
+
+struct Eigenvalues{a,b} <: Property{AbstractSymmetricLinearMap} end    # (Y-aX) ⊗ (bX-Y) ⪰ 0
+
+# struct Nonexpansive{v} <: OperatorProperty end              # Lipschitz{1} and v² ≤ (x-y)'*v
+
+# Lipschitz continuous  = RelativelyBounded{0,L}
+# Strongly monotone     = Monotone{μ,∞}
+# One-sided Lipschitz   = Monotone{-∞,L}
+# Cocoercive            = Comonotone{β,∞}
+# Negatively comonotone = Comonotone{-ρ,∞}
+
+# function properties
+
+# fi-fj ≥ gj'*(xi-xj) + 1/2L (gi-gj)² + μ/(2(1-μ/L)) (xi-xj-1/L (gi-gj))²
+"""
+    SmoothStronglyConvex(a,b)
+
+Property of a locally Lipschitz functional that is `b`-smooth and `a`-strongly convex.
+
+``f_i-f_j \\geq \\langle g_j,x_i-x_j\\rangle + \\frac{1}{2b} \\|g_i-g_j\\|^2 + \\frac{a}{2(1-a/b)} \\|x_i-x_j-\\frac{1}{b} (g_i-g_j)\\|^2``
+"""
+struct SmoothStronglyConvex <: AbstractTwoPointLinearQuadraticConstraint
+    a::Real
+    b::Real
+end
+
+# fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
+struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end
+
+# fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
+struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end
+
+
+"""
+    reference(p)
+
+Reference point of a pointwise constraint.
+"""
+reference(p::AbstractPointwiseQuadraticConstraint) = (p.x, p.y)
+
+"""
+    quadraticform(p)
+
+Quadratic form of a quadratic constraint.
+"""
+quadraticform(p::PointwiseQuadraticConstraint) = p.M
+quadraticform(p::IncrementalQuadraticConstraint) = p.M
+quadraticform(p::SlopeRestricted) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+quadraticform(p::SectorBounded) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+
+"""
+    linearquadraticform(p)
+
+Linear--quadratic form of a constraint.
+"""
+linearquadraticform(p::TwoPointLinearQuadraticConstraint) = (p.m, p.M)
+linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
+# linearquadraticform(p::SmoothStronglyConvex) = ([0; 0], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
+
+
+############################################################################################
+# Subsets
+
+# ∈(s::Subset{<:T}, p::Property{T}) where {T} = push!(s.properties, p)
+
+
+############################################################################################
+# Constraints
+
+"""
+    constraints(o::Oracle)
+    constraints(o::Oracle, p::Property)
+    constraints(e::Expression)
+
+Return the constraints information of an input depending on its type:
+- **Oracle**
+Return all constraints for an oracle, or the constraints for an oracle given a property.
+- **Expression**
+Return a list of constraints the expression `e` is in.
+
+# Examples
+```julia-repl
+julia> x = Rⁿ()
+julia> constraints(x)
+```
+"""
+function constraints end
+
+constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
+
+function constraints(o::OracleOrWrapper, checked)
+    if o ∈ checked
+        return Constraints()
+    else
+        push!(checked, o)
+        cons = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
+        # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+        for a in values(associations(o))
+            union!(cons, constraints(a, checked))
+        end    
+        cons
+    end
+end
+constraints(o::OracleOrWrapper) = constraints(o, Set())
+
+# Operators
+
+function constraints(o::AbstractOperator, p::AbstractPointwiseQuadraticConstraint)
+    xs, ys = reference(p)
+    Constraints( 0 ≤ [x-xs; y-ys]'*quadraticform(p)*[x-xs; y-ys] for (x,y) ∈ o )
+end
+
+function constraints(o::AbstractOperator, p::AbstractIncrementalQuadraticConstraint)
+    Constraints( 0 ≤ [xᵢ-xⱼ; yᵢ-yⱼ]'*quadraticform(p)*[xᵢ-xⱼ; yᵢ-yⱼ] for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
+end
+
+triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
+
+# function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractPointwiseLinearQuadraticConstraint)
+#     m, M = linearquadraticform(p)
+#     xs, fs, gs = reference(p)
+#     Constraints( 0 ≤ m'*[f; fs] + [x; xs; g; gs]'*M*[x; xs; g; gs] for (x,f,g) ∈ triplets(o) )
+# end
+
+function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractTwoPointLinearQuadraticConstraint)
+    m, M = linearquadraticform(p)
+    Constraints( 0 ≤ m'*[fᵢ; fⱼ] + [xᵢ; xⱼ; gᵢ; gⱼ]'*M*[xᵢ; xⱼ; gᵢ; gⱼ] for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
+end
+
+# function constraints(o::AbstractLocallyLipschitzFunctional, p::SmoothStronglyConvex)
+#     a, b = p.a, p.b
+#     if o isa AbstractSubdifferentiableFunctional && b < Inf
+#         @warn "`SubdifferentiableFunctional` $o is constrained to be $b-smooth implying that it is differentiable. Use `DifferentiableFunctional` instead."
+#     end
+#     Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2b*(gᵢ-gⱼ)^2 + a/(2*(1-a/b))*(xᵢ-xⱼ-1/b*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
+# end
+
+
+function constraints(o::AbstractOperator, p::RelativelyBounded)
+    a, b = p.a, p.b
+    if ismissing(p.x) && ismissing(p.y)
+        constraints(o, PointwiseQuadraticConstraint([]))
+        Constraints( a^2*(xi-xj)^2 ≤ (yi-yj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o ) ∪ Constraints( (yi-yj)^2 ≤ b^2*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+    else
+        xs, ys = p.x, p.y
+        Constraints( a^2*(x-xs)^2 ≤ (y-ys)^2 for (x,y) ∈ o ) ∪ Constraints( (y-ys)^2 ≤ b^2*(x-xs)^2 for (x,y) ∈ o )
+    end
+end
+
+function constraints(r1::Relation{X,X}, r2::Relation{X,X}, ::Monotone{a,b}) where {X<:InnerProductSpace, a, b}
+    Constraints( 0 ≤ (xi-xj)'*(yi-yj-a*(xi-xj)) for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) ) ∪ Constraints( (xi-xj)'*(yi-yj) ≤ b*(xi-xj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) )
+end
+
+# Linear maps
+function constraints(o::AbstractLinearMap{X,Y}, ::Linear) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
+    Constraints( x'*v == y'*u for (x,y) ∈ o, (u,v) ∈ o' )
+end
+# Linear operators, L interpolable
+function constraints(o::AbstractLinearMap{X,Y}, ::Linear, L) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
+    # Constraints( y'*y - L^2*(x'*x) ⪯ 0 for (x,y) ∈ o)
+    # Constraints( v'*v - L^2*(u'*u) ⪯ 0 for (u,v) ∈ o')
+    x, y = inputs_outputs(o)
+    u, v = inputs_outputs(o')
+    Constraints([y⊗y - L^2*(x⊗x) ⪯ 0, v⊗v - L^2*(u⊗u) ⪯ 0])
+    # Constraints([v⊗v - L^2*(u⊗u) ⪯ 0])
+end
+
+function constraints(o::AbstractLinearMap{X,X}, ::Symmetric) where {X<:InnerProductSpace}
+    Constraints( xᵢ'*yⱼ == yᵢ'*xⱼ for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
+end
+
+function constraints(o::AbstractLinearMap{X,X}, ::SkewSymmetric) where {X<:InnerProductSpace}
+    Constraints( xᵢ'*yⱼ + yᵢ'*xⱼ == 0 for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
+end
+
+# Symmetric linear maps
+
+function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace, μ, L}
+    x, y = inputs_outputs(o)
+    Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
+end
+
+function allvecs(o::AbstractLinearFunctional)
+    vecs = inputs(o)
+    while true
+        vecs_new = inputs( filter( x -> x isa AbstractLinearFunctional, oracles(vecs) ) )
+        if vecs_new ⊆ vecs
+            break
+        end
+        union!( vecs, vecs_new )
+    end
+    vecs
+end
+
+function constraints(o::AbstractLinearFunctional, ::Linear)
+    vecs = collect(allvecs(o))
+    for v ∈ vecs, w ∈ vecs
+        if !ismissing(next(v)) && !ismissing(next(w))
+            update!( v'*w => next(v)'*next(w) )
+        end
+    end
+    # Constraints([ vecs ⊗ vecs ⪰ 0 ])
+    # Gram(vecs)
+    Constraints([ Gram(vecs) ⪰ 0 ])
+end
+
+function gram end
+# gram(o::Wrapper, p::Property) = gram(unwrap(o), p)
+# function gram(o::OracleOrWrapper, checked)
+#     if o ∈ checked
+#         return Set()
+#     else
+#         push!(checked, o)
+#         cons = mapreduce(p -> gram(o,p), ∪, properties(o); init=Set())
+#         # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+#         for a in values(associations(o))
+#             union!(cons, gram(a, checked))
+#         end    
+#         cons
+#     end
+# end
+gram(o::OracleOrWrapper) = gram(unwrap(o))
+function gram(o::AbstractLinearFunctional)
+    vecs = collect(allvecs(o))
+    for v ∈ vecs, w ∈ vecs
+        if !ismissing(next(v)) && !ismissing(next(w))
+            update!( v'*w => next(v)'*next(w) )
+        end
+    end
+    Gram(vecs)
+end
+
+interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for $o"
+interpolate(w::Wrapper) = interpolate(unwrap(w))
+
+function interpolate(o::AbstractLinearFunctional)
+    vecs = collect(allvecs(o))
+    # factor Gram matrix to set the value of each vector
+    G = value(vecs ⊗ vecs)
+    E = la.eigen(G)
+    Λ = E.values
+    if any(Λ .≤ 0)
+        @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
+        Λ = abs.(Λ)
+    end
+    for i = 1:length(vecs)
+        value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
+    end
+end
+
+
+# ConvexIndicator{D} = Curvature{0,∞} and BoundedRadius{∞,0} and BoundedDiameter{D,∞}
+# WeakStrongConvexity{μ,xs,fs,gs} = WeakCurvature{μ,∞,xs,fs,gs}
+# RestrictedSecant{μ,xs,ys} = WeaklyMonotone{μ,∞,xs,ys}
+# ErrorBound{L}: (yi-yj)² ≤ L² (xi-xj)²  (Lipschitz?)
+
+# Lipschitz (?): y^2 ≤ M^2
+# fenchel value
+# block constraints
+
+
+# constraints(o::LinearOperator) = Constraints( X ⊗ V == Y ⊗ U )
+
+
+
+
+
+
+
+
+# ###############################################################################
+# # Relation classes
+
+# abstract type FunctionClass <: RelationClass end
+# abstract type OperatorClass <: RelationClass end
+
+# # function class primitives
+# struct Curvature{μ,L} <: FunctionClass end
+# # struct Smooth{L} <: FunctionClass end
+# # struct Convex <: FunctionClass end
+# # struct StronglyConvex{μ} <: FunctionClass end
+# # struct ConvexIndicator{D} <: FunctionClass end
+# struct QuadraticGrowth{μ} <: FunctionClass end
+# struct ZeroFunction <: FunctionClass end
+
+# # struct BlockSmoothConvex{L} <: FunctionClass end
+
+# # operator class primitives
+# struct LinearOperator <: OperatorClass end
+# struct Monotone <: OperatorClass end
+# struct Symmetric <: OperatorClass end
+# struct Eigenvalues{μ,L} <: OperatorClass end
+# struct MaxSingularValue{L} <: OperatorClass end
+# struct SkewSymmetric <: OperatorClass end
+# struct Cocoercive{β} <: OperatorClass end
+# struct StronglyMonotone{μ} <: OperatorClass end
+# struct Nonexpansive{v} <: OperatorClass end
+# struct NegativelyComonotone{ρ} <: OperatorClass end
+# struct Lipschitz{L} <: RelationClass end
+
+# # relation class primitives
+# struct ZeroImage <: RelationClass end
+# struct ZeroPreimage <: RelationClass end
+
+
+# # Interpolation conditions not known
+# # Lipschitz{L} ∩ StronglyMonotoneOperator{μ}
+# # CocoerciveOperator{β} ∩ StronglyMonotoneOperator{μ}
+
+
+# ###############################################################################
+# # Interpolation conditions
+# ###############################################################################
+
+# const Triplets{X,F} = Set{Tuple{X,F,X}}
+
+# function triplets(o::ConvexFunction)
+#   p = samples(o)
+#   d = samples(o')
+  
+#   (x,o(x),evalute(o',x))
+# end
+
+# one_point_constraint(o::Oracle, f::Function) = prune(Constraints( f(x) for x ∈ samples(o) ))
+# two_point_constraint(o::Oracle, f::Function) = prune(Constraints( f(x,y) for x ∈ samples(o), y ∈ samples(o) ))
+
+# one_point_constraint(o::Functional, f::Function) = prune(Constraints( f(x) for x ∈ triplets(o) ))
+# two_point_constraint(o::Functional, f::Function) = prune(Constraints( f(x,y) for x ∈ triplets(o), y ∈ triplets(o) ))
+
+# "Interpolation conditions for an oracle and relation class. Returns a set of constraints."
+# function interpolation_conditions end
+
+
+# "All interpolation conditions for an oracle."
+# interpolation_conditions(o::Oracle) = mapreduce(fc -> interpolation_conditions(o,fc), ∪, classes(r); init=Constraints())
+
+
+
+
+# ###############################################################################
+# # Functions
+
+# # Relation = Set{<:Tuple}
+
+# # function interpolation_conditions(o::Functional, ::Convex)
+# #   two_point_constraint(o, ((x1,f1,g1),(x2,f2,_)) -> f2 ≥ f1 + g1*(x2-x1) )
+# # end
+
+# """
+#   Interpolation conditions for the class of L-smooth and μ-strongly convex functions.
+  
+#   A. Taylor, J. Hendrickx, F. Glineur (2017).
+#   Exact worst-case performance of first-order methods for composite convex optimization.
+#   SIAM Journal on Optimization, 27(3):1283–1313.
+#   <https://arxiv.org/pdf/1512.07516.pdf>
+# """
+# function interpolation_conditions(o::Functional, ::Curvature{μ,L}) where {μ,L}
+#   two_point_constraint(o, ((x1,f1,g1),(x2,f2,g2)) ->
+#     f2-f1-g1*(x2-x1) ≥ 1/(2*(1-μ/L))*(1/L*(g2-g1)^2 + μ*(x2-x1)^2 - 2μ/L*(g2-g1)*(x2-x1)) )
+# end
+
+# """
+#   Interpolation conditions for the class of convex indicator functions.
+  
+#   A. Taylor, J. Hendrickx, F. Glineur (2017).
+#   Exact worst-case performance of first-order methods for composite convex optimization.
+#   SIAM Journal on Optimization, 27(3):1283–1313.
+#   <https://arxiv.org/pdf/1512.07516.pdf>
+#   Theorem 3.6
+# """
+# function interpolation_conditions(o::Functional, ::ConvexIndicator{D}) where {D}
+#   interpolation_conditions(o, Convex()) ∪
+#   interpolation_conditions(o, ZeroFunction()) ∪
+#   interpolation_conditions(o, BoundedDomain{D}())
+# end
+
+# """
+#   Interpolation conditions for the class of functions that are zero on the domain.
+# """
+# function interpolation_conditions(o::Functional, ::ZeroFunction)
+#   Constraints( f == 0 for f ∈ image(o) )
+# end
+
+# """
+#   Interpolation conditions for the class of functions with bounded domain.
+# """
+# function interpolation_conditions(o::Functional, ::BoundedDomain{D}) where {D}
+#   Constraints( (xi-xj)^2 ≤ D^2 for xi ∈ preimage(o,o'), xj ∈ preimage(o,o') )
+# end
+
+# """
+#   Interpolation conditions for the class of functions with quadratic growth.
+  
+#   References:
+#     B. Goujaud, A. Taylor, A. Dieuleveut (2022).
+#     Optimal first-order methods for convex functions with a quadratic upper bound.
+#     <https://arxiv.org/pdf/2205.15033.pdf>
+#     Theorem 2.6
+# """
+# function interpolation_conditions(o::Functional, ::QuadraticGrowth{L}) where {L}
+#   two_point_constraint(o, ((xi,fi,gi),(xj,fj,gj)) -> fi-fj ≥ (xi-xj) ⋅ gj + 1/(2L)*gj^2)
+# end
+
+
+# ###############################################################################
+# # Operators
+
+# """
+#   Interpolation conditions for the class of linear operators.
+# """
+# function interpolation_conditions(X::𝐗, Y::𝐘, U::𝐔, V::𝐕, ::Linear) where {𝐗,𝐘,𝐔,𝐕}
+#   # X = Vector{𝐗}(inputs(o))
+#   # Y = Vector{𝐘}(outputs(o))
+#   # U = Vector{𝐘}(inputs(o'))
+#   # V = Vector{𝐗}(outputs(o'))
+#   # Constraints( x ⋅ v == y ⋅ u for (x,y) ∈ o, (u,v) ∈ o' )
+#   if 𝐗 ≠ 𝐕 || 𝐘 ≠ 𝐔
+#     error("Spaces inconsistent for a linear operator.")
+#   end
+#   Constraints( X ⊗ V == Y ⊗ U )
+# end
+
+# """
+#   Interpolation conditions for the class of symmetric linear operators.
+# """
+# function interpolation_conditions(X::𝐗, Y::𝐘, U::𝐔, V::𝐕, ::Symmetric) where {𝐗,𝐘,𝐔,𝐕}
+#   if 𝐗 ≠ 𝐘 || 𝐗 ≠ 𝐔 || 𝐗 ≠ 𝐕
+#     error("Spaces inconsistent for a symmetric linear operator.")
+#   end
+#   Constraints( [X; U] ⊗ [Y; V] == [Y; V] ⊗ [X; U] )
+#   # Constraints( xi ⋅ yj == yi ⋅ xj for (xi,yi) ∈ o, (xj,yj) ∈ o )
+# end
+
+# """
+#   Interpolation conditions for the class of skew-symmetric linear operators.
+# """
+# function interpolation_conditions(X::𝐗, Y::𝐘, U::𝐔, V::𝐕, ::SkewSymmetric) where {𝐗,𝐘,𝐔,𝐕}
+#   if 𝐗 ≠ 𝐘 || 𝐗 ≠ 𝐔 || 𝐗 ≠ 𝐕
+#     error("Spaces inconsistent for a skew-symmetric linear operator.")
+#   end
+#   Constraints( [X; U] ⊗ [Y; V] + [Y; V] ⊗ [X; U] == 0 )
+#   # Constraints( xi ⋅ yj + xj ⋅ yi == 0 for (xi,yi) ∈ o, (xj,yj) ∈ o )
+# end
+
+# """
+#   Interpolation conditions for the class of linear operators with maximum singular value upper bounded by L.
+
+#   N. Bousselmi, J. Hendrickx, F. Glineur (2023).
+#   Interpolation Conditions for Linear Operators and applications to Performance Estimation Problems.
+#   arXiv <https://arxiv.org/pdf/2302.08781.pdf>
+#   Theorem 3.1
+# """
+# function interpolation_conditions(X::𝐗, Y::𝐘, U::𝐔, V::𝐕, ::MaxSingularValue{L})  where {𝐗,𝐘,𝐔,𝐕,L}
+#   if Linear() ∉ classes(o)
+#     error("Only linear operators have singular values.")
+#   end
+#   Constraints( Y ⊗ Y ⪯ L^2*(X ⊗ X) ) ∪ Constraints( V ⊗ V ⪯ L^2*(U ⊗ U) )
+# end
+
+# """
+#   Interpolation conditions for the class of skew-symmetric linear operators with maximum singular value upper bounded by L.
+  
+#   N. Bousselmi, J. Hendrickx, F. Glineur (2023).
+#   Interpolation Conditions for Linear Operators and applications to Performance Estimation Problems.
+#   arXiv <https://arxiv.org/pdf/2302.08781.pdf>
+#   Corollary 3.2
+# """
+# function interpolation_conditions(o::Oracle, ::MaxSingularValue{L}) where {L}
+#   X = Vector{Expression{Point}}(o.inputs)
+#   Y = Vector{Expression{Point}}(o.outputs)
+#   (X ⊗ Y + Y ⊗ X == 0) ∪ Constraints([Y ⊗ Y ⪯ L^2*(X ⊗ X)])
+# end
+
+
+
+# """
+#   Interpolation conditions for the class of symmetric linear operators with eigenvalues in the closed interval [μ,L].
+
+#   N. Bousselmi, J. Hendrickx, F. Glineur (2023).
+#   Interpolation Conditions for Linear Operators and applications to Performance Estimation Problems.
+#   arXiv <https://arxiv.org/pdf/2302.08781.pdf>
+#   Theorem 3.3
+# """
+# function interpolation_conditions(o::LinearOperator, ::Eigenvalues{μ,L}) where {μ,L}
+#   X = Vector{Expression{Point}}(o.inputs)
+#   Y = Vector{Expression{Point}}(o.outputs)
+#   (X ⊗ Y == Y ⊗ X) ∪ Constraints([(Y-μ*X) ⊗ (L*X-Y) ⪰ 0])
+# end
+
+# """
+#   Interpolation conditions for the class of monotone operators.
+  
+#   H. H. Bauschke and P. L. Combettes (2017).
+#   Convex Analysis and Monotone Operator Theory in Hilbert Spaces.
+#   Springer New York, 2nd ed.
+#   Theorem 20.21
+# """
+# function interpolation_conditions(o::Oracle, ::Monotone)
+#   two_point_constraint(o, ((xi,gi),(xj,gj)) -> (gi-gj)*(xi-xj) ≥ 0)
+# end
+
+# function interpolation_conditions(o::Oracle, ::Cocoercive{β}) where {β}
+#   two_point_constraint(o, ((xi,gi),(xj,gj)) -> (gi-gj)*(xi-xj) ≥ β*(gi-gj)^2)
+# end
+
+# """
+#   Interpolation conditions for the class of strongly monotone operators.
+  
+#   E. Ryu, A. Taylor, C. Bergeling, P. Giselsson (2020).
+#   Operator splitting performance estimation: Tight contraction factors and optimal parameter selection.
+#   SIAM Journal on Optimization, 30(3), 2251-2271.
+#   <https://arxiv.org/pdf/1812.00146.pdf>
+#   Section 2
+# """
+# function interpolation_conditions(o::Oracle, ::StronglyMonotone{μ}) where {μ}
+#   two_point_constraint(o, ((xi,gi),(xj,gj)) -> (gi-gj)*(xi-xj) ≥ μ*(xi-xj)^2)
+# end
+
+# """
+#   Interpolation conditions for the class of nonexpansive operators.
+  
+#   Each nonexpansive operator has a unique vector called the `infimal displacement vector`, which we denote by v.
+  
+#   If a nonexpansive operator is consistent, i.e., has a fixed point, then v=0.
+
+#   If v is nonzero, a nonexpansive operator is inconsistent, i.e., does not have a fixed point.
+
+#   References:
+#     E. Ryu, A. Taylor, C. Bergeling, P. Giselsson (2020).
+#     Operator splitting performance estimation: Tight contraction factors and optimal parameter selection.
+#     SIAM Journal on Optimization, 30(3), 2251-2271.
+#     <https://arxiv.org/pdf/1812.00146.pdf>
+
+#     J. Park, E. Ryu (2023).
+#     Accelerated Infeasibility Detection of Constrained Optimization and Fixed-Point Iterations.
+#     arXiv preprint:2303.15876.
+#     <https://arxiv.org/pdf/2303.15876.pdf>
+# """
+# function interpolation_conditions(o::Oracle, ::Nonexpansive{v}) where {v}
+#   two_point_constraint(o, ((xi,gi),(xj,gj)) -> (gi-gj)^2 ≤ (xi-xj)^2) ∪
+#   one_point_constraint(o, (x,g) -> v^2 ≤ (xi-gi)*v)
+# end
+
+# """
+#   Interpolation conditions for the class of negatively comonotone operators (may not be sufficient) with comonotonicity parameter ρ > 0.
+  
+#   References:
+#     E. Gorbunov, A. Taylor, S. Horváth, G. Gidel (2023).
+#     Convergence of proximal point and extragradient-based methods beyond monotonicity: the case of negative comonotonicity.
+#     International Conference on Machine Learning.
+#     <https://proceedings.mlr.press/v202/gorbunov23a/gorbunov23a.pdf>
+# """
+# function interpolation_conditions(o::Oracle, ::NegativelyComonotone{ρ}) where {ρ}
+#   two_point_constraint(o, ((xi,gi),(xj,gj)) -> (gi-gj)*(xi-xj) + ρ*(gi-gj)^2 ≥ 0)
+# end
+
+# """
+#   Interpolation conditions for the class of Lipschitz operators.
+  
+#   References:
+#   [1] M. Kirszbraun (1934).
+#   Uber die zusammenziehende und Lipschitzsche transformationen.
+#   Fundamenta Mathematicae, 22 (1934).
+
+#   [2] F.A. Valentine (1943).
+#   On the extension of a vector function so as to preserve a Lipschitz condition.
+#   Bulletin of the American Mathematical Society, 49 (2).
+
+#   [3] F.A. Valentine (1945).
+#   A Lipschitz condition preserving extension for a vector function.
+#   American Journal of Mathematics, 67(1).
+
+#   Discussions and appropriate pointers for the interpolation problem can be found in:
+#   [4] E. Ryu, A. Taylor, C. Bergeling, P. Giselsson (2020).
+#   Operator splitting performance estimation: Tight contraction factors and optimal parameter selection.
+#   SIAM Journal on Optimization, 30(3), 2251-2271.
+#   <https://arxiv.org/pdf/1812.00146.pdf>
+# """
+# function interpolation_conditions(o::Oracle, ::Lipschitz{L}) where {L}
+#   two_point_constraint(o, ((xi,gi),(xj,gj)) -> (gi-gj)^2 ≤ L^2*(xi-xj)^2)
+# end
+"""
+    adjoint(x)
+
+Adjoint of an oracle, vector, or wrapper of those types.
+
+The adjoint function is used because it is automatically called by the notation `x'`.
+The semantics of the adjoint depend on the type of object (and may not correspond to the
+standard notion of adjoint).
+
+- For an oracle, the adjoint is used to access its related operators. The related operators
+  available depends on the type of oracle.
+    - the adjoint of a linear operator is its transpose
+    - the adjoint of a subdifferentiable function is its subdifferential
+    - the adjoint of a differentiable function is its gradient
+    - the adjoint of the gradient of a twice differentiable function is its Hessian
+- For a vector in an inner product space, its adjoint is its dual linear functional that
+    evaluates the inner product with the vector. If the vector is a linear function of other
+    vectors, then its adjoint is computated as the same linear function of the duals of its variables.
+
+# Examples
+```julia-repl
+julia> A = SymmetricLinearMap{Rⁿ}();     A ==  A'  # true
+julia> B = SkewSymmetricLinearMap{Rⁿ}(); B == -B'  # true
+julia> C = LinearMap{Rⁿ,Rᵐ}();           C == C''  # true
+julia> f = TwiceDifferentiableFunctional{Rⁿ}();
+julia> f'   # gradient of f
+julia> f''  # Hessian of f
+julia> x = Rⁿ();  x'      # linear functional y ↦ ⟨x,y⟩
+julia> y = Rⁿ();  (x+y)'  # linear functional z ↦ ⟨x,z⟩ + ⟨y,z⟩
+```
+"""
+function adjoint end
+
+function adjoint(o::Oracle)
+    error("Oracle type $(typeof(o)) does not have an associated operator o'. To specify a related operator, specialize `adjoint` for this oracle type.")
+end
+
+adjoint(o::AbstractLinearMap) = Transpose{typeof(o)}(o)
+adjoint(o::Transpose{<:AbstractLinearMap}) = o.parent
+adjoint(o::AbstractSymmetricLinearMap) = o
+adjoint(o::AbstractSkewSymmetricLinearMap) = LinearDecomposition{typeof(o)}(Dict(o => -1))
+adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
+adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
+
+function adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional})
+    Hessian{typeof(o.parent)}(o.parent)
+end
+
+function adjoint(x::LinearDecomposition)
+    mapreduce( p -> last(p) * first(p)', +, weights(x); init=Zero() )
+end
+
+adjoint(o::Dual{<:InnerProductSpace}) = o.parent
+adjoint(::ZeroFunctional{X}) where {X} = X(Zero())
+adjoint(a::Field) = a
+
+function adjoint(x::X) where {X<:InnerProductSpace}
+    if iszero(x)
+        ZeroFunctional{X}()
+    else
+        Dual{typeof(x)}(x)
+    end
+end
+
+adjoint(K::Type{<:Cone}) = dual(K)# Set of variables in a constraint or set of constraints
+variables(c::Constraint) = variables(expression(c))
+
+function variables(o::OracleOrWrapper)
+    # if !(typeof(unwrap(o)) <: AbstractLinearFunctional)
+    vars = variables(inputs(o) ∪ outputs(o))
+    # else
+    #     vars = variables(outputs(o))
+    # end
+    # for a ∈ values(associations(o))
+    for a ∈ associations(o)
+        if first(a) != GradientOf
+            union!(vars, variables(unwrap(last(a))))
+        end
+    end        
+    vars
+end
+
+variables(X::Union{ArrayOrSet,Generator}) = mapreduce(variables, ∪, X; init=Expressions())
+
+# function constraints(X::Union{ArrayOrSet,Generator})
+#     cons = Constraints()
+#     for c ∈ X
+#         if length(associations(c))>0 && (first(first(associations(c))) == GradientOf || first(associations(c)) == GradientOf || first(first(associations(c))) == Gradient || first(associations(c)) == Gradient)
+#         else
+#             union!(cons, constraints(c))
+#         end
+#     end        
+#     prune!(cons)
+#     # prune!(mapreduce(constraints, ∪, X; init=Constraints()))
+# end
+function constraints(X::Union{ArrayOrSet,Generator})
+    prune!(mapreduce(constraints, ∪, X; init=Constraints()))
+end
+
+function oracles(X::Union{ArrayOrSet,Generator})
+    mapreduce(oracles, ∪, X; init=Oracles())
+end
+
+
+############################################################################################
+# Neighbors
+
+neighbors(x::Expression) = variables(x) ∪ constraints(x) ∪ oracles(x)
+neighbors(x::Constraint) = variables(x)
+neighbors(x::Oracle) = variables(x) ∪ constraints(x)
+
+# Get all objects in the graph using graph search
+function nodes(x::Object)
+    visited = Objects()
+    queue = Objects([x])
+    while !isempty(queue)
+        node = pop!(queue)
+        if node ∉ visited
+            push!(visited, node)
+            union!(queue, neighbors(node))
+        end
+    end
+    visited
+end
+
+
+"""
+    constraints_oracles
+
+Recursively find all variables, constraints, and oracles associated with an expression.
+"""
+function variables_constraints_oracles end
+
+function variables_constraints_oracles(x::Object)
+    xs = nodes(x)
+
+    vars = Expressions( v for v ∈ xs if v isa Expression )
+    cons = Constraints( c for c ∈ xs if c isa Constraint )
+    orcs = Oracles( o for o ∈ xs if o isa Oracle )
+
+    cons = prune!(cons)
+
+    vars, cons, orcs
+end
+
+function info(vars::Expressions)
+
+    # types of variables
+    var_types = Set( typeof(v) for v ∈ vars )
+
+    # dictionary of variables of each type
+    var_dict = Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ var_types )
+
+    @info " ⋅ Variables"
+    for var_type ∈ var_types
+        @info "   ⋅ $(length(var_dict[var_type])) variables in $(var_type)"
+        @debug "     ⋅ $(var_dict[var_type])"
+    end
+end
+
+function info(cons::Constraints)
+
+    # types of constraints
+    con_types = Set( typeof(c) for c ∈ cons )
+
+    # dictionary of constraints of each type
+    con_dict = Dict( T => Set{T}( c for c ∈ cons if c isa T ) for T ∈ con_types )
+    
+    @info " ⋅ Constraints"
+    for con_type ∈ con_types
+        @info "   ⋅ $(length(con_dict[con_type])) $(con_type)"
+        @debug "     ⋅ $(con_dict[con_type])"
+    end
+    if length(get(con_dict, Semidefinite, Set())) > 1
+        @info "$(get(con_dict, Semidefinite, Set()))"
+    end
+end
+
+function info(orcs::Oracles)
+
+    # types of oracles
+    orc_types = Set( typeof(o) for o ∈ orcs )
+
+    # dictionary of oracles of each type
+    orc_dict = Dict( T => Set{T}( o for o ∈ orcs if o isa T ) for T ∈ orc_types )
+    
+    @info " ⋅ Oracles"
+    for orc_type ∈ orc_types
+        @info "   ⋅ $(length(orc_dict[orc_type])) $(orc_type)"
+        @debug "     ⋅ $(orc_dict[orc_type])"
+    end
+end
+
+isimplementable(e::Expression) = e isa R
+isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
+isimplementable(X::Union{ArrayOrSet,Generator}) = all( isimplementable(x) for x ∈ X )
+
+function optvar(e::Expression, optvar_dict::Dict)
+    if hasdecomposition(e)
+        # mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
+        x = 0
+        for (key,val) ∈ weights(e)
+            if haskey(optvar_dict, key)
+                x += val * optvar_dict[key]
+            else
+                x += val * value(key)
+            end
+        end
+        x
+    else
+        optvar_dict[e]
+    end
+end
+
+optvar(m::AbstractArray, optvar_dict::Dict) = [ optvar(a, optvar_dict) for a ∈ m ]
+
+function optcon(model::JuMP.Model, con::Constraint, optvar_dict::Dict)
+    ex = optvar(expression(con), optvar_dict)
+    if con isa Equality
+        JuMP.@constraint(model, 0 == ex )
+    elseif con isa Positive
+        JuMP.@constraint(model, 0 ≤ ex )
+    elseif con isa Semidefinite
+        JuMP.@constraint(model, ex .== ex' )
+        JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
+    else
+        error("Optimization with constraint $con not implemented")
+    end
+end
+
+function variable_dictionary(vars::Expressions)
+    Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ Set( typeof(v) for v ∈ vars ) )
+end
+
+function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions)
+    optvar_dict = Dict{R, JuMP.VariableRef}()
+    for var ∈ vars
+        if var isa R
+            optvar_dict[var] = JuMP.@variable(model)
+        else
+            error("Optimization with variable $var not implemented")
+        end
+    end
+    optvar_dict
+end
+
+function multiplier(model::JuMP.Model, con::ConeConstraint)
+    K = cone(con)
+    sz = size(con)
+    if sz == (1,1)
+        var = JuMP.@variable(model)
+    else
+        var = JuMP.@variable(model, [1:sz[1],1:sz[2]])
+    end
+
+    if con isa Equality
+        # no constraints
+    elseif con isa Positive
+        JuMP.@constraint(model, var .≥ 0 )
+    elseif con isa Semidefinite
+        JuMP.@constraint(model, var .== var' )
+        JuMP.@constraint(model, 0 ≤ var, JuMP.PSDCone() )
+    else
+        error("Optimization with constraint $con not implemented")
+    end
+
+    var
+end
+
+"""
+    maximize(performance)
+
+Use the performance estimation methodology to find the worst-case value of the performance measure.
+
+## Requirements
+- The performance measure must be a real expression (that is, an element of `R`).
+"""
+function maximize(performance::Expression)
+
+    if !isa(performance, R)
+        error("The performance measure must be a real number in $R.")
+    end
+
+    @info "Maximizing the performance measure $performance"
+
+    # variables, constraints, and oracles associated with the performance measure
+    vars, cons, orcs = variables_constraints_oracles(performance)
+
+    if !isimplementable(cons ∪ variables(cons))
+        error("Analysis is not implementable! All constraints and associated variables must be implementable.")
+    end
+
+    # optimization variables
+    optvars = filter( isimplementable, vars )
+
+    # optimization problem
+    model = JuMP.Model(SCS.Optimizer)
+
+    JuMP.set_silent(model)
+
+    @info "Setting up the optimization problem"
+
+    # optimization variables
+    optvar_dict = optimization_variable_dictionary(model, optvars)
+
+    @info "  ✓ variables"
+
+    # optimization objective
+    JuMP.@objective(model, Max, optvar(performance, optvar_dict))
+
+    @info "  ✓ objective"
+
+    # optimization constraints
+    foreach( con -> optcon(model, con, optvar_dict), cons )
+
+    @info "  ✓ constraints"
+
+    JuMP.optimize!(model)
+
+    @info "Termination status: $(JuMP.termination_status(model))"
+
+    @info "Assigning values to original variables"
+
+    # set the value of each variable
+    foreach( p -> value!(first(p), JuMP.value(last(p))), optvar_dict )
+
+    # interpolate each oracle
+    foreach( interpolate, orcs )
+
+    @info "Objective value: $(evaluate(performance))"
+
+    @info "Analysis complete! Use `evaluate()` to obtain the value of any expression in the algorithm."
+end
+
+function stateupdate(vars)
+    x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
+    real_vars = collect(v for v ∈ vars if v isa R)
+    x⁺ = next(x)
+    # u  = collect(setdiff(variables(x⁺), variables(vars)))
+    u  = collect(v for v ∈ vars if ismissing(next(v)) && v isa R)
+    # u  = setdiff(variables(real_vars), variables(x))
+    X  = linearform([x; u] => x)
+    X⁺ = linearform([x; u] => x⁺)
+    
+    X, X⁺, x, u
+end
+
+function nonnegative(λ, e, vars)
+    if e isa Gram
+        e = evaluate(e)
+    end
+    if e isa Expression
+        vec(linearform(vars => λ * e))
+    elseif e isa Vector
+        vec(linearform(vars => λ' * e))
+    elseif e isa Matrix
+        vec(linearform(vars => la.tr(λ * e)))
+    end
+end
+
+"""
+    certify(performance, rate)
+
+Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the specified rate.
+
+## Requirements
+- The performance measure must be a real expression (that is, an element of `R`).
+"""
+function certify(performance::Expression, ρ::Number)
+    if !isa(performance, R)
+        error("The performance measure must be a real number in $R.")
+    end
+    # variables, constraints, and oracles associated with the performance measure
+    vars, cons, _ = variables_constraints_oracles(performance)
+    vars = collect(vars)
+    X, X⁺, x, u = stateupdate(vars) 
+    model = JuMP.Model(SCS.Optimizer)
+    JuMP.set_silent(model)
+    JuMP.@variable(model, P[1:length(x)])
+
+    # Lyapunov function
+    V = X'*P
+    V⁺ = X⁺'*P
+
+    # performance measure
+    𝒫 = vec(linearform( [x; u] => performance ))
+
+    # linear forms
+    L1 = 𝒫 - V
+    L2 = V⁺ - ρ*V
+    for con ∈ cons
+        λ = multiplier(model, con)
+        μ = multiplier(model, con)
+        e = expression(con)
+        L1 += nonnegative(λ, e, [x; u])
+        L2 += nonnegative(μ, e, [x; u])
+    end
+    JuMP.@constraint(model, L1 .== 0 )
+    JuMP.@constraint(model, L2 .== 0 )
+
+    JuMP.optimize!(model)
+
+    JuMP.termination_status(model) == JuMP.OPTIMAL
+end
+
+linearform(p::Pair) = [ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
+
+# function linearform(G::GramMatrix{V}, x::F) where {F<:Field, V<:InnerProductSpace{F}}
+#     if any(!isvariable(a) for a ∈ decomposition(G))
+#         error("The Gram matrix $G must contain only variables to construct linear forms.")
+#     end
+#     A = Float64[ get(weights(selfdecomp(x)), a, 0) for a ∈ decomposition(G) ]
+#     if !isequal(x, tr(A*G))
+#         error("The expression $x is not a linear form in the Gram matrix $G")
+#     end
+#     A
+# end
+
+"""
+    Bisection search to find minimum
+
+```julia
+xopt = bsmin( f, a, b, tol=1e-5 )
+```
+Given a function `f` that returns true or false where `f(a) == false` and `f(b) == true`
+and the function is monotone (only one cross-over point), returns the smallest input in
+the interval `[a,b]` that still returns true within `tol`.
+"""
+function bsmin( f, a, b, tol=1e-5 )
+    a,b = min(a,b),max(a,b)
+    if f(a)
+        return a
+    end
+    if !f(b)
+        return b
+    end
+    while (b-a) > tol
+        c = (a+b)/2
+        if f(c)
+            b = c
+        else
+            a = c
+        end
+    end
+    return b
+end
+
+"""
+    rate(performance)
+
+Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the fastest possible rate.
+
+## Requirements
+- The performance measure must be a real expression (that is, an element of `R`).
+"""
+function rate(performance::Expression, lb=0)
+    if !isa(performance, R)
+        error("The performance measure must be a real number in $R")
+    end
+    @info "Finding the convergence rate of $performance"
+    @info "Searching for ρ between $lb and 1"
+    bsmin( ρ -> certify(performance,ρ), lb, 1 )
+end
+
+function lift(state::Expression, dimension::Int)
+    initial_state, initial_inputs = get_states_inputs(state)
+    state_formula = get_formulas([initial_state; initial_inputs], Expressions(state))[1]
+    input_formulas = get_formulas(initial_state, initial_inputs)
+
+    all_states = [initial_state; state]
+    depth = length(initial_state) # How many state is used to update
+    for i in length(all_states)+1:dimension+length(all_states) # if 3 states have been created, next state is "lift_4_state"
+        current_states = all_states[end-depth+1:end] # Get the states needed to create the inputs
+        inputs = [] # Get the inputs needed for this update
+        for input_formula in input_formulas
+            input_oracle = input_formula[1]
+            input_decomp = vec(input_formula[2]) # Get the decomp of the input
+            decomp = sum(input_decomp * current_states for (input_decomp, current_states) in zip(input_decomp, current_states))
+            label!(decomp, "lift_$(i)_input_$(length(inputs)+1)") # to create "lift_4_state" we use "lift_4_input_n"
+            input = sample(input_oracle, decomp)
+            push!(inputs, input)
+        end
+        state_decomp = vec(state_formula[2]) # Get the decomp of the next state
+        state_components = [current_states; inputs] # Get the states and inputs needed to create the next state
+        next_state = sum(state_decomp * state_components for (state_decomp, state_components) in zip(state_decomp, state_components))
+        label!(next_state, "lift_$(i)_state") # label the new state
+        @algorithm all_states[end] => next_state # define as next state
+        push!(all_states, next_state)
+        # push!(all_states)
+    end
+end
+
+function get_formulas(components, targets)
+    # components, targets = collect(components), collect(targets)
+    formulas = []  
+    for target in (targets)
+        oracle = get_oracle_input(target)[1]
+        if !ismissing(oracle) # target e is the result of sampling an oracle
+            e = get_oracle_input(target)[2]
+        else # target is just what it is
+            e = target
+        end
+        if hasmethod(hasdecomposition, Tuple{typeof(e)}) && hasdecomposition(e) # if e is a decomposition
+            if !⊆(Expressions(collect(keys(weights(decomposition(e))))), Expressions(components))
+                return missing # break if anything in e's decomposition is not in components
+            end
+        else # if e is a variable
+            if !⊆(Expressions(e), Expressions(components))
+                return missing # break if e is not in component
+            end
+        end
+        push!(formulas, (oracle, linearform(collect(components) => e)))
+    end
+    return formulas # Every target in targets can be created using the components
+end
+
+function get_states_inputs(e::Expression)
+    states, inputs = Set(), []
+    if !(e isa Gram) && hasmethod(hasdecomposition, Tuple{typeof(e)}) && hasdecomposition(e)
+        for i in keys(weights(decomposition(e)))
+            oracle = first(get_oracle_input(i))
+            if !ismissing(oracle) # if the expression has an oracle, it is an input state
+                push!(inputs, i)
+            else
+                push!(states, i)
+            end
+        end
+    end
+    first_state_candidates = copy(states)
+    for state in states
+        if !ismissing(next(state))
+            delete!(first_state_candidates, next(state)) # If another state have "state" as its next state, "state" is not the first state)
+        end
+    end
+    head = only(first_state_candidates)
+    states = Any[]
+    while !ismissing(next(head))
+        push!(states, head)
+        head = next(head)
+    end
+    return states, inputs
+endexport Algorithm
+export GradientMethod, MomentumMethod
+export update
+
+############################################################################################
+# Algorithms
+
+abstract type Algorithm end
+
+
+struct GradientMethod{α} <: Algorithm end
+struct MomentumMethod{α,β,γ} <: Algorithm end
+
+function update(alg::GradientMethod{α}, f::Functional, x::Expression) where {α}
+  x - α * f'(x)
+end
+
+function update(alg::MomentumMethod{α,β,γ}, f::Functional, x, str) where {α,β,γ}
+  g = f'(x[1]+γ*(x[1]-x[2]))
+  label!(g, str)
+  [ x[1]+β*(x[1]-x[2])-α*g; x[1] ]
+end

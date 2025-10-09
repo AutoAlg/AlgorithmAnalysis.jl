@@ -10,6 +10,57 @@ import SCS
 import LinearAlgebra as la
 using AbstractTrees
 
+function dump_fancy(e)
+    show(stdout, MIME("text/plain"), e)
+    println()
+end
+
+
+function RVTest()
+ 
+    @algorithm begin
+        x = Rⁿ()
+        μ = Rⁿ()
+        σ = Rⁿ()
+
+        g = GaussianRV{Rⁿ}(μ, σ)
+
+        println("original gaussian")
+        dump_fancy(g)
+
+        println("adding x to gaussian")
+        dump_fancy(g + x)
+
+        println("adding gaussian to gaussian")
+        dump_fancy(g + g)
+
+        # TODO this doesnt work right because we assume all things are independent
+        println("subtracting gaussian from gaussian")
+        dump_fancy(g - g)
+
+        Symmetrc
+
+        println("scaled gaussian")
+        dump_fancy(2 * g)
+
+        println("subtracted gaussian")
+        dump_fancy(x - g)
+
+        println("complex expression")
+        complex = 2 * g - 4 * μ + g + g
+        dump_fancy(complex)
+
+        @show variance(g)
+        @show variance(complex)
+        @show expectation(complex)
+
+
+
+    end
+
+
+end
+
 # GD
 function GD(m, L, prev_rate=0)
     α = 2/(L+m)
