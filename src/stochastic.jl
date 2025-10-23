@@ -36,10 +36,10 @@ mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractVectorSpace
     next::State{GaussianRV{T}}
     
     mean::IntervalRange{T}
-    covariances::Dict{GaussianRV{T}, IntervalRange{T}}
+    covariances::Dict{GaussianRV{T}, IntervalRange{F}} where {F<:Field, T<:VectorSpace{F}}
 
-    function GaussianRV{T}(mean::IntervalRange{T}, variance::IntervalRange{T}, label::String ="N($(mean.label), $(variance.label))") where {T<:Expression}
-        self = new{T}(label, missing, Constraints(), Oracles(), missing, mean, Dict{GaussianRV{T}, IntervalRange{T}}())
+    function GaussianRV{T}(mean::IntervalRange{T}, variance::IntervalRange{F}, label::String ="N($(mean.label), $(variance.label))") where {F<:Field, T<:VectorSpace{F}}
+        self = new{T}(label, missing, Constraints(), Oracles(), missing, mean, Dict{GaussianRV{T}, IntervalRange{F}}())
         self.covariances[self] = variance
 
         return self
@@ -85,7 +85,7 @@ end
 
 expectation(e::GaussianRV) = e.mean
 
-function set_bulk_covariances!(pairs::Vector{Pair{Tuple{GaussianRV{T}, GaussianRV{T}}, IntervalRange{T}}}) where {T<:AbstractVectorSpace}
+function set_bulk_covariances!(pairs::Vector{Pair{Tuple{GaussianRV{T}, GaussianRV{T}}, IntervalRange{F}}}) where {F<:Field, T<:VectorSpace{F}}
     for ((rv1, rv2), _) in pairs
         if length(rv1.covariances) != 1
             error("$(rv1.label) is not IID. All covariant variables must be initialized together. It has $(length(rv1.covariances)) covariance entries.");
@@ -101,17 +101,17 @@ function set_bulk_covariances!(pairs::Vector{Pair{Tuple{GaussianRV{T}, GaussianR
     end
 end
 
-function set_covariance_unchecked!(g1::GaussianRV{T}, g2::GaussianRV{T}, cov::IntervalRange{T}) where {T<:AbstractVectorSpace}
+function set_covariance_unchecked!(g1::GaussianRV{T}, g2::GaussianRV{T}, cov::IntervalRange{F}) where {F<:Field, T<:VectorSpace{F}}
     g1.covariances[g2] = cov;
     g2.covariances[g1] = cov;
 end
 
-function get_covariance(g1::GaussianRV{T}, g2::GaussianRV{T}) where {T<:AbstractVectorSpace}
+function get_covariance(g1::GaussianRV{T}, g2::GaussianRV{T}) where {F<:Field, T<:VectorSpace{F}}
     if haskey(g1.covariances, g2)
         return g1.covariances[g2]
     end
 
-    return zero(IntervalRange{T})
+    return zero(IntervalRange{F})
 end
 
 variance(g::GaussianRV) = get_covariance(g, g)

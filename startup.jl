@@ -21,20 +21,20 @@ function RVTest()
     @algorithm begin
         x = Rⁿ()
         μ = Rⁿ()
-        σ = Rⁿ()
+        σ = R()
 
         g = GaussianRV{Rⁿ}(IntervalRange(μ, x), IntervalRange(σ, σ))
 
         v = Rⁿ(); 
         v_hi = Rⁿ()
-        t_sq = Rⁿ();
+        t_sq = R();
         h = GaussianRV{Rⁿ}(IntervalRange(v, v_hi), IntervalRange(t_sq, t_sq))
         p = Rⁿ();
-        k_sq = Rⁿ(); 
-        r_sq = Rⁿ();
+        k_sq = R(); 
+        r_sq = R();
         k = GaussianRV{Rⁿ}(IntervalRange(p, p), IntervalRange(k_sq, r_sq));
-        Cgk_lo = Rⁿ()
-        Cgk_hi = Rⁿ()
+        Cgk_lo = R()
+        Cgk_hi = R()
         set_bulk_covariances!([
             (g, k) => IntervalRange(Cgk_lo, Cgk_hi)
         ])
