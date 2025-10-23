@@ -1,6 +1,32 @@
-import Base: show
+import Base: show, IO, convert, promote_rule
 
-export GaussianRV, expectation, variance, get_covariance, set_bulk_covariances!
+export GaussianRV, IntervalRange, expectation, variance, get_covariance, set_bulk_covariances!
+
+mutable struct IntervalRange{T}
+    min::T
+    max::T
+    label::String
+end
+IntervalRange(min::T, max::T) where {T} = IntervalRange(min, max, "")
+IntervalRange(label::String, min::T, max::T) where {T} = IntervalRange(min, max, label)
+
+Base.:+(l::IntervalRange{T}, r::IntervalRange{T}) where {T} = IntervalRange(l.min + r.min, l.max + r.max, "($(l.label) + $(r.label))")
+Base.:+(l::T, r::IntervalRange{T}) where {T} = +(promote(l,r)...)
+Base.:+(l::IntervalRange{T}, r::T) where {T} = +(promote(l,r)...)
+function Base.:*(scalar::Number, r::IntervalRange{T}) where {T}
+    new_label = "($scalar * $(r.label))"
+    if scalar >= 0
+        return IntervalRange(scalar * r.min, scalar * r.max, new_label);
+    else
+        return IntervalRange(scalar * r.max, scalar * r.min, new_label);
+    end
+end
+Base.:zero(::Type{IntervalRange{T}}) where {T} = IntervalRange(zero(T), zero(T))
+Base.:show(io::IO, r::IntervalRange{T}) where {T} = print(io, "[$(r.min), $(r.max)]")
+
+Base.convert(::Type{IntervalRange{T}}, x::T) where {T} = IntervalRange(x.label, x, x)
+Base.promote_rule(::Type{IntervalRange{T}}, ::Type{T}) where {T} = IntervalRange{T}
+
 
 mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractVectorSpace
     label::String
@@ -9,11 +35,11 @@ mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractVectorSpace
     oracles::Oracles
     next::State{GaussianRV{T}}
     
-    mean::T
-    covariances::Dict{GaussianRV{T}, T}
+    mean::IntervalRange{T}
+    covariances::Dict{GaussianRV{T}, IntervalRange{T}}
 
-    function GaussianRV{T}(mean::T, variance::T, label::String ="N($(mean.label), $(variance.label))") where {T<:Expression}
-        self = new{T}(label, missing, Constraints(), Oracles(), missing, mean, Dict{GaussianRV{T}, T}())
+    function GaussianRV{T}(mean::IntervalRange{T}, variance::IntervalRange{T}, label::String ="N($(mean.label), $(variance.label))") where {T<:Expression}
+        self = new{T}(label, missing, Constraints(), Oracles(), missing, mean, Dict{GaussianRV{T}, IntervalRange{T}}())
         self.covariances[self] = variance
 
         return self
@@ -59,7 +85,7 @@ end
 
 expectation(e::GaussianRV) = e.mean
 
-function set_bulk_covariances!(pairs::Vector{Pair{Tuple{GaussianRV{T}, GaussianRV{T}}, T}}) where {T<:AbstractVectorSpace}
+function set_bulk_covariances!(pairs::Vector{Pair{Tuple{GaussianRV{T}, GaussianRV{T}}, IntervalRange{T}}}) where {T<:AbstractVectorSpace}
     for ((rv1, rv2), _) in pairs
         if length(rv1.covariances) != 1
             error("$(rv1.label) is not IID. All covariant variables must be initialized together. It has $(length(rv1.covariances)) covariance entries.");
@@ -75,7 +101,7 @@ function set_bulk_covariances!(pairs::Vector{Pair{Tuple{GaussianRV{T}, GaussianR
     end
 end
 
-function set_covariance_unchecked!(g1::GaussianRV{T}, g2::GaussianRV{T}, cov::T) where {T<:AbstractVectorSpace}
+function set_covariance_unchecked!(g1::GaussianRV{T}, g2::GaussianRV{T}, cov::IntervalRange{T}) where {T<:AbstractVectorSpace}
     g1.covariances[g2] = cov;
     g2.covariances[g1] = cov;
 end
@@ -85,7 +111,7 @@ function get_covariance(g1::GaussianRV{T}, g2::GaussianRV{T}) where {T<:Abstract
         return g1.covariances[g2]
     end
 
-    return zero(T)
+    return zero(IntervalRange{T})
 end
 
 variance(g::GaussianRV) = get_covariance(g, g)
@@ -100,7 +126,7 @@ function gather_related_rvs(rvs::GaussianRV{T}...) where {T<:AbstractVectorSpace
     return related_rvs
 end
 
-function Base.:+(e1::T, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
+function Base.:+(e1::IntervalRange{T}, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
     new_rv = GaussianRV{T}(e1 + e2.mean, variance(e2), "($(e1.label) + $(e2.label))")
 
     # Cov(e1 + constant, other_rv) = Cov(e1, other_rv)
@@ -112,9 +138,11 @@ function Base.:+(e1::T, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
 
     return new_rv
 end
-Base.:+(e1::GaussianRV{T}, e2::T) where {T<:AbstractVectorSpace} = e2 + e1
+Base.:+(e1::GaussianRV{T}, e2::IntervalRange{T}) where {T<:AbstractVectorSpace} = e2 + e1
+Base.:+(e1::GaussianRV{T}, e2::T) where {T<:AbstractVectorSpace} = e1 + convert(IntervalRange{T}, e2)
+Base.:+(e1::T, e2::GaussianRV{T}) where {T<:AbstractVectorSpace} = e2 + e1
 
-function +(e1::GaussianRV{T}, e2::GaussianRV{T}) where {T}
+function +(e1::GaussianRV{T}, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
     new_rv = GaussianRV{T}(
         e1.mean + e2.mean,
         variance(e1) + variance(e2) + 2 * get_covariance(e1, e2),
@@ -134,12 +162,12 @@ function +(e1::GaussianRV{T}, e2::GaussianRV{T}) where {T}
 
     return new_rv
 end
-Base.:-(g1::GaussianRV{T}, g2::GaussianRV{T}) where {T<:AbstractVectorSpace} = g1 +(-1 * g2) 
-Base.:-(e1::GaussianRV{T}, e2::T)             where {T<:AbstractVectorSpace} = e1 + -e2
-Base.:-(e1::T,             e2::GaussianRV{T}) where {T<:AbstractVectorSpace} = e1 + (-1 * e2)
+Base.:-(g1::GaussianRV{T}, g2::GaussianRV{T}) where {T<:AbstractVectorSpace} = g1 + (-1 * g2) 
+Base.:-(e1::GaussianRV{T}, e2::IntervalRange{T})             where {T<:AbstractVectorSpace} = e1 + (-1 * e2)
+Base.:-(e1::IntervalRange{T},             e2::GaussianRV{T}) where {T<:AbstractVectorSpace} = e1 + (-1 * e2)
 
 function Base.:*(s::Number, g::GaussianRV{T}) where {T<:AbstractVectorSpace}
-    new_rv = GaussianRV{T}(s * g.mean, s^2 * variance(g), "($s * $(label(g)))")
+    new_rv = GaussianRV{T}(s * g.mean, s*s * variance(g), "($s * $(label(g)))")
 
     # Cov(rv, other_rv) = s * Cov(g, other_rv)
     for other_rv in gather_related_rvs(g)
