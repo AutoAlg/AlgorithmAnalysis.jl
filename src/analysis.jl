@@ -12,7 +12,7 @@ function variables(o::OracleOrWrapper)
         if first(a) != GradientOf
             union!(vars, variables(unwrap(last(a))))
         end
-    end        
+    end
     vars
 end
 
@@ -297,7 +297,7 @@ end
 """
     certify(performance, rate)
 
-Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the specified rate.
+Use the control methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the specified rate.
 
 ## Requirements
 - The performance measure must be a real expression (that is, an element of `R`).
@@ -387,9 +387,13 @@ function bsmin( f, a, b, tol=1e-5 )
 end
 
 """
-    rate(performance)
+    ρ = rate(performance)
 
-Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the fastest possible rate.
+Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the fastest possible rate. The analysis guarantees that the performance measure satisfies the bound
+
+``\\text{performance}(k) \\leq c\\,\\rho^k``
+
+at each iteration ``k``.
 
 ## Requirements
 - The performance measure must be a real expression (that is, an element of `R`).

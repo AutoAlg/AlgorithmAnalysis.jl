@@ -35,3 +35,9 @@ To view the documentation in a browser, from the same directory run:
 ```console
 julia --project=docs/ docs/serve.jl
 ```
+or just run
+```julia
+using AlgorithmAnalysis, LiveServer
+servedocs()
+```
+in Julia from the project's main folder.

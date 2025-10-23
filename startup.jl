@@ -4,11 +4,11 @@ using Revise
 using AlgorithmAnalysis
 using Logging
 using Plots
-using LaTeXStrings
 import JuMP
 import SCS
 import LinearAlgebra as la
 using AbstractTrees
+using LiveServer
 
 m,L = 1,10
 α = 2 / (L + m)

@@ -163,7 +163,8 @@ function defaultlabel(w::Dual{X}, x::X) where {X}
 end
 
 ############################################################################################
-# Algorithm macro
+# @ALGORITHM
+############################################################################################
 
 """
     @algorithm
@@ -220,14 +221,21 @@ function _algorithm(ex::Expr)
             quote
                 update!( $lhs => $rhs )
             end
-            
-        # else if the expression is not an assignment, then just evaluate it
-        elseif ex.head ≠ :(=)
-            :($(esc(ex)))
         
-        # otherwise the expression is an assignment, so evaluate and label it
-        else
+        # else if the expression is declaring a variable (e.g., x ∈ R), then eval and label
+        elseif ex.head == :call && ex.args[1] == :(∈)
             eval_and_label(ex)
+
+        elseif ex.head == :tuple && ex.args[end].args[1] == :(∈)
+            eval_and_label(ex)
+
+        # else if the expression is an assignment, evaluate and label it
+        elseif ex.head == :(=)
+            eval_and_label(ex)
+
+        # otherwise the expression is not an assignment, so just evaluate it
+        else
+            :($(esc(ex)))
         end
     end
 end
@@ -236,8 +244,8 @@ eval_and_label(x::Expression) = :($(esc(x)))
 
 function eval_and_label(ex::Expr)
     
-    # if the lhs is a symbol
-    if ex.args[1] isa Symbol
+    # if the expression is an equality
+    if ex.head == :(=)
 
         lhs = esc(ex.args[1])
         rhs = esc(ex.args[2])
@@ -247,6 +255,22 @@ function eval_and_label(ex::Expr)
             $lhs = $rhs
             label!($lhs, $str)
         end
+
+    # else if the expression is an inclusion (e.g., x ∈ R)
+    # elseif ex.args[1] == :(∈) || ex.args[1] == :in
+
+        # lhs = esc(ex.args[2])
+        # rhs = esc(ex.args[3])
+        # str = string(ex.args[2])
+
+        # quote
+        #     if $rhs isa $DataType && $rhs <: Expression
+        #         $lhs = $rhs()
+        #         label!($lhs, $str)
+        #     else
+        #         $(esc(ex))
+        #     end
+        # end
 
     # else if the lhs is an element of an array (evalutes the index)
     elseif ex.args[1] isa Expr && ex.args[1].head == :ref
@@ -272,7 +296,50 @@ function eval_and_label(ex::Expr)
             label!.($lhs, $([string(x) for x ∈ ex.args[1].args]))
         end
 
+    # x,y ∈ R
+    elseif ex.head == :tuple && ex.args[end].args[1] == :(∈)
+
+        expr = ex
+        vars = Any[]
+        rhs = nothing
+
+        if expr isa Expr
+            if expr.head == :tuple
+                parts = expr.args
+                last = parts[end]
+                if last isa Expr && last.head == :call && (last.args[1] == :in || last.args[1] == :∈)
+                    rhs = last.args[3]
+                    append!(vars, parts[1:end-1])
+                    push!(vars, last.args[2])
+                else
+                    error("@algorithm: expected syntax like `x, y, z in R`")
+                end
+            elseif expr.head == :call && (expr.args[1] == :in || expr.args[1] == :∈)
+                rhs = expr.args[3]
+                lhs = expr.args[2]
+                if lhs isa Expr && lhs.head == :tuple
+                    append!(vars, lhs.args...)
+                else
+                    push!(vars, lhs)
+                end
+            else
+                error("@algorithm: expected syntax like `x, y, z in R`")
+            end
+        else
+            error("@algorithm: expected an expression")
+        end
+
+        # Build assignment + labeling statements
+        stmts = Any[]
+        for v in vars
+            push!(stmts, :( $v = $rhs() ))
+            push!(stmts, :( label!($v, $(string(v))) ))
+        end
+
+        esc(Expr(:block, stmts...))
+
+    # otherwise just evaluate the expression
     else
-        throw(ArgumentError("@algorithm: `$ex` does not have the correct left-hand side."))
+        :($(esc(ex)))
     end
 end

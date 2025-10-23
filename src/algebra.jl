@@ -73,4 +73,4 @@ julia> y = [ Rⁿ(); Rⁿ() ]
 julia> G = x ⊗ y
 ```
 """
-⊗(x1::Vector{V}, x2::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}} = Gram(x1,x2)
+⊗(x1::Vector{V}, x2::Vector{V}) where {V<:InnerProductSpace} = Gram(x1,x2)

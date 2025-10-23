@@ -2,3 +2,4 @@
 *.so
 *.bat
 *.code-workspace
+docs/builds/

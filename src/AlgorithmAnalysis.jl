@@ -10,7 +10,7 @@ export Constraint, Constraints, ConstraintSet
 export Variable, Variables, Expression, Expressions, Field, Reals
 export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
 export ScalarValue, VectorValue, Object, Objects
-export R, Rⁿ, Rᵐ
+export R, Rⁿ, Rᵐ, X
 
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
