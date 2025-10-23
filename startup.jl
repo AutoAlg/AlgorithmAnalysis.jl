@@ -25,6 +25,17 @@ function RVTest()
 
         g = GaussianRV{Rⁿ}(μ, σ)
 
+        v = Rⁿ(); 
+        t_sq = Rⁿ();
+        h = GaussianRV{Rⁿ}(v, t_sq)
+        p = Rⁿ();
+        k_sq = Rⁿ(); 
+        k = GaussianRV{Rⁿ}(p, k_sq)
+        Cgk = Rⁿ()
+        set_bulk_covariances!([
+            (g, k) => Cgk
+        ])
+
         println("original gaussian")
         dump_fancy(g)
 
@@ -34,11 +45,8 @@ function RVTest()
         println("adding gaussian to gaussian")
         dump_fancy(g + g)
 
-        # TODO this doesnt work right because we assume all things are independent
         println("subtracting gaussian from gaussian")
         dump_fancy(g - g)
-
-        Symmetrc
 
         println("scaled gaussian")
         dump_fancy(2 * g)
@@ -55,10 +63,28 @@ function RVTest()
         @show expectation(complex)
 
 
+        println("negated")
+        dump_fancy(-g)
 
+        println("dependent sum")
+        dump_fancy(h + g)
+
+        println("complex dependent sum")
+        dump_fancy(g + h - k)
+
+        println("cancellation sum")
+        dump_fancy((g + x) - g)
+
+        println("sum cov")
+        @show get_covariance(g + h, g)
+
+        print("independent var")
+        @show variance(g + k)
+
+        println("compelx 2")
+        c2 = (g - h) * 0.5 + v
+        dump_fancy(c2)
     end
-
-
 end
 
 # GD

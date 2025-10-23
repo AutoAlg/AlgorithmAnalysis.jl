@@ -3,3 +3,5 @@
 *.bat
 *.code-workspace
 .vscode/*
+checks.json
+out.txt
