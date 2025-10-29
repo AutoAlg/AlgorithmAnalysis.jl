@@ -2,8 +2,6 @@ import Base: show, IO, convert, promote_rule
 
 export GaussianRV, IntervalRange, expectation, variance, get_covariance, set_bulk_covariances!
 
-# TODO: initalize an interval with a single value so you can type GaussianRandomVariable(μ, σ) insetad of explicitly doing the range stuff
-# TODO: use not isequal instead of !== because isequal(2*g, 2*g) == true (memberwise equivalence ignoring the label) 
 # TODO: inner product of a random variabele g'*g | ' - adjoint |  transpose is the adjoin, find the transpose of a random variable
 # TODO: rv transpose goes into the wrapper, but then the wrapper needs to be able to be evaluated, how?? for eventually typing g'*g
 # TODO: make the wrapper and then wriate a function that goes from the OrWrapper * a T and then ues that to claucatated what is desried 
@@ -11,7 +9,16 @@ mutable struct IntervalRange{T}
     min::T
     max::T
 end
-label(r::IntervalRange{T}) where {T} = "[$(sprint(show, r.min)), $(sprint(show, r.max))]"
+IntervalRange{T}(t::T) where {T} = IntervalRange{T}(t, t)
+function label(r::IntervalRange{T}) where {T} 
+    if (isequal(r.min, r.max)) 
+        return "[$(sprint(show, r.min))]"
+    else
+        return "[$(sprint(show, r.min)), $(sprint(show, r.max))]"
+    end
+end
+    
+    
 
 Base.:+(l::IntervalRange{T}, r::IntervalRange{T}) where {T} = IntervalRange(l.min + r.min, l.max + r.max)
 Base.:+(l::T, r::IntervalRange{T}) where {T} = +(promote(l,r)...)
@@ -46,6 +53,20 @@ mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractVectorSpace
 
         return self
     end
+
+    function GaussianRV{T}(mean::T, variance::F, label = "N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
+        return GaussianRV{T}(IntervalRange(mean, mean), IntervalRange(variance, variance));
+    end
+
+    function GaussianRV{T}(mean::T, variance::IntervalRange{F}, label = "N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
+        return GaussianRV{T}(IntervalRange(mean, mean), variance);
+    end
+
+
+    function GaussianRV{T}(mean::IntervalRange{T}, variance::F, label = "N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
+        return GaussianRV{T}(mean, IntervalRange(variance, variance));
+    end
+
 end
 
 
@@ -58,7 +79,7 @@ function show(io::IO, ::MIME"text/plain", g::GaussianRV{T}) where {T<:AbstractVe
     println(io, "  Mean: ", g.mean)
     println(io, "  Variance: ", variance(g))
     for (rv, cov) in g.covariances
-        if (rv !== g)
+        if (!isequal(rv, g))
             println(io, "  Covariance(self, $(rv.label)) = ", cov)
         end
     end
@@ -132,7 +153,7 @@ function Base.:+(e1::IntervalRange{T}, e2::GaussianRV{T}) where {T<:AbstractVect
     new_rv = GaussianRV{T}(e1 + e2.mean, variance(e2), "($(label(e1)) + $(label(e2)))")
 
     for other_rv in gather_related_rvs(e2)
-        if other_rv !== new_rv
+        if !isequal(other_rv, new_rv)
             set_covariance_unchecked!(new_rv, other_rv, get_covariance(e2, other_rv))
         end    
     end
@@ -152,7 +173,7 @@ function +(e1::GaussianRV{T}, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
 
     # Cov(e1 + e2, other_rv) = Cov(e1, other_rv) + Cov(e2, other_rv)
     for other_rv in gather_related_rvs(e1, e2)
-        if other_rv !== new_rv              
+        if !isequal(other_rv, new_rv)           
             set_covariance_unchecked!(
                 new_rv,
                 other_rv,
@@ -172,7 +193,7 @@ function Base.:*(s::Number, g::GaussianRV{T}) where {T<:AbstractVectorSpace}
 
     # Cov(rv, other_rv) = s * Cov(g, other_rv)
     for other_rv in gather_related_rvs(g)
-        if other_rv !== new_rv 
+        if !isequal(other_rv, new_rv)
             set_covariance_unchecked!(new_rv, other_rv, s * get_covariance(g, other_rv))
         end
     end
