@@ -2,29 +2,31 @@ import Base: show, IO, convert, promote_rule
 
 export GaussianRV, IntervalRange, expectation, variance, get_covariance, set_bulk_covariances!
 
+# TODO: initalize an interval with a single value so you can type GaussianRandomVariable(μ, σ) insetad of explicitly doing the range stuff
+# TODO: use not isequal instead of !== because isequal(2*g, 2*g) == true (memberwise equivalence ignoring the label) 
+# TODO: inner product of a random variabele g'*g | ' - adjoint |  transpose is the adjoin, find the transpose of a random variable
+# TODO: rv transpose goes into the wrapper, but then the wrapper needs to be able to be evaluated, how?? for eventually typing g'*g
+# TODO: make the wrapper and then wriate a function that goes from the OrWrapper * a T and then ues that to claucatated what is desried 
 mutable struct IntervalRange{T}
     min::T
     max::T
-    label::String
 end
-IntervalRange(min::T, max::T) where {T} = IntervalRange(min, max, "")
-IntervalRange(label::String, min::T, max::T) where {T} = IntervalRange(min, max, label)
+label(r::IntervalRange{T}) where {T} = "[$(sprint(show, r.min)), $(sprint(show, r.max))]"
 
-Base.:+(l::IntervalRange{T}, r::IntervalRange{T}) where {T} = IntervalRange(l.min + r.min, l.max + r.max, "($(l.label) + $(r.label))")
+Base.:+(l::IntervalRange{T}, r::IntervalRange{T}) where {T} = IntervalRange(l.min + r.min, l.max + r.max)
 Base.:+(l::T, r::IntervalRange{T}) where {T} = +(promote(l,r)...)
 Base.:+(l::IntervalRange{T}, r::T) where {T} = +(promote(l,r)...)
 function Base.:*(scalar::Number, r::IntervalRange{T}) where {T}
-    new_label = "($scalar * $(r.label))"
     if scalar >= 0
-        return IntervalRange(scalar * r.min, scalar * r.max, new_label);
+        return IntervalRange(scalar * r.min, scalar * r.max);
     else
-        return IntervalRange(scalar * r.max, scalar * r.min, new_label);
+        return IntervalRange(scalar * r.max, scalar * r.min);
     end
 end
 Base.:zero(::Type{IntervalRange{T}}) where {T} = IntervalRange(zero(T), zero(T))
 Base.:show(io::IO, r::IntervalRange{T}) where {T} = print(io, "[$(r.min), $(r.max)]")
 
-Base.convert(::Type{IntervalRange{T}}, x::T) where {T} = IntervalRange(x.label, x, x)
+Base.convert(::Type{IntervalRange{T}}, x::T) where {T} = IntervalRange(x, x)
 Base.promote_rule(::Type{IntervalRange{T}}, ::Type{T}) where {T} = IntervalRange{T}
 
 
@@ -38,7 +40,7 @@ mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractVectorSpace
     mean::IntervalRange{T}
     covariances::Dict{GaussianRV{T}, IntervalRange{F}} where {F<:Field, T<:VectorSpace{F}}
 
-    function GaussianRV{T}(mean::IntervalRange{T}, variance::IntervalRange{F}, label::String ="N($(mean.label), $(variance.label))") where {F<:Field, T<:VectorSpace{F}}
+    function GaussianRV{T}(mean::IntervalRange{T}, variance::IntervalRange{F}, label::String ="N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
         self = new{T}(label, missing, Constraints(), Oracles(), missing, mean, Dict{GaussianRV{T}, IntervalRange{F}}())
         self.covariances[self] = variance
 
@@ -127,9 +129,8 @@ function gather_related_rvs(rvs::GaussianRV{T}...) where {T<:AbstractVectorSpace
 end
 
 function Base.:+(e1::IntervalRange{T}, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
-    new_rv = GaussianRV{T}(e1 + e2.mean, variance(e2), "($(e1.label) + $(e2.label))")
+    new_rv = GaussianRV{T}(e1 + e2.mean, variance(e2), "($(label(e1)) + $(label(e2)))")
 
-    # Cov(e1 + constant, other_rv) = Cov(e1, other_rv)
     for other_rv in gather_related_rvs(e2)
         if other_rv !== new_rv
             set_covariance_unchecked!(new_rv, other_rv, get_covariance(e2, other_rv))
