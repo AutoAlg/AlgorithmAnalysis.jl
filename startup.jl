@@ -15,80 +15,107 @@ function dump_fancy(e)
     println()
 end
 
+# @algorithm begin
 
-function RVTest()
- 
-    @algorithm begin
-        x = Rⁿ()
-        μ = Rⁿ()
-        σ = R()
+#     expectation(g) == x
 
-        g = GaussianRV{Rⁿ}(IntervalRange(μ, x), σ)
+# end
 
-        v = Rⁿ(); 
-        v_hi = Rⁿ()
-        t_sq = R();
-        h = GaussianRV{Rⁿ}(IntervalRange(v, v_hi), t_sq)
-        p = Rⁿ();
-        k_sq = R(); 
-        r_sq = R();
-        k = GaussianRV{Rⁿ}(p, IntervalRange(k_sq, r_sq));
-        Cgk_lo = R()
-        Cgk_hi = R()
-        set_bulk_covariances!([
-            (g, k) => IntervalRange(Cgk_lo, Cgk_hi)
-        ])
+function GD(m, L, prev_rate=0)
 
-        println("original gaussian")
-        dump_fancy(g)
+   
 
-        println("adding x to gaussian")
-        dump_fancy(g + x)
+    @algorithm begin 
+        α = 2/(L+m)
+        
 
-        println("adding gaussian to gaussian")
-        dump_fancy(g + g)
+        g = GaussianRV{R, Rⁿ}(α)
 
-        println("subtracting gaussian from gaussian")
-        dump_fancy(g - g)
-
-        println("scaled gaussian")
-        dump_fancy(2 * g)
-
-        println("subtracted gaussian")
-        dump_fancy(x - g)
-
-        println("complex expression")
-        complex = 2 * g - 4 * μ + g + g
-        dump_fancy(complex)
-
-        @show variance(g)
-        @show variance(complex)
-        @show expectation(complex)
-
-
-        println("negated")
-        dump_fancy(-g)
-
-        println("dependent sum")
-        dump_fancy(h + g)
-
-        println("complex dependent sum")
-        dump_fancy(g + h - k)
-
-        println("cancellation sum")
-        dump_fancy((g + x) - g)
-
-        println("sum cov")
-        @show get_covariance(g + h, g)
-
-        print("independent var")
-        @show variance(g + k)
-
-        println("compelx 2")
-        c2 = (g - h) * 0.5 + v
-        dump_fancy(c2)
+        f = DifferentiableFunctional{Rⁿ}()
+        xs = first_order_stationary_point(f)
+        f' ∈ SectorBounded(m, L, xs, f'(xs))
+        x0 = Rⁿ()
+        x1 = x0 - (α*f'(x0) + g)
+        x0 => x1
+        performance = (x0-xs)^2
     end
+    @show rate(performance, prev_rate)
 end
+
+
+# function RVTest()
+ 
+#     @algorithm begin
+#         x = Rⁿ()
+#         μ = Rⁿ()
+#         σ = R()
+
+#         g = GaussianRV{Rⁿ}(IntervalRange(μ, x), σ)
+
+#         v = Rⁿ(); 
+#         v_hi = Rⁿ()
+#         t_sq = R();
+#         h = GaussianRV{Rⁿ}(IntervalRange(v, v_hi), t_sq)
+#         p = Rⁿ();
+#         k_sq = R(); 
+#         r_sq = R();
+#         k = GaussianRV{Rⁿ}(p, IntervalRange(k_sq, r_sq));
+#         Cgk_lo = R()
+#         Cgk_hi = R()
+#         set_bulk_covariances!([
+#             (g, k) => IntervalRange(Cgk_lo, Cgk_hi)
+#         ])
+
+#         println("original gaussian")
+#         dump_fancy(g)
+
+#         println("adding x to gaussian")
+#         dump_fancy(g + x)
+
+#         println("adding gaussian to gaussian")
+#         dump_fancy(g + g)
+
+#         println("subtracting gaussian from gaussian")
+#         dump_fancy(g - g)
+
+#         println("scaled gaussian")
+#         dump_fancy(2 * g)
+
+#         println("subtracted gaussian")
+#         dump_fancy(x - g)
+
+#         println("complex expression")
+#         complex = 2 * g - 4 * μ + g + g
+#         dump_fancy(complex)
+
+#         @show variance(g)
+#         @show variance(complex)
+#         @show expectation(complex)
+
+
+#         println("negated")
+#         dump_fancy(-g)
+
+#         println("dependent sum")
+#         dump_fancy(h + g)
+
+#         println("complex dependent sum")
+#         dump_fancy(g + h - k)
+
+#         println("cancellation sum")
+#         dump_fancy((g + x) - g)
+
+#         println("sum cov")
+#         @show get_covariance(g + h, g)
+
+#         print("independent var")
+#         @show variance(g + k)
+
+#         println("compelx 2")
+#         c2 = (g - h) * 0.5 + v
+#         dump_fancy(c2)
+#     end
+# end
 
 # GD
 function GD(m, L, prev_rate=0)

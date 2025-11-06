@@ -36,38 +36,25 @@ Base.:show(io::IO, r::IntervalRange{T}) where {T} = print(io, "[$(r.min), $(r.ma
 Base.convert(::Type{IntervalRange{T}}, x::T) where {T} = IntervalRange(x, x)
 Base.promote_rule(::Type{IntervalRange{T}}, ::Type{T}) where {T} = IntervalRange{T}
 
-
-mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractVectorSpace
+mutable struct GaussianRV{F<:Field, T<:VectorSpace{F}} <: InnerProductSpace{F}
     label::String
-    value::VectorValue{GaussianRV{T}} 
+    value::VectorValue{GaussianRV{F, T}} 
     constraints::Constraints
     oracles::Oracles
-    next::State{GaussianRV{T}}
+    next::State{GaussianRV{F, T}}
+    associations::Associations
     
-    mean::IntervalRange{T}
-    covariances::Dict{GaussianRV{T}, IntervalRange{F}} where {F<:Field, T<:VectorSpace{F}}
+    mean::T
 
-    function GaussianRV{T}(mean::IntervalRange{T}, variance::IntervalRange{F}, label::String ="N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
-        self = new{T}(label, missing, Constraints(), Oracles(), missing, mean, Dict{GaussianRV{T}, IntervalRange{F}}())
-        self.covariances[self] = variance
+    function GaussianRV{F, T}(mean::T=T()) where {F<:Field, T<:VectorSpace{F}}
+        self = new{F, T}("N(label(mean))", missing, Constraints(), Oracles(), missing, Dict(Dual => LinearFunctional{GaussianRV{F, T}}()), mean)
 
         return self
     end
 
-    function GaussianRV{T}(mean::T, variance::F, label = "N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
-        return GaussianRV{T}(IntervalRange(mean, mean), IntervalRange(variance, variance));
-    end
-
-    function GaussianRV{T}(mean::T, variance::IntervalRange{F}, label = "N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
-        return GaussianRV{T}(IntervalRange(mean, mean), variance);
-    end
-
-
-    function GaussianRV{T}(mean::IntervalRange{T}, variance::F, label = "N($(label(mean)), $(label(variance)))") where {F<:Field, T<:VectorSpace{F}}
-        return GaussianRV{T}(mean, IntervalRange(variance, variance));
-    end
-
 end
+
+adjoint(g::GaussianRV{T}) where {T} = Dual{typeof(g)}(g)
 
 
 function show(io::IO, ::MIME"text/plain", g::GaussianRV{T}) where {T<:AbstractVectorSpace}
@@ -77,12 +64,12 @@ function show(io::IO, ::MIME"text/plain", g::GaussianRV{T}) where {T<:AbstractVe
     end
     
     println(io, "  Mean: ", g.mean)
-    println(io, "  Variance: ", variance(g))
-    for (rv, cov) in g.covariances
-        if (!isequal(rv, g))
-            println(io, "  Covariance(self, $(rv.label)) = ", cov)
-        end
-    end
+    # println(io, "  Variance: ", variance(g))
+    # for (rv, cov) in g.covariances
+    #     if (!isequal(rv, g))
+    #         println(io, "  Covariance(self, $(rv.label)) = ", cov)
+    #     end
+    # end
 end
 
 
