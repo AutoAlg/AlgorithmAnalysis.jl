@@ -9,7 +9,7 @@ module AlgorithmAnalysis
 export Constraint, Constraints, ConstraintSet
 export Variable, Variables, Expression, Expressions, Field, Reals
 export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
-export ScalarValue, VectorValue, Object, Objects
+export ScalarValue, VectorValue, Object, Objects, field
 export R, Rⁿ, Rᵐ
 
 # expression
@@ -96,7 +96,7 @@ export variable_dictionary, optimization_variable_dictionary, isimplementable, m
 export get_states_inputs, get_formulas, lift, neighbors, nodes
 
 # Stochastic 
-export GaussianRV, expectation, variance
+export GaussianRV, expectation, variance, AbstractGaussianRV
 
 ############################################################################################
 # Import

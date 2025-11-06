@@ -34,7 +34,7 @@ end
 Defines a vector space `V` over a field `F`.
 """
 macro vectorspace(ex::Expr)
-    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+    if !(ex.head == :tuple && length(ex.args) == 2 && ex.args[1] isa Symbol && ex.args[2]isa Symbol)
         throw(ArgumentError("@vectorspace: `$(ex)` must be of the form: `V, F` where `V` is a vector space over a field `F`."))
     end
     quote
@@ -547,3 +547,7 @@ Return whether or not Gram matrix `G1` is a subset or equal of Gram matrix `G2`.
 
 ⊂(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2)) && !isempty(setdiff(s2, s1))
 ⊆(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2))
+
+
+field(::Type{T}) where {F<:Field, T<:VectorSpace{F}} = F
+field(::Type{GaussianRV{T}}) where {F<:Field, T<:VectorSpace{F}} = GaussianRV{F}

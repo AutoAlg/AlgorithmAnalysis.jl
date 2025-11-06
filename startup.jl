@@ -10,6 +10,13 @@ import SCS
 import LinearAlgebra as la
 using AbstractTrees
 
+# function RVs()
+    @algorithm begin
+        x = GaussianRV{Rⁿ}()
+        y = GaussianRV{Rⁿ}()
+    end
+# end
+
 function dump_fancy(e)
     show(stdout, MIME("text/plain"), e)
     println()

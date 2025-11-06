@@ -28,24 +28,31 @@ Base.convert(::Type{IntervalRange{T}}, x::T) where {T} = IntervalRange(x.label, 
 Base.promote_rule(::Type{IntervalRange{T}}, ::Type{T}) where {T} = IntervalRange{T}
 
 
-mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractVectorSpace
+mutable struct GaussianRV{T<:AbstractVectorSpace} <: AbstractGaussianRV{T}
     label::String
-    value::VectorValue{GaussianRV{T}} 
+    value::VectorValue{GaussianRV{T}}
     constraints::Constraints
     oracles::Oracles
     next::State{GaussianRV{T}}
-    
-    mean::IntervalRange{T}
-    covariances::Dict{GaussianRV{T}, IntervalRange{F}} where {F<:Field, T<:VectorSpace{F}}
+    mean::T
+    associations::Associations
 
-    function GaussianRV{T}(mean::IntervalRange{T}, variance::IntervalRange{F}, label::String ="N($(mean.label), $(variance.label))") where {F<:Field, T<:VectorSpace{F}}
-        self = new{T}(label, missing, Constraints(), Oracles(), missing, mean, Dict{GaussianRV{T}, IntervalRange{F}}())
-        self.covariances[self] = variance
-
-        return self
+    function GaussianRV{T}(mean::T = T()) where {F<:Field, T<:VectorSpace{F}}
+        associations = Dict(Dual => LinearFunctional{GaussianRV{T}}())
+        new{T}("", missing, Constraints(), Oracles(), missing, mean, associations)
     end
 end
 
+𝔼(x::GaussianRV) = x.mean
+Cov(x::GaussianRV{T},y::GaussianRV{T}) where {T<:InnerProductSpace} = 𝔼(x'*y) - 𝔼(x)'*𝔼(y)
+
+function adjoint(x::X) where {T<:InnerProductSpace, X<:GaussianRV{T}}
+    if iszero(x)
+        ZeroFunctional{X}()
+    else
+        Dual{typeof(x)}(x)
+    end
+end
 
 function show(io::IO, ::MIME"text/plain", g::GaussianRV{T}) where {T<:AbstractVectorSpace}
     println(io, "Gaussian random variable in $(T)")
@@ -54,12 +61,12 @@ function show(io::IO, ::MIME"text/plain", g::GaussianRV{T}) where {T<:AbstractVe
     end
     
     println(io, "  Mean: ", g.mean)
-    println(io, "  Variance: ", variance(g))
-    for (rv, cov) in g.covariances
-        if (rv !== g)
-            println(io, "  Covariance(self, $(rv.label)) = ", cov)
-        end
-    end
+    # println(io, "  Variance: ", variance(g))
+    # for (rv, cov) in g.covariances
+    #     if (rv !== g)
+    #         println(io, "  Covariance(self, $(rv.label)) = ", cov)
+    #     end
+    # end
 end
 
 

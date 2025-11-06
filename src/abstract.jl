@@ -101,6 +101,8 @@ Decomposition of an object of type `T` in terms of other objects.
 """
 abstract type Decomposition{T} end
 
+abstract type AbstractGaussianRV{T} <: AbstractVectorSpace end
+
 
 ############################################################################################
 # Oracles
@@ -186,6 +188,8 @@ const State{T} = Union{T, Missing}
 
 # An object of type T or a wrapper of that type
 const OrWrapper{T} = Union{T, Wrapper{<:T}}
+
+const OrRV{T} = Union{T, AbstractGaussianRV{T}}
 
 const ScalarValue{T} = Union{Number,Decomposition{T},Missing}
 const VectorValue{T} = Union{Vector,Zero,Decomposition{T},Missing}

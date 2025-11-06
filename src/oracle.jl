@@ -150,8 +150,8 @@ mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
     properties::Properties
     relation::SingleValuedRelation{X,<:Field}
 
-    function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
-        f = new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
+    function LinearFunctional{X}() where {X<:OrRV{VectorSpace}}
+        f = new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,field(X)}())
         # push!(unwrap(f').associations, TransposeOf => f) # new
         f #new
     end
