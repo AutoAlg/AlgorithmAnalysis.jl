@@ -2,40 +2,6 @@ import Base: show, IO, convert, promote_rule
 
 export GaussianRV, IntervalRange, expectation, variance, get_covariance, set_bulk_covariances!
 
-# TODO: inner product of a random variabele g'*g | ' - adjoint |  transpose is the adjoin, find the transpose of a random variable
-# TODO: rv transpose goes into the wrapper, but then the wrapper needs to be able to be evaluated, how?? for eventually typing g'*g
-# TODO: make the wrapper and then wriate a function that goes from the OrWrapper * a T and then ues that to claucatated what is desried 
-mutable struct IntervalRange{T}
-    min::T
-    max::T
-end
-IntervalRange{T}(t::T) where {T} = IntervalRange{T}(t, t)
-function label(r::IntervalRange{T}) where {T} 
-    if (isequal(r.min, r.max)) 
-        return "[$(sprint(show, r.min))]"
-    else
-        return "[$(sprint(show, r.min)), $(sprint(show, r.max))]"
-    end
-end
-    
-    
-
-Base.:+(l::IntervalRange{T}, r::IntervalRange{T}) where {T} = IntervalRange(l.min + r.min, l.max + r.max)
-Base.:+(l::T, r::IntervalRange{T}) where {T} = +(promote(l,r)...)
-Base.:+(l::IntervalRange{T}, r::T) where {T} = +(promote(l,r)...)
-function Base.:*(scalar::Number, r::IntervalRange{T}) where {T}
-    if scalar >= 0
-        return IntervalRange(scalar * r.min, scalar * r.max);
-    else
-        return IntervalRange(scalar * r.max, scalar * r.min);
-    end
-end
-Base.:zero(::Type{IntervalRange{T}}) where {T} = IntervalRange(zero(T), zero(T))
-Base.:show(io::IO, r::IntervalRange{T}) where {T} = print(io, "[$(r.min), $(r.max)]")
-
-Base.convert(::Type{IntervalRange{T}}, x::T) where {T} = IntervalRange(x, x)
-Base.promote_rule(::Type{IntervalRange{T}}, ::Type{T}) where {T} = IntervalRange{T}
-
 mutable struct GaussianRV{F<:Field, T<:VectorSpace{F}} <: InnerProductSpace{F}
     label::String
     value::VectorValue{GaussianRV{F, T}} 
@@ -46,153 +12,55 @@ mutable struct GaussianRV{F<:Field, T<:VectorSpace{F}} <: InnerProductSpace{F}
     
     mean::T
 
+    # TOOO: does this make sense
+    function GaussianRV{F, T}(label, value, constraints, oracles, next_state) where {F<:Field, T<:VectorSpace{F}}
+        return new{F, T}(label, value, constraints, oracles, next_state, Dict(), T())
+    end
+
     function GaussianRV{F, T}(mean::T=T()) where {F<:Field, T<:VectorSpace{F}}
         self = new{F, T}("N(label(mean))", missing, Constraints(), Oracles(), missing, Dict(Dual => LinearFunctional{GaussianRV{F, T}}()), mean)
-
         return self
     end
 
 end
+is_random(::GaussianRV) = true
 
 adjoint(g::GaussianRV{T}) where {T} = Dual{typeof(g)}(g)
 
+Base.promote_rule(::Type{GaussianRV{F, T}}, ::Type{T}) where {F<:Field, T<:VectorSpace{F}} = GaussianRV{F, T}
+Base.convert(::Type{GaussianRV{F, T}}, v::T) where {F<:Field, T<:VectorSpace{F}} = GaussianRV{F, T}(v)
+function GaussianRV{F, T}(decomp::LinearDecomposition{GaussianRV{F, T}}) where {F<:Field, T<:VectorSpace{F}}
+    new_mean = T() 
+    for (g_component, weight) in weights(decomp)
+        new_mean += weight * g_component.mean
+    end
 
-function show(io::IO, ::MIME"text/plain", g::GaussianRV{T}) where {T<:AbstractVectorSpace}
+    self = GaussianRV{F, T}(new_mean)
+    
+    self.value = decomp
+    
+    return self
+end
+
+
+function show(io::IO, ::MIME"text/plain", g::GaussianRV{F, T}) where {F<:Field, T<:VectorSpace{F}}
     println(io, "Gaussian random variable in $(T)")
     if (!isempty(g.label)) 
         println(io, "  Label: ", g.label)
     end
     
     println(io, "  Mean: ", g.mean)
-    # println(io, "  Variance: ", variance(g))
-    # for (rv, cov) in g.covariances
-    #     if (!isequal(rv, g))
-    #         println(io, "  Covariance(self, $(rv.label)) = ", cov)
-    #     end
-    # end
+
+    isdefined(g, :vecs) && print(io, "\n Value: $(g.vecs) ⊗ $(g.vecs)")
+    !isempty(label(g)) && print(io, "\n  Label: ", label(g))
+    hasvalue(g) && print(io, "\n  Value: ", value(g))
+    hasdecomposition(g) && print(io, "\n  Decomposition: ", decomposition(g))
+    !isempty(constraints(g)) && print(io, "\n  Constraints: ", join(constraints(g), ", "))
+    !isempty(oracles(g)) && print(io, "\n  Oracles: ", join(oracles(g), ", "))
+    !ismissing(next(g)) && print(io, "\n  Next: ", next(g))
+    !isempty(associations(g)) && print(io, "\n  Associations: ", join(associations(g),", "))
+
 end
 
-
-# is_any_subexpressions_random_variable(e::GaussianRV) = true
-# is_any_subexpressions_random_variable(e::Expression) = hasdecomposition(e) ? any(is_random, keys(weights(e))) : false
-# is_deterministic(e::Expression) = !is_any_subexpressions_random_variable(e)
-
-# function expectation(e::Expression)
-#     if is_deterministic(e)
-#         return e.value
-#     end
-
-#     if is_any_subexpressions_random_variable(e)
-#         sum = zero(T)
-#         for (w, v) in weights(e)
-#             sum += w * expectation(v);
-#         end
-#         return sum
-#     end
-
-#     return e
-# end
 
 expectation(e::GaussianRV) = e.mean
-
-function set_bulk_covariances!(pairs::Vector{Pair{Tuple{GaussianRV{T}, GaussianRV{T}}, IntervalRange{F}}}) where {F<:Field, T<:VectorSpace{F}}
-    for ((rv1, rv2), _) in pairs
-        if length(rv1.covariances) != 1
-            error("$(rv1.label) is not IID. All covariant variables must be initialized together. It has $(length(rv1.covariances)) covariance entries.");
-        end
-
-        if length(rv2.covariances) != 1
-            error("$(rv2.label) is not IID. All covariant variables must be initialized together. It has $(length(rv2.covariances)) covariance entries.");
-        end
-    end
-
-    for ((rv1, rv2), desired_cov) in pairs
-        set_covariance_unchecked!(rv1, rv2, desired_cov);
-    end
-end
-
-function set_covariance_unchecked!(g1::GaussianRV{T}, g2::GaussianRV{T}, cov::IntervalRange{F}) where {F<:Field, T<:VectorSpace{F}}
-    g1.covariances[g2] = cov;
-    g2.covariances[g1] = cov;
-end
-
-function get_covariance(g1::GaussianRV{T}, g2::GaussianRV{T}) where {F<:Field, T<:VectorSpace{F}}
-    if haskey(g1.covariances, g2)
-        return g1.covariances[g2]
-    end
-
-    return zero(IntervalRange{F})
-end
-
-variance(g::GaussianRV) = get_covariance(g, g)
-
-function gather_related_rvs(rvs::GaussianRV{T}...) where {T<:AbstractVectorSpace}
-    related_rvs = Set{GaussianRV{T}}();
-
-    for rv in rvs
-        union!(related_rvs, keys(rv.covariances))
-    end
-
-    return related_rvs
-end
-
-function Base.:+(e1::IntervalRange{T}, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
-    new_rv = GaussianRV{T}(e1 + e2.mean, variance(e2), "($(label(e1)) + $(label(e2)))")
-
-    for other_rv in gather_related_rvs(e2)
-        if !isequal(other_rv, new_rv)
-            set_covariance_unchecked!(new_rv, other_rv, get_covariance(e2, other_rv))
-        end    
-    end
-
-    return new_rv
-end
-Base.:+(e1::GaussianRV{T}, e2::IntervalRange{T}) where {T<:AbstractVectorSpace} = e2 + e1
-Base.:+(e1::GaussianRV{T}, e2::T) where {T<:AbstractVectorSpace} = e1 + convert(IntervalRange{T}, e2)
-Base.:+(e1::T, e2::GaussianRV{T}) where {T<:AbstractVectorSpace} = e2 + e1
-
-function +(e1::GaussianRV{T}, e2::GaussianRV{T}) where {T<:AbstractVectorSpace}
-    new_rv = GaussianRV{T}(
-        e1.mean + e2.mean,
-        variance(e1) + variance(e2) + 2 * get_covariance(e1, e2),
-        "($(e1.label) + $(e2.label))"
-    )
-
-    # Cov(e1 + e2, other_rv) = Cov(e1, other_rv) + Cov(e2, other_rv)
-    for other_rv in gather_related_rvs(e1, e2)
-        if !isequal(other_rv, new_rv)           
-            set_covariance_unchecked!(
-                new_rv,
-                other_rv,
-                get_covariance(e1, other_rv) + get_covariance(e2, other_rv)
-            )
-        end
-    end
-
-    return new_rv
-end
-Base.:-(g1::GaussianRV{T}, g2::GaussianRV{T}) where {T<:AbstractVectorSpace} = g1 + (-1 * g2) 
-Base.:-(e1::GaussianRV{T}, e2::IntervalRange{T})             where {T<:AbstractVectorSpace} = e1 + (-1 * e2)
-Base.:-(e1::IntervalRange{T},             e2::GaussianRV{T}) where {T<:AbstractVectorSpace} = e1 + (-1 * e2)
-
-function Base.:*(s::Number, g::GaussianRV{T}) where {T<:AbstractVectorSpace}
-    new_rv = GaussianRV{T}(s * g.mean, s*s * variance(g), "($s * $(label(g)))")
-
-    # Cov(rv, other_rv) = s * Cov(g, other_rv)
-    for other_rv in gather_related_rvs(g)
-        if !isequal(other_rv, new_rv)
-            set_covariance_unchecked!(new_rv, other_rv, s * get_covariance(g, other_rv))
-        end
-    end
-    return new_rv
-end
-
-
-function *(g1::GaussianRV, g2::GaussianRV{T}) where {T}
-    error("A Gaussian times a Gaussian is not a Gaussian")
-end
-
-
-function *(g::GaussianRV{T}, s::Rⁿ) where {T}
-    error("TODO does this make sense do this")
-end

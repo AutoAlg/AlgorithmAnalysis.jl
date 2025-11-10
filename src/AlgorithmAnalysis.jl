@@ -27,7 +27,7 @@ export Gram, evaluate, gram_to_constraint
 
 # relation
 export Relation, Relations, SingleValuedRelation, MultiValuedRelation, ConstantRelation
-export domain, codomain, inputs, outputs, inputs_outputs
+export domain, codomain, inputs, outputs, inputs_outputs, field
 
 # oracle
 export Oracle, Oracles, DualOracle, FunctionOracle, OperatorOracle, Functional

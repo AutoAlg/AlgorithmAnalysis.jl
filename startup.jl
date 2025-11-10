@@ -15,31 +15,17 @@ function dump_fancy(e)
     println()
 end
 
-# @algorithm begin
+@algorithm begin
 
-#     expectation(g) == x
+    # x = Rⁿ()
+    # μ = Rⁿ()
+    # σ = R()
 
-# end
+    # g = GaussianRV{Rⁿ}()
+    # k = GaussianRV{Rⁿ}()
+    # expectation(g) == x
+    
 
-function GD(m, L, prev_rate=0)
-
-   
-
-    @algorithm begin 
-        α = 2/(L+m)
-        
-
-        g = GaussianRV{R, Rⁿ}(α)
-
-        f = DifferentiableFunctional{Rⁿ}()
-        xs = first_order_stationary_point(f)
-        f' ∈ SectorBounded(m, L, xs, f'(xs))
-        x0 = Rⁿ()
-        x1 = x0 - (α*f'(x0) + g)
-        x0 => x1
-        performance = (x0-xs)^2
-    end
-    @show rate(performance, prev_rate)
 end
 
 
@@ -116,6 +102,22 @@ end
 #         dump_fancy(c2)
 #     end
 # end
+
+function SGD(m, L, prev_rate=0)
+    α = 2/(L+m)
+    @algorithm begin    
+        f = DifferentiableFunctional{Rⁿ}()
+        xs = first_order_stationary_point(f)
+        f' ∈ SectorBounded(m, L, xs, f'(xs))
+        ω = GaussianRV{R, Rⁿ}();
+        ω'*ω <= 0.3
+        x0 = Rⁿ()
+        x1 = x0 - α*(f'(x0) + ω)
+        x0 => x1
+        performance = (x0-xs)^2
+    end
+    @show rate(performance, prev_rate)
+end
 
 # GD
 function GD(m, L, prev_rate=0)

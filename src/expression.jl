@@ -156,6 +156,8 @@ end
 # Methods
 constraints(e::Expression) = e.constraints
 
+field(::Type{T}) where {F<:Field, T<:VectorSpace{F}} = F
+ 
 """
     oracles(e)
 
