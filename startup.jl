@@ -22,14 +22,27 @@ function analyze()
 
         x1 = x0 - g0
         perf = expected_inner_product(x1, x1);
+        
+        # === Constraints ===
+        
+        # Var(g0) = 1.0
         1.0 == tr_covariance(g0, g0);
+        # g0 is independent of x0
         0.0 == tr_covariance(g0, x0);
+        0.0 == tr_covariance(x0, x0) # Add this line
 
-        # Rⁿ(Zero()) == expectation(g0)
-        # 1.0 == expectation(x0)' * expectation(x0)
+        # E[g0] = 0
+        0.0 == expectation(g0)' * expectation(g0)
+        # ||E[x0]||^2 = 1.0
+        1.0 == expectation(x0)' * expectation(x0)
+        # x0 is deterministic (variance = 0)
+        0.0 == tr_covariance(x0, x0) # <--- I added this, it's important
 
         all_means = [expectation(x0); expectation(g0)]
         all_centered = [centered(x0); centered(g0)]
+
+        Gram(all_means) ⪰ 0
+        Gram(all_centered) ⪰ 0
         
         0 == all_means ⊗ all_centered
 
