@@ -128,7 +128,23 @@ function info(orcs::Oracles)
 end
 
 isimplementable(e::Expression) = e isa R
-isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
+function isimplementable(c::Constraint)
+    ex = expression(c)
+    
+    if c isa Semidefinite
+        # Semidefinite constraints ARE implementable on Gram matrices
+        # or on standard matrices of scalars.
+        return (ex isa Gram) || (ex isa Union{R, ArrayOrSet{R}})
+        
+    elseif c isa Union{Equality, Positive}
+        # Equality/Positive constraints must be on scalars or matrices of scalars.
+        return ex isa Union{R, ArrayOrSet{R}}
+        
+    else
+        # Unknown constraint type, be safe and say no.
+        return false
+    end
+end
 isimplementable(X::Union{ArrayOrSet,Generator}) = all( isimplementable(x) for x ∈ X )
 
 function optvar(e::Expression, optvar_dict::Dict)
@@ -151,14 +167,41 @@ end
 optvar(m::AbstractArray, optvar_dict::Dict) = [ optvar(a, optvar_dict) for a ∈ m ]
 
 function optcon(model::JuMP.Model, con::Constraint, optvar_dict::Dict)
-    ex = optvar(expression(con), optvar_dict)
+    
     if con isa Equality
+        ex = optvar(expression(con), optvar_dict)
         JuMP.@constraint(model, 0 == ex )
+
     elseif con isa Positive
+        ex = optvar(expression(con), optvar_dict)
         JuMP.@constraint(model, 0 ≤ ex )
+
     elseif con isa Semidefinite
-        JuMP.@constraint(model, ex .== ex' )
-        JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
+        # --- This is the new, smart logic ---
+        expr = expression(con) # Get the expression
+        
+        if expr isa Gram
+            # The expression is a Gram matrix.
+            
+            # 1. Create the symbolic matrix of inner products (Matrix{R})
+            symbolic_matrix = expr.vecs ⊗ expr.vecs
+            
+            # 2. Convert Matrix{R} to Matrix{JuMP.AffExpr}
+            #    This calls optvar on scalars, which works because
+            #    optvar_dict is now populated with them.
+            jump_matrix = optvar(symbolic_matrix, optvar_dict)
+            
+            # 3. Apply the constraint to the JuMP matrix
+            JuMP.@constraint(model, jump_matrix .== jump_matrix' )
+            JuMP.@constraint(model, 0 ≤ jump_matrix, JuMP.PSDCone() )
+        else
+            # Original behavior: expression is a standard scalar/matrix
+            ex = optvar(expr, optvar_dict)
+            JuMP.@constraint(model, ex .== ex' )
+            JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
+        end
+        # --- End of new logic ---
+
     else
         error("Optimization with constraint $con not implemented")
     end
@@ -167,16 +210,52 @@ end
 function variable_dictionary(vars::Expressions)
     Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ Set( typeof(v) for v ∈ vars ) )
 end
-
-function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions)
+function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions, cons::Constraints)
     optvar_dict = Dict{R, JuMP.VariableRef}()
+
+    # 1. Add all explicit R variables (original behavior)
     for var ∈ vars
         if var isa R
-            optvar_dict[var] = JuMP.@variable(model)
-        else
-            error("Optimization with variable $var not implemented")
+            if !haskey(optvar_dict, var)
+                optvar_dict[var] = JuMP.@variable(model)
+            end
         end
     end
+
+    # 2. Add all implicit R variables from Gram matrices
+    for c in cons
+        # We also need to find Gram matrices from equality constraints
+        # like our `0 == all_means ⊗ all_centered`
+        local_expr = expression(c)
+        gram_matrices = Gram[]
+        
+        if c isa Semidefinite && local_expr isa Gram
+            push!(gram_matrices, local_expr)
+        elseif local_expr isa Gram # Handle `0 == Gram(...)`
+             push!(gram_matrices, local_expr)
+        elseif local_expr isa Matrix{R} # Handle `0 == all_means ⊗ all_centered`
+            # This is already a Matrix{R}, so we can process it directly
+            for r_scalar in local_expr
+                for inner_product_var in keys(weights(selfdecomp(r_scalar)))
+                    if !haskey(optvar_dict, inner_product_var)
+                        optvar_dict[inner_product_var] = JuMP.@variable(model)
+                    end
+                end
+            end
+        end
+
+        for g in gram_matrices
+            symbolic_matrix = g.vecs ⊗ g.vecs 
+            for r_scalar in symbolic_matrix
+                for inner_product_var in keys(weights(selfdecomp(r_scalar)))
+                    if !haskey(optvar_dict, inner_product_var)
+                        optvar_dict[inner_product_var] = JuMP.@variable(model)
+                    end
+                end
+            end
+        end
+    end
+    
     optvar_dict
 end
 
@@ -222,7 +301,7 @@ function maximize(performance::Expression)
     # variables, constraints, and oracles associated with the performance measure
     vars, cons, orcs = variables_constraints_oracles(performance)
 
-    if !isimplementable(cons ∪ variables(cons))
+    if !isimplementable(cons)
         error("Analysis is not implementable! All constraints and associated variables must be implementable.")
     end
 
@@ -237,7 +316,7 @@ function maximize(performance::Expression)
     @info "Setting up the optimization problem"
 
     # optimization variables
-    optvar_dict = optimization_variable_dictionary(model, optvars)
+    optvar_dict = optimization_variable_dictionary(model, optvars, cons)
 
     @info "  ✓ variables"
 

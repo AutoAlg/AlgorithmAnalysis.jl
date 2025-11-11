@@ -15,6 +15,28 @@ function dump_fancy(e)
     println()
 end
 
+function analyze()
+    @algorithm begin
+        x0 = Rⁿ()
+        g0 = GaussianRV{R, Rⁿ}("g0");
+
+        x1 = x0 - g0
+        perf = expected_inner_product(x1, x1);
+        1.0 == tr_covariance(g0, g0);
+        0.0 == tr_covariance(g0, x0);
+
+        # Rⁿ(Zero()) == expectation(g0)
+        # 1.0 == expectation(x0)' * expectation(x0)
+
+        all_means = [expectation(x0); expectation(g0)]
+        all_centered = [centered(x0); centered(g0)]
+        
+        0 == all_means ⊗ all_centered
+
+        @show maximize(perf)
+    end
+end
+
 @algorithm begin
 
     # x = Rⁿ()
@@ -105,6 +127,7 @@ end
 
 function SGD(m, L, prev_rate=0)
     α = 2/(L+m)
+    # TODO: or RV wrapper
     @algorithm begin    
         f = DifferentiableFunctional{Rⁿ}()
         xs = first_order_stationary_point(f)
