@@ -17,39 +17,46 @@ end
 
 function analyze()
     @algorithm begin
-        x0 = Rⁿ()
+        # --- DEFINITIONS ---
+        x0 = GaussianRV{R, Rⁿ}("x0");
         g0 = GaussianRV{R, Rⁿ}("g0");
 
         x1 = x0 - g0
         perf = expected_inner_product(x1, x1);
         
-        # === Constraints ===
+        # === CONSTRAINTS ===
         
-        # Var(g0) = 1.0
-        1.0 == tr_covariance(g0, g0);
-        # g0 is independent of x0
-        0.0 == tr_covariance(g0, x0);
-        0.0 == tr_covariance(x0, x0) # Add this line
-
         # E[g0] = 0
         0.0 == expectation(g0)' * expectation(g0)
-        # ||E[x0]||^2 = 1.0
+        # Var(g0) = 1.0
+        1.0 == tr_covariance(g0, g0)
+        
+        # E[x0] = 1.0
         1.0 == expectation(x0)' * expectation(x0)
-        # x0 is deterministic (variance = 0)
-        0.0 == tr_covariance(x0, x0) # <--- I added this, it's important
+        # Var(x0) = 0.0
+        0.0 == tr_covariance(x0, x0)
 
+        # g0 and x0 are independent (uncorrelated)
+        0.0 == tr_covariance(g0, x0)
+
+        # --- GRAM MATRICES ---
         all_means = [expectation(x0); expectation(g0)]
         all_centered = [centered(x0); centered(g0)]
 
+        # Constrain all mean-component inner products
         Gram(all_means) ⪰ 0
+        
+        # Constrain all centered-component inner products
         Gram(all_centered) ⪰ 0
         
+        # === FIX: This now works! ===
+        # The new overloads in src/constraint.jl
+        # will handle this array equality correctly.
         0 == all_means ⊗ all_centered
 
         @show maximize(perf)
     end
 end
-
 @algorithm begin
 
     # x = Rⁿ()

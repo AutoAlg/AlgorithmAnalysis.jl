@@ -400,3 +400,12 @@ end
 #     end
 #     setdiff!(filtered, Set([Satisfied()]))
 # end
+
+Base.:(==)(lhs::AbstractArray{<:Expression}, rhs) = Equality.(lhs .- rhs)
+Base.:(==)(lhs, rhs::AbstractArray{<:Expression}) = Equality.(lhs .- rhs)
+
+Base.:(≤)(lhs::AbstractArray{<:Expression}, rhs) = Positive.(rhs .- lhs)
+Base.:(≤)(lhs, rhs::AbstractArray{<:Expression}) = Positive.(rhs .- lhs)
+
+Base.:(≥)(lhs::AbstractArray{<:Expression}, rhs) = Positive.(lhs .- rhs)
+Base.:(≥)(lhs, rhs::AbstractArray{<:Expression}) = Positive.(lhs .- rhs)
