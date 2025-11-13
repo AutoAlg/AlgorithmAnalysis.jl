@@ -12,6 +12,9 @@ export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
 export ScalarValue, VectorValue, Object, Objects
 export R, Rⁿ, Rᵐ
 
+# random types
+export @randomfield, RandomField, deterministic
+
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
 export label, label!, getlabel, value, value!, decomposition, selfdecomp, hasvalue, defaultlabel
@@ -136,7 +139,7 @@ include("algorithms.jl")
 include("hash.jl")
 include("algebra.jl")
 include("analysis.jl")
-include("stochastic.jl")
+# include("stochastic.jl")
 include("show.jl")
 
 end

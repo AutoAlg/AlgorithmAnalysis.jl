@@ -15,14 +15,16 @@ function dump_fancy(e)
     println()
 end
 
+@randomfield(RandomR, R)
+
 @algorithm begin
 
     # x = Rⁿ()
     # μ = Rⁿ()
     # σ = R()
 
-    # g = GaussianRV{Rⁿ}()
-    # k = GaussianRV{Rⁿ}()
+    # w = GaussianRV{R,Rⁿ}()
+    # v = GaussianRV{R,Rⁿ}()
     # expectation(g) == x
     
 

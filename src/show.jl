@@ -57,7 +57,7 @@ end
 elementname(::Type{<:VectorSpace}) = "vector"
 elementname(::Type{<:Field}) = "scalar"
 elementname(::Type{<:Gram}) = "gram matrix"
-elementname(::Type{<:GaussianRV}) = "GaussianRV variable"
+# elementname(::Type{<:GaussianRV}) = "GaussianRV variable"
 
 function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     if iszero(e)

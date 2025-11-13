@@ -29,6 +29,24 @@ macro field(s::Symbol)
 end
 
 """
+    macro randomfield(F)
+
+Defines a random field `F`.
+"""
+macro randomfield(s::Symbol, t::Symbol)
+    quote
+        mutable struct $(esc(s)) <: RandomField{$(esc(t))}
+            label::String
+            value::ScalarValue{$(esc(s))}
+            constraints::Constraints
+            oracles::Oracles
+            next::State{$(esc(s))}
+            mean::$(esc(t))
+        end
+    end
+end
+
+"""
     macro vectorspace(V, F)
 
 Defines a vector space `V` over a field `F`.
@@ -117,7 +135,11 @@ end
 
 # label
 function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
-    T(label, missing, Constraints(), Oracles(), missing)
+    if T <: RandomField
+        T(label, missing, Constraints(), Oracles(), missing, deterministic(T)())
+    else
+        T(label, missing, Constraints(), Oracles(), missing)
+    end
 end
 
 # value
@@ -132,7 +154,11 @@ function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
     if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
         first(keys(weights(value)))
     else
-        T(label, value, Constraints(), Oracles(), missing)
+        if T <: RandomField
+            T(label, value, Constraints(), Oracles(), missing, deterministic(T)())
+        else
+            T(label, value, Constraints(), Oracles(), missing)
+        end
     end
 end
 # AFTER

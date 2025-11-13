@@ -101,6 +101,10 @@ Decomposition of an object of type `T` in terms of other objects.
 """
 abstract type Decomposition{T} end
 
+abstract type RandomField{T} <: Field end
+
+deterministic(::Type{<:RandomField{T}}) where T = T
+
 
 ############################################################################################
 # Oracles
