@@ -4,6 +4,11 @@ export GaussianRV, expectation, centered, tr_covariance, expected_inner_product
 
 # TODO: figure out RV naming issues with subfields
 # TODO: move stuff out of this file
+# split into two things
+# mean is make the average value returned equal the mean
+# variance is a bound on the relative size difference between all of those values
+# i.e for like 4 samples if you had a variance of 0.1 and a mean of 0 [-0.1, 0, 0.1, 0] 
+# is a valid solution, 
 
 
 # Defines a GaussianRV, denoted v in the documentation
@@ -17,6 +22,9 @@ mutable struct GaussianRV{F<:Field, T<:InnerProductSpace{F}} <: Expression
     
     mean::T     # E[v]
     centered::T # v - E[v]
+    # v = mean + centered
+    # v = E[v] + v - E[v]
+    # v = v
 
     function GaussianRV{F, T}(::Zero) where {F<:Field, T<:InnerProductSpace{F}}
 
@@ -27,7 +35,6 @@ mutable struct GaussianRV{F<:Field, T<:InnerProductSpace{F}} <: Expression
 
 
     function GaussianRV{F, T}(label::String = "GaussianRV") where {F<:Field, T<:InnerProductSpace{F}}
-        
         mean_vec = T()
         centered_vec = T()
 
@@ -41,29 +48,11 @@ mutable struct GaussianRV{F<:Field, T<:InnerProductSpace{F}} <: Expression
     end
 
 
-    function GaussianRV{F, T}(decomp::LinearDecomposition{<:GaussianRV})  where {F<:Field, T<:InnerProductSpace{F}}
-        # We need to find the Field (F) and Space (T) types
-        # from the components of the decomposition.
-        first_comp = first(keys(weights(decomp)))
-        
-        # 1. Create the new mean component by summing the means
-        #    (This uses the recursive 'expectation' helper)
-        new_mean_decomp = mapreduce(p -> last(p) * expectation(first(p)), +, weights(decomp))
-        
-        # 2. Create the new centered component
-        #    (This uses the recursive 'centered' helper)
-        new_centered_decomp = mapreduce(p -> last(p) * centered(first(p)), +, weights(decomp))
-
-        # 3. Create a new "base" GaussianRV to hold the results
+    function GaussianRV{F, T}(decomp::LinearDecomposition{<:GaussianRV})  where {F<:Field, T<:InnerProductSpace{F}}      
         g_new = GaussianRV{F, T}("Decomp") 
-        
-        # 4. Assign the new (decomposed) components
-        g_new.mean = new_mean_decomp
-        g_new.centered = new_centered_decomp
-        
-        # 5. Store the original decomposition in the .value field
+        g_new.mean = expectation(decomp)
+        g_new.centered = centered(decomp)
         g_new.value = decomp 
-        
         return g_new
     end
 end
@@ -118,7 +107,6 @@ Returns the symbolic expression for Tr(Cov(g1, g2)),
 which is E[(g1-E[g1])' * (g2-E[g2])].
 """
 function tr_covariance(g1::Expression, g2::Expression)
-    # This just calls the recursive helper from Step 2
     return centered(g1)' * centered(g2)
 end
 
@@ -154,15 +142,11 @@ function Base.convert(::Type{GaussianRV{F, T}}, e::T) where {F<:Field, T<:InnerP
 end
 
 function Base.:+(e1::T, e2::GaussianRV{F, T}) where {F<:Field, T<:InnerProductSpace{F}}
-    # 1. Calls promote(e1, e2) -> (g_lifted, e2)
-    # 2. Calls +(g_lifted, e2)
     +(promote(e1, e2)...)
 end
 
 # Catches: GaussianRV + Rⁿ
 function Base.:+(e1::GaussianRV{F, T}, e2::T) where {F<:Field, T<:InnerProductSpace{F}}
-    # 1. Calls promote(e1, e2) -> (e1, g_lifted)
-    # 2. Calls +(e1, g_lifted)
     +(promote(e1, e2)...)
 end
 
@@ -173,12 +157,8 @@ function Base.:+(e1::T, e2::T) where {T<:GaussianRV}
         return e1
     end
     
-    # Create a LinearDecomposition, just like the
-    # + function for AbstractVectorSpace
     decomp = selfdecomp(e1) + selfdecomp(e2)
 
-    # This will call the T(decomp) constructor,
-    # which we'll add in the next step.
     return T(decomp) 
 end
 
@@ -187,33 +167,45 @@ function Base.:-(e1::T, e2::GaussianRV{F, T}) where {F<:Field, T<:InnerProductSp
     -(promote(e1, e2)...)
 end
 
-# Catches: GaussianRV - Rⁿ
 function Base.:-(e1::GaussianRV{F, T}, e2::T) where {F<:Field, T<:InnerProductSpace{F}}
     -(promote(e1, e2)...)
 end
 
-# Handles: GaussianRV - GaussianRV
 function Base.:-(e1::T, e2::T) where {T<:GaussianRV}
-    # This just re-uses the '+' and unary '-' methods
     e1 + (-e2)
 end
 
-# Handles: -GaussianRV
 function Base.:-(e::T) where {T<:GaussianRV}
-    # Relies on scalar multiplication
     -1 * e
 end
 
-# Handles: Number * GaussianRV
 function Base.:*(a::Number, e::T) where {T<:GaussianRV}
-    # Creates a decomposition and re-builds the
-    # GaussianRV using your new constructor
     decomp = a * selfdecomp(e)
     return T(decomp)
 end
 
-# Handles: GaussianRV * Number
 function Base.:*(e::T, a::Number) where {T<:GaussianRV}
-    # Make it commutative
     a * e
 end
+
+
+# E[X'Y] = E[X]'E[Y] + Tr(Cov(X, Y))
+# E[⟨v_1, v_2⟩] = Tr(Cov(v_1, v_2)) + ⟨E[v_1], E[v_2]⟩
+# E[v_1'v_2] = Tr(Cov(v_1, v_2)) + E[v_1]'E[v_2]
+# v_1 = μ_1+c_1
+# v_2 = μ_2+c_2
+# E[(μ_1+c_1)'(μ_2+c_2)] = Tr(Cov(v_1, v_2)) + E[v_1]'E[v_2]
+# E[μ_1'μ_2 + μ_1'c_2 + c_1'μ_2 + c_1'c_2] = Tr(Cov(v_1, v_2)) + E[v_1]'E[v_2]
+# E[μ_1'μ_2] + E[μ_1'c_2] + E[c_1'μ_2] + E[c_1'c_2] = Tr(Cov(v_1, v_2)) + E[v_1]'E[v_2]
+# E[μ_1'c_2] = μ_1'E[c_2] = μ_1'0 = 0
+# E[μ_2'c_1] = μ_2'E[c_1] = μ_2'0 = 0
+# E[μ_1'μ_2] + E[c_1'c_2] = Tr(Cov(v_1, v_2)) + E[v_1]'E[v_2]
+# E[c_1'c_2] + E[μ_1'μ_2] = Tr(Cov(v_1, v_2)) + E[v_1]'E[v_2]
+# E[c_1'c_2] = E[(v_1-μ_1)'(v_2-μ_2)] = Tr(Cov(v_1, v_2))
+# E[μ_1'μ_2] = E[v_1]'E[v_2]
+
+# use mean and centered component
+
+
+
+# E[X'Y] = E[X]'E[Y] + Tr(Cov(X, Y))

@@ -15,7 +15,7 @@ function dump_fancy(e)
     println()
 end
 
-function analyze()
+# function analyze()
     @algorithm begin
         # --- DEFINITIONS ---
         x0 = GaussianRV{R, Rⁿ}("x0");
@@ -49,14 +49,11 @@ function analyze()
         # Constrain all centered-component inner products
         Gram(all_centered) ⪰ 0
         
-        # === FIX: This now works! ===
-        # The new overloads in src/constraint.jl
-        # will handle this array equality correctly.
         0 == all_means ⊗ all_centered
 
-        @show maximize(perf)
+        # @show maximize(perf)
     end
-end
+# end
 @algorithm begin
 
     # x = Rⁿ()
