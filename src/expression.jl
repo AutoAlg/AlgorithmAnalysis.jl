@@ -112,6 +112,34 @@ macro innerproductspace(ex::Expr)
     end
 end
 
+
+"""
+    macro randominnerproductspace(V, F)
+
+Defines an inner product space `V` over a field `F`.
+"""
+macro randominnerproductspace(ex::Expr)
+    if !(ex.head == :tuple && length(ex.args) == 3 && ex.args[1] isa Symbol && ex.args[2] isa Symbol)
+        throw(ArgumentError("@randominnerproductspace: `$(ex)` must be of the form: `V, K, F` where `V` is an inner product space over a field `F` and `K` is the vector type."))
+    end
+    quote
+        mutable struct $(esc(ex.args[1])) <: RandomInnerProductSpace{$(esc(ex.args[3])), $(esc(ex.args[2]))}
+            label::String
+            value::VectorValue{$(esc(ex.args[1]))}
+            constraints::Constraints
+            oracles::Oracles
+            next::State{$(esc(ex.args[1]))}
+            associations::Associations
+            mean::$(esc(ex.args[2]))
+
+            function $(esc(ex.args[1]))(label::String, value::VectorValue, constraints::Constraints, oracles::Oracles, next::State, mean::$(esc(ex.args[2])))
+                associations = Dict(Dual => LinearFunctional{$(esc(ex.args[1]))}())
+                new(label, value, constraints, oracles, next, associations, mean)
+            end
+        end
+    end
+end
+
 """
     Gram <: Expression
 
@@ -135,7 +163,7 @@ end
 
 # label
 function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
-    if T <: RandomField
+    if T <: RandomField || T<:RandomInnerProductSpace
         T(label, missing, Constraints(), Oracles(), missing, deterministic(T)())
     else
         T(label, missing, Constraints(), Oracles(), missing)

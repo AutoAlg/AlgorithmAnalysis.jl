@@ -13,7 +13,7 @@ export ScalarValue, VectorValue, Object, Objects
 export R, Rⁿ, Rᵐ
 
 # random types
-export @randomfield, RandomField, deterministic
+export @randomfield, RandomField, @randominnerproductspace, RandomInnerProductSpace, deterministic
 
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero

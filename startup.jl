@@ -10,12 +10,102 @@ import SCS
 import LinearAlgebra as la
 using AbstractTrees
 
+import Base.:+, Base.:-
+
 function dump_fancy(e)
     show(stdout, MIME("text/plain"), e)
     println()
 end
 
 @randomfield(RandomR, R)
+@randominnerproductspace RandomRⁿ, Rⁿ, RandomR
+
+# reals:28
+
+function convert(::Type{RandomR}, r::R)
+    randomR = RandomR(label(r));
+    randomR.mean = r;
+    # TODO: should I copy r.value too??
+    randomR
+end
+promote_rule(::Type{RandomR}, ::Type{<:R}) = RandomR
+
++(x::R, y::RandomR) = convert(RandomR, x) + y
++(x::RandomR, y::R) = y + x
+-(x::R, y::RandomR) = x + (-y)
+-(x::RandomR, y::R) = x + (-y)
+
+
+function convert(::Type{RandomRⁿ}, r::Rⁿ)
+    randomR = RandomR(label(r));
+    randomR.mean = r;
+    # TODO: should I copy r.value&associations too??
+    randomR
+end
+promote_rule(::Type{RandomRⁿ}, ::Type{<:Rⁿ}) = RandomRⁿ
+
++(x::Rⁿ, y::RandomRⁿ) = convert(RandomRⁿ, x) + y
++(x::RandomRⁿ, y::Rⁿ) = y + x
+-(x::Rⁿ, y::RandomRⁿ) = x + (-y)
+-(x::RandomRⁿ, y::Rⁿ) = x + (-y)
+
+
+# function RandomR(r::R) 
+#     randomR = RandomR();
+
+#     randomR.mean = r
+
+#     return randomR;
+# end
+
+# TODO: linear decompositions
+
+struct ExpectationOperator <: AbstractLinearMap{Expression, Expression}
+    # oracle:51
+    label::String
+    properties::Properties
+    relation::SingleValuedRelation{Expression, Expression}
+
+    function ExpectationOperator() 
+        return new("not labeled", Properties([Linear()]), SingleValuedRelation{Expression,Expression}())
+    end
+
+end
+
+(::ExpectationOperator)(r::R) = r
+(::ExpectationOperator)(rn::Rⁿ) = rn
+
+(::ExpectationOperator)(rn::RandomR) = rn.mean
+(::ExpectationOperator)(rn::RandomRⁿ) = rn.mean
+
+function (::ExpectationOperator)(d::LinearDecomposition)
+    return mapreduce(p -> last(p) * sample(op, first(p)), +, weights(d); init=Zero())
+end
+
+function (op::ExpectationOperator)(e::Expression)
+    assert(hasdecomposition(e));
+
+    return op(decomposition(e));
+end
+
+# TODO: fix this shit
+# function getindex(op::ExpectationOperator, e::Expression)
+#     return op(e)
+# end
+
+# TODO: should it instead say Random Scalar in R instead of Scalar in RandomR?
+
+function covariance(x::Expression, y::Expression)    
+    # cov(x, y) = E((x-E(x))(y - E(y)))
+    return E((x-E(x))'*(y - E(y)));
+end
+
+# const 𝔼 = ExpectationOperator()
+const E = ExpectationOperator()
+
+w = RandomR()
+k = RandomR()
+r = R()
 
 @algorithm begin
 

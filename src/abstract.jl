@@ -103,8 +103,11 @@ abstract type Decomposition{T} end
 
 abstract type RandomField{T} <: Field end
 
-deterministic(::Type{<:RandomField{T}}) where T = T
+# TODO: is this right
+abstract type RandomInnerProductSpace{F<:RandomField, V<:VectorSpace} <: InnerProductSpace{F} end
 
+deterministic(::Type{<:RandomField{T}}) where T = T
+deterministic(::Type{<:RandomInnerProductSpace{T, V}}) where {T, V} = V
 
 ############################################################################################
 # Oracles
