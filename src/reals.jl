@@ -26,7 +26,10 @@ A real inner product space.
 
 
 convert(::Type{R}, x::Number) = R(x)
+convert(::Type{R}, ::Zero) = R(0)
 promote_rule(::Type{R}, ::Type{<:Number}) = R
+
+*(::R, ::R) = error("Cannot multiply two scalars")
 
 +(x::Number, y::R) = +(promote(x,y)...)
 +(x::R, y::Number) = y + x

@@ -106,8 +106,11 @@ abstract type RandomField{T} <: Field end
 # TODO: is this right
 abstract type RandomInnerProductSpace{F<:RandomField, V<:VectorSpace} <: InnerProductSpace{F} end
 
-deterministic(::Type{<:RandomField{T}}) where T = T
-deterministic(::Type{<:RandomInnerProductSpace{T, V}}) where {T, V} = V
+# deterministic(::Type{<:RandomField{T}}) where T = T
+# deterministic(::Type{<:RandomInnerProductSpace{T, V}}) where {T, V} = V
+
+deterministic(x::Any) = hasproperty(x, :mean) ? typeof(x.mean) : error("Object is deterministic")
+
 
 ############################################################################################
 # Oracles

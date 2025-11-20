@@ -42,6 +42,10 @@ macro randomfield(s::Symbol, t::Symbol)
             oracles::Oracles
             next::State{$(esc(s))}
             mean::$(esc(t))
+
+            function $(esc(s))(label::String, value::ScalarValue{$(esc(s))}, constraints::Constraints, oracles::Oracles, next::State{$(esc(s))}, mean::$(esc(t)) = $(esc(t))() )
+                new(label, value, constraints, oracles, next, mean)
+            end
         end
     end
 end
@@ -163,11 +167,7 @@ end
 
 # label
 function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
-    if T <: RandomField || T<:RandomInnerProductSpace
-        T(label, missing, Constraints(), Oracles(), missing, deterministic(T)())
-    else
-        T(label, missing, Constraints(), Oracles(), missing)
-    end
+    T(label, missing, Constraints(), Oracles(), missing)
 end
 
 # value
@@ -182,11 +182,7 @@ function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
     if value isa Decomposition && length(weights(value)) == 1 && first(values(weights(value))) == 1
         first(keys(weights(value)))
     else
-        if T <: RandomField
-            T(label, value, Constraints(), Oracles(), missing, deterministic(T)())
-        else
-            T(label, value, Constraints(), Oracles(), missing)
-        end
+        T(label, value, Constraints(), Oracles(), missing)
     end
 end
 # AFTER
