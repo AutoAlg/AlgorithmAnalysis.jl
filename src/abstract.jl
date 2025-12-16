@@ -3,11 +3,18 @@
 ############################################################################################
 
 """
+    Component
+
+An algorithmic component.
+"""
+abstract type Component end
+
+"""
     Space
 
 A set of mathematical objects with a (possibly empty) set of structures.
 """
-abstract type Space end
+abstract type Space <: Component end
 
 """
     Object{T}
@@ -16,14 +23,14 @@ An object in space `T`.
 
 A subtype is [`AbstractVectorSpace`](@ref).
 """
-abstract type Object{T<:Space} end
+abstract type Object{T<:Space} <: Component end
 
 """
     Property{T}
 
 A property of objects in `T`. Properties can be associated with objects to describe actions that can be applied to them.
 """
-abstract type Property{T} end
+abstract type Property{T} <: Component end
 
 """
     Decomposition{T}
@@ -39,20 +46,21 @@ An abstract constraint that consists of an [`Object`](@ref) belonging to a [`Con
 
 Concrete subtypes should provide methods for `object`, `set`, `∈`, `isequal`, and `check`.
 """
-abstract type Constraint end
+abstract type Constraint <: Component end
 
 """
     ConstraintSet
 
 An abstract set for use in a [`Constraint`](@ref).
 """
-abstract type ConstraintSet end
+abstract type ConstraintSet <: Component end
 
 
 ############################################################################################
 # CONSTANTS
 ############################################################################################
 
+const Components = Set{Union{Component, Type{<:Space}}}
 const Objects{T} = Set{Object{T}}
 const Properties{T} = Set{Property{T}}
 const Constraints = Set{Constraint}

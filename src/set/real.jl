@@ -77,6 +77,7 @@ end
 isimplementable(::Any) = false
 isimplementable(::Type{R}) = true
 isimplementable(::Type{CartesianProduct{T}}) where T = all(isimplementable.(fieldtypes(T)))
+isimplementable(::Object{T}) = isimplementable(T)
 
 juliatype(::Any) = Union{}
 juliatype(::Type{R}) = Real
@@ -212,9 +213,15 @@ end
 -(x::Object{Rⁿ}, y::Object{Rⁿ}) = x + (-y)
 *(x::Real, y::Object{Rⁿ}) = *(promote(x,y)...)
 
++(x::Object{Rⁿ}, y::Number) = iszero(y) ? x : error("Cannot add nonzero scalar to a vector")
+-(x::Object{Rⁿ}, y::Number) = iszero(y) ? x : error("Cannot subtract nonzero scalar from a vector")
+-(x::Number, y::Object{Rⁿ}) = iszero(x) ? -y : error("Cannot subtract vector from nonzero scalar")
+
 adjoint(x::Object{Rⁿ}) = get!(Rⁿ().adjoint, x) do
     Atom{LinearMap{Rⁿ,R}}(Symbol(label(x), "'"))
 end
+
+^(x::Object{Rⁿ}, n::Int) = n == 2 ? x'(x) : error("Cannot raise vectors to powers other than two")
 
 # """
 #     Rᵐ <: InnerProductSpace

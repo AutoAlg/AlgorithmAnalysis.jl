@@ -2,11 +2,13 @@
 # PERFORMANCE ESTIMATION
 ############################################################################################
 
+export maximize, neighbors, nodes
+
 function maximize(performance::Object)
 
     @info "PERFORMANCE ESTIMATION"
 
-    if !isa(performance, R)
+    if !isimplementable(performance)
         error("The performance measure must be a real number in $R.")
     end
 
@@ -66,28 +68,40 @@ end
 ############################################################################################
 # Neighbors
 
-neighbors(x::Object) = Objects{Any}(
-    # constraints(x) ∪
-    # flatten(inputs_and_outputs(x)) ∪
-    # ( hasnext(x) ? Objects([next(x)]) : Objects() ) ∪
-    # operators(space(x))
-    neighbors(space(x))
-)
+# neighbors(x::Object) = Objects{Any}(
+#     # constraints(x) ∪
+#     # flatten(inputs_and_outputs(x)) ∪
+#     # ( hasnext(x) ? Objects([next(x)]) : Objects() ) ∪
+#     # operators(space(x))
+#     neighbors(space(x))
+# )
 
-neighbors(s::Space) = objects(structures(s))
+neighbors(s::Space) = elements(s) ∪ properties(s)
+neighbors(T::Type{<:Space}) = neighbors(T())
 neighbors(x::Map) = io(x)
-neighbors(::Missing) = Objects{Any}()
-neighbors(objs::Union{Set{<:Object},Array{<:Object}}) = mapreduce(neighbors, ∪, objs)
+neighbors(::Missing) = Components()
+neighbors(objs::Union{Set,Array}) = mapreduce(neighbors, ∪, objs, init=Components())
+
+neighbors(x::Atom) = Components([space(x)]) ∪ properties(x) ∪ constraints(x) ∪ (ismissing(next(x)) ? Components() : Components([next(x)]))
+
+neighbors(c::Constraint) = Components([expression(c), set(c)])
+neighbors(::ConstraintSet) = Components()
 
 # Get all objects in the graph using graph search
-function nodes(x::Object)
-    visited = Objects{Any}()
-    queue = Objects{Any}([x])
+function components(x::Component)
+    visited = Components()
+    queue = Components([x])
     while !isempty(queue)
         node = pop!(queue)
         if node ∉ visited
             push!(visited, node)
-            union!(queue, neighbors(node))
+            @show node
+            for neighbor ∈ neighbors(node)
+                if neighbor ∉ visited
+                    @show neighbor
+                    union!(queue, neighbor)
+                end
+            end
         end
     end
     visited

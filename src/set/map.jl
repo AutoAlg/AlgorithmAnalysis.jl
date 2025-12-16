@@ -63,8 +63,8 @@ end
 ⇒(X::Type{<:Space}, Y::Type{<:Space}) = SetValuedMap{X,Y}
 
 function getindex(op::Object{<:AbstractSetValuedMap{X,Y}}, x::Object{X}) where {X, Y}
-    filtered = filter( t -> value(t)[1] === x, elements(graph(op)))
-    mapped = map( t -> t[2], collect(filtered))
+    filtered = filter( t -> t[1] === x, elements(graph(op)) )
+    mapped = map( t -> t[2], collect(filtered) )
     Objects{Y}(mapped)
 end
 
@@ -99,12 +99,8 @@ end
 →(X::Type{<:Space}, Y::Type{<:Space}) = SingleValuedMap{X,Y}
 
 function getindex(op::Object{<:AbstractSingleValuedMap{X,Y}}, x::Object{X}) where {X, Y}
-    filtered = filter( t -> value(t)[1] === x, elements(graph(op)))
-    if isempty(filtered)
-        missing
-    else
-        first(filtered)[2]
-    end
+    filtered = filter( t -> t[1] === x, elements(graph(op)) )
+    isempty(filtered) ? missing : first(filtered)[2]
 end
 
 # ∘(::Type{SingleValuedMap{X,Y}}, ::Type{SingleValuedMap{Y,Z}}) where {X,Y,Z} = SingleValuedMap{X,Z}

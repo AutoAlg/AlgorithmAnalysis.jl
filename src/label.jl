@@ -57,8 +57,9 @@ haslabel(T::Type{<:Space}) = haslabel(instance(T))
 
 label!(::AbstractArray{<:Object}, ::Label) = nothing
 
-label!(x::Union{Object, Space}, l::Label) = x.label = l
+label!(x::Union{<:Object, <:Space}, l::Label) = x.label = l
 
+label!(x::Component, l::String) = label!(x, Symbol(l))
 
 
 ############################################################################################

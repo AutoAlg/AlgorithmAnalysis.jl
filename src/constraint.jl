@@ -3,7 +3,7 @@
 
 "Add a constraint to all variables in an expression."
 function add_constraint!(x::Object, c::Constraint)
-    map(v -> push!(constraints(v), c), collect(variables(x)))
+    map(v -> push!(constraints(v), c), collect(objects(x)))
 end
 
 
@@ -18,6 +18,9 @@ expression(c::Constraint) = error("expression not implemented for constraint $(t
 set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
 
 size(c::Constraint) = size(expression(c))
+length(::Constraint) = 1
+iterate(c::Constraint) = (c,1)
+iterate(::Constraint, ::Int) = nothing
 
 struct Satisfied <: Constraint end
 struct Unsatisfied <: Constraint end

@@ -30,6 +30,8 @@ function show(io::IO, ::MIME"text/plain", elements::Objects)
     end
 end
 
+show(io::IO, x::Object{<:CartesianProduct}) = print(io, "(", join(as_tuple(x), ", "), ")")
+
 
 ############################################################################################
 # PROPERTY

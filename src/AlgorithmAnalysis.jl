@@ -11,7 +11,7 @@ export R, Rⁿ, Rᵐ, Zero, One, 𝟎, 𝟏, ×, →, ⇒
 export isimplementable, juliatype, algorithmtype
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
-export label, label!, haslabel, getlabel, defaultlabel
+export label, label!, haslabel, getlabel, defaultlabel, Label
 
 export value!, clear, structures, field, vectorspace
 
@@ -24,7 +24,7 @@ export CartesianProduct, CartesianPower, tree, spaces, children, getfields
 export hasoperators, nodes, DifferentiableFunctional, 𝓕, 𝓛, Functional, LinearFunctional
 export LinearMap, AbstractFunction, FunctionSpace, OperatorSpace
 
-export UnaryOperator, BinaryOperator, NaryOperator, arity, neighbors
+export Operator, BinaryOperator, NaryOperator, arity, neighbors
 export issinglevalued, flatten, hasvalue, adjoint, objects, BasicSet, Subset, graph
 export Powerset, base, @set, sample
 export SetIntersection, SetUnion
@@ -46,6 +46,10 @@ export AbstractSymmetricLinearMap, SymmetricLinearMap
 export AbstractSkewSymmetricLinearMap, SkewSymmetricLinearMap
 # export NDifferentiable
 
+export ConeConstraint, Positive, PositiveOrthant, PositiveSemidefiniteCone
+export Component, Components, components, constraints, next, expression, set
+export ⋅, id, op, inv, magma, group, ring, VectorSpace, implementation, plus, mult, neg
+export as_space, scale
 
 ############################################################################################
 # IMPORTS
@@ -70,12 +74,12 @@ include("set/powerset.jl")
 include("set/cartesian-product.jl")
 include("set/map.jl")
 include("set/natural.jl")
-include("set/real.jl")
+# include("set/real.jl")
 include("property.jl")
-# include("constraint.jl")
+include("constraint.jl")
 # include("algebra.jl")
 include("label.jl")
-# # include("hash.jl")
+include("hash.jl")
 include("adjoint.jl")
 include("show.jl")
 # include("analysis.jl")

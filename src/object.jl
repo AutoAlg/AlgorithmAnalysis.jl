@@ -61,7 +61,7 @@ end
 ############################################################################################
 # Methods
 
-objects(a::Object) = Objects([a])
+objects(a::Object) = Set{Object}([a])
 value(a::Atom) = a.value
 constraints(a::Atom) = a.constraints
 next(a::Atom) = a.next
