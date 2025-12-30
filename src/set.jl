@@ -39,17 +39,13 @@ end
 
 function _set(s::Symbol)
     T = esc(s)
-    sym = QuoteNode(s)
     quote
         struct $T <: Space
-            label::Label
             elements::Objects{$T}
             properties::Properties
 
-            function $T()
-                get!( _CACHE, $T ) do
-                    new( $sym, Objects{$T}(), Properties{$T}() )
-                end
+            $T() = get!( _CACHE, $T ) do
+                new( Objects{$T}(), Properties{$T}() )
             end
         end
     end
@@ -60,6 +56,21 @@ function _set(expr::Expr)
         Expr(:block, [ _set(arg) for arg ∈ expr.args ]...)
     elseif expr.head == :tuple
         Expr(:block, [ _set(arg) for arg ∈ expr.args ]...)
+    # elseif expr.head == :call && expr.args[1] == :⊂
+    #     T = esc(expr.args[2])
+    #     S = esc(expr.args[3])
+    #     sym = QuoteNode(expr.args[2])
+    #     quote
+    #         struct $T <: $S
+    #             label::Label
+    #             elements::Objects{$T}
+    #             properties::Properties
+
+    #             $T() = get!( _CACHE, $T ) do
+    #                 new( $sym, Objects{$T}(), Properties{$T}() )
+    #             end
+    #         end
+    #     end
     else
         error("Invalid expression for @set macro")
     end
@@ -143,49 +154,4 @@ function _var(expr::Expr)
           x = expr
         """)
     end
-end
-
-############################################################################################
-# INTERSECTION
-############################################################################################
-
-struct SetIntersection{T<:Tuple{Vararg{Space}}} <: Space
-    elements::Objects{SetIntersection{T}}
-
-    SetIntersection{T}() where {T<:Tuple{Vararg{Space}}} = get!(_CACHE, SetIntersection{T}) do
-        new{T}( Objects{SetIntersection{T}}() )
-    end
-end
-
-spaces(::Type{SetIntersection{T}}) where T = T
-
-function ∩(T1::Type{<:Space}, T2::Type{<:Space})
-    t1 = T1 <: SetIntersection ? spaces(T1) : Tuple{T1}
-    t2 = T2 <: SetIntersection ? spaces(T2) : Tuple{T2}
-    T = sort(unique(collect(t1 ∪ t2)), by = x -> string(x))
-    SetIntersection{Tuple{T...}}
-end
-
-elements(::Type{SetIntersection{T}}) where T = mapreduce(elements, ∩, T) 
-
-
-############################################################################################
-# UNION
-############################################################################################
-
-struct SetUnion{T<:Tuple{Vararg{Space}}} <: Space
-    elements::Objects{SetUnion{T}}
-
-    SetUnion{T}() where {T<:Tuple{Vararg{Space}}} = get!(_CACHE, SetUnion{T}) do
-        new{T}( Objects{SetUnion{T}}() )
-    end
-end
-
-spaces(::Type{SetUnion{T}}) where T = T
-
-function ∪(T1::Type{<:Space}, T2::Type{<:Space})
-    t1 = T1 <: SetUnion ? spaces(T1) : Tuple{T1}
-    t2 = T2 <: SetUnion ? spaces(T2) : Tuple{T2}
-    T = sort(unique(collect(t1 ∪ t2)), by = x -> string(x))
-    SetUnion{Tuple{T...}}
 end

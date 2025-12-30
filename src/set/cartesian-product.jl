@@ -14,6 +14,14 @@ struct CartesianProduct{T<:Tuple{Vararg{Space}}} <: Space
     end
 end
 
+function convert(::Type{<:CartesianProduct}, T::Tuple{Vararg{<:Space}})
+    T = CartesianProduct{T}
+end
+
+function convert(::Type{Tuple{Vararg{Space}}}, ::CartesianProduct{T}) where T
+    T
+end
+
 function convert(::Type{<:Object{<:CartesianProduct}}, xs::Tuple{Vararg{<:Object}})
     T = CartesianProduct{Tuple{(space(x) for x ∈ xs)...}}
     get!(T().dict, xs) do
@@ -36,10 +44,15 @@ end
 elements(S::CartesianProduct{T}) where T = Objects{CartesianProduct{T}}(values(S.dict))
 
 as_tuple(x::Object{T}) where {T<:CartesianProduct} = convert(Tuple{Vararg{Object}}, x)
+as_tuple(::Type{<:CartesianProduct{T}}) where T = tuple(T.parameters...)
+as_tuple(::Type{<:Object{<:CartesianProduct{T}}}) where T = Tuple(Object{t} for t ∈ T)
 as_space(x::Tuple{Vararg{<:Object}}) = convert(Object{CartesianProduct}, x)
 as_space(x::Vararg{<:Object}) = as_space( tuple(x...) )
 elements(x::Object{<:CartesianProduct}, ind::Int) = as_tuple(x)[ind]
 getindex(x::Object{<:CartesianProduct}, ind::Int) = as_tuple(x)[ind]
+getindex(::Type{T}, ind::Int) where {T<:CartesianProduct} = as_tuple(T)[ind]
+
+length(::Type{T}) where {T<:CartesianProduct} = length(as_tuple(T))
 
 spaces(::Type{CartesianProduct{T}}) where T = T
 
@@ -60,6 +73,8 @@ function sample(::Type{CartesianProduct{T}}, label::Symbol) where T
     # push!(CartesianProduct{T}, y)
     y
 end
+
+properties(::CartesianProduct{T}) where T = Properties{T}()
 
 # push!(T::Type{<:CartesianProduct}, x::Tuple{Vararg{<:Object}}) = push!(elements(T), x)
 # push!(objs::Object{<:CartesianProduct}, x::Tuple{Vararg{Object}}) = push!(objs, convert(Object{CartesianProduct}, x ))

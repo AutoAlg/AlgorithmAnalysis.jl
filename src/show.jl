@@ -40,8 +40,8 @@ show(io::IO, ::Invertible) = print(io, "Invertible")
 show(io::IO, ::Differentiable) = print(io, "Differentiable")
 show(io::IO, ::LocallyLipschitz) = print(io, "Locally Lipschitz")
 show(io::IO, ::Convex) = print(io, "Convex")
-show(io::IO, p::StronglyConvex) = print(io, "$(p.parameter)-strongly convex")
-show(io::IO, p::Ring) = print(io, "Ring($(zero(p)),$(one(p)),$(plus(p)),$(mult(p)))")
+# show(io::IO, p::StronglyConvex) = print(io, "$(p.parameter)-strongly convex")
+show(io::IO, p::Ring) = print(io, "Ring{$(space(p))}($(zero(p)), $(one(p)), $(plus(p)), $(mult(p)), $(neg(p)), $(inv(p)))")
 
 ############################################################################################
 # SPACE
@@ -51,7 +51,7 @@ show(io::IO, x::Space) = print(io, label(x))
 
 function show(io::IO, ::MIME"text/plain", x::Space)
     print(io, "Set")
-    haslabel(x) && print(io, "\n  Label: ", label(x))
+    # haslabel(x) && print(io, "\n  Label: ", label(x))
     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
     !isempty(properties(x)) && print(io, "\n  Properties: ", join(properties(x), ", "))
 end
@@ -61,9 +61,9 @@ function show(io::IO, ::MIME"text/plain", x::Subset)
     !isempty(x) && print(io, "\n  Elements: ", join(elements(x), ", "))
 end
 
-function show(io::IO, ::MIME"text/plain", ::Powerset{T}) where {T<:Space}
-    print(io, "Powerset of $T")
-end
+# function show(io::IO, ::MIME"text/plain", ::Powerset{T}) where {T<:Space}
+#     print(io, "Powerset of $T")
+# end
 
 function show(io::IO, ::MIME"text/plain", x::Type{<:SetValuedMap})
     print(io, "Set of operators from $(domain(x)) to $(codomain(x))")
@@ -173,29 +173,48 @@ end
 # children(s::Space) = objects(structures(s))
 # children(s::FunctionSpace) = samples(s)
 
-# struct TreeWrapper
-#     name::String
-#     children::Tuple
-# end
+struct TreeWrapper
+    name::Label
+    children::Tuple
+end
 
-# show(io::IO, x::TreeWrapper) = print(io, x.name)
+show(io::IO, x::TreeWrapper) = print(io, x.name)
+
+children(x::TreeWrapper) = x.children
+
+function children(x::Object)
+    t = ()
+    for prop ∈ properties(space(x))
+        for sym ∈ fieldnames(typeof(prop))
+            op = getfield(prop, sym)
+            if op isa Object{<:BinaryOperator}
+                if x ∈ outputs(op)
+                    ys = inverse(op, x)
+                    if ys isa Object{<:CartesianProduct}
+                        ys = as_tuple(ys)
+                    else
+                        ys = (ys,)
+                    end
+                    t = (t..., TreeWrapper(label(op), ys))
+                end
+            end
+        end
+    end
+    return t
+    # (TreeWrapper(string(S), Tuple(props)), )
+end
+
+# children(S::Type{<:Space}) = Tuple(properties(S))
+# children(S::Space) = children(typeof(S))
+
+# children(::Property) = ()
+# children(M::Magma) = (op(M),)
+# children(R::Ring) = (plus(R), mult(R), neg(R), inv(R))
 
 # function children(x::Object)
-#     # ops = operators(space(x))
-#     if hasoperators(x) && x ∈ outputs(first(operators(x)))
-#         f = first(operators(x))
-#         ( TreeWrapper(string(f), value(inv(f,x))), )
-#     elseif space(x) <: Operator
-#         inputs(x)
-#     else
-#         ()
-#     end
+#     properties(x) ∪ constraints(x)
 # end
 
-# children(x::TreeWrapper) = x.children
-
-# tree(x::Object; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
-
-# function tree(io::IO, x::Object; maxdepth=10)
-#     print_tree(io, x; maxdepth=maxdepth)
-# end
+tree(S::Type{<:Space}; maxdepth=10) = print_tree(S, maxdepth=maxdepth)
+tree(x::Component; maxdepth=10) = print_tree(x; maxdepth=maxdepth)
+tree(io::IO, x::Object; maxdepth=10) = print_tree(io, x; maxdepth=maxdepth)

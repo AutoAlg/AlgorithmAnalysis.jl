@@ -4,7 +4,6 @@ using Revise
 using AlgorithmAnalysis
 
 # @set A, B, C
-
 # @var a ∈ A, b ∈ B, c ∈ C
 
 # I = A ∩ B
@@ -21,48 +20,71 @@ using AlgorithmAnalysis
 # f ∈ Differentiable{A,B}()
 # h ∈ Convex{A,B}()
 
-@set M
-M ∈ Magma{M}(:+)
-@var m ∈ M, n ∈ M
+# @set M
+# Magma{M}(:+)
+# Magma{M}(:*)
+# Magma{M}(:⋅)
+# # @implementation(M, Real)
+# @var m1 ∈ M, m2 ∈ M, m3 ∈ M, m4 ∈ M
 
-@set G
-G ∈ Group{G}(:⋅, Symbol("1"))
-@var g1 ∈ G, g2 ∈ G
+# @set G
+# # Group{G}(:unit, :⋅, :⁻¹)
+# Group{G}(:zero, :+, :-)
+# @var g1 ∈ G, g2 ∈ G
 
-# Reals
-@set R
-R ∈ Ring{R}()
-@implementation(R, Real)
-@var x ∈ R, y ∈ R, m ∈ R, L ∈ R
-@var α = 2/(L+m)
-
-@set V
-V ∈ VectorSpace{V,R}()
-@var x0 ∈ V, x1 ∈ V
-@var f : V → R
-f ∈ Differentiable{V,R}()
-@var g0 = f'(x0)
-@var Δ = α ⋅ g0
-@var x1 = x0 - Δ
+# @set V
+# VectorSpace{V,R}()
+# @var x0 ∈ V, x1 ∈ V
+# @var f : V → R
+# f ∈ Differentiable{V,R}()
+# @var g0 = f'(x0)
+# @var Δ = α ⋅ g0
+# @var x1 = x0 - Δ
 
 # @var a ∈ R, b ∈ R, u ∈ Rⁿ, v ∈ Rⁿ, f : Rⁿ → R, g : Rⁿ → R
+
+# @set P, Q          # propositions
+# @var p ∈ P, q ∈ Q  # hypotheses
 
 
 ############################################################################################
 # PERFORMANCE ESTIMATION
-@set Rⁿ
-Rⁿ ∈ InnerProductSpace{Rⁿ,R}()
-@var f : Rⁿ → R, x₀ ∈ Rⁿ, xₒₚₜ ∈ Rⁿ
-f ∈ Convex{Rⁿ,R}()
-f'(xₒₚₜ) == zero(innerproductspace(Rⁿ))
-(x₀ - xₒₚₜ)^2 ≤ 1
-x₁ = x₀ - 0.2 * f'(x₀)
-performance = (x₁ - xₒₚₜ)^2
+@set R, Rⁿ
+Ring{R}()
+InnerProductSpace{Rⁿ,R}()
+@var α ∈ R, x0 ∈ Rⁿ, xs ∈ Rⁿ, f : Rⁿ → R
+f ∈ Convex{Rⁿ → R}()
+@var gs = subdifferential(f)(xs)
+gs == zero(Rⁿ)
+(x0 - xs)'(x0-xs) ≤ one(R)
+@var x1 = x0 - α ⋅ subdifferential(f)(x0)
+@var performance = (x1 - xs)'(x1 - xs)
+
+@implementation(R, Real)
 # maximize(performance)
+
+cache = AlgorithmAnalysis._CACHE
+
+[ isimplementable(T) for T ∈ keys(cache) ]
+
+base_types = filter(k -> !(k <: CartesianProduct) && !(k <: Map), keys(cache))
+
+
+objects = Set(keys(cache))
+
+isimplementable.(objects)
+
+
+# TODO
+# 1) Properties of sets vs objects. Can we make this consistent? Subsets?
+# 2) Relationship with proof assistants and dependent type theory.
+# 3) Search for simplifying (convexifying) sequence of transformations.
+
+
+
 
 # @var f ∈ ℱ{m,L,Rⁿ}
 
-;
 # f ∘ g + 2h
 
 

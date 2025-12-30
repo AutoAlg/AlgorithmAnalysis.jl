@@ -73,7 +73,7 @@ inv(f::Object{T}) where {X, Y, T<:AbstractSetValuedMap{X,Y}} = get!(T().inv, f) 
     for (x,y) ∈ graph(f)
         push!(graph(f⁻¹), TupleDecomposition(y,x))
     end
-    get!( (Y ⇒ X)().inv, f⁻¹ ) do
+    get!( instance(Y ⇒ X).inv, f⁻¹ ) do
         f
     end
     f⁻¹
@@ -98,9 +98,19 @@ end
 
 →(X::Type{<:Space}, Y::Type{<:Space}) = SingleValuedMap{X,Y}
 
+properties(::T) where {T<:SingleValuedMap} = Properties{T}()
+properties(::Type{T}) where {T<:SingleValuedMap} = Properties{T}()
+
 function getindex(op::Object{<:AbstractSingleValuedMap{X,Y}}, x::Object{X}) where {X, Y}
     filtered = filter( t -> t[1] === x, elements(graph(op)) )
     isempty(filtered) ? missing : first(filtered)[2]
+end
+
+export inverse
+
+function inverse(op::Object{<:AbstractSingleValuedMap{X,Y}}, y::Object{Y}) where {X, Y}
+    filtered = filter( t -> t[2] === y, elements(graph(op)) )
+    isempty(filtered) ? missing : first(filtered)[1]
 end
 
 # ∘(::Type{SingleValuedMap{X,Y}}, ::Type{SingleValuedMap{Y,Z}}) where {X,Y,Z} = SingleValuedMap{X,Z}
@@ -133,24 +143,40 @@ julia> isequal(A(x), A*x)  # true
 function evaluate end
 
 # For f(x1,x2,...), collect the arguments into an element of the Cartesian product space
-(f::Object)(x::Vararg{Object}) = f(convert(Object{CartesianProduct}, x))
+(f::Object)(x::Vararg{Object}) = f(as_space(x))
 
 
 function (op::Object{<:AbstractSingleValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
     if x ∈ inputs(op)
-        op[x]
+        if !ismissing(op[x])
+            op[x]
+        else
+            error("$x ∈ inputs($op), but $op[$x] is missing")
+        end
     else
-        L = ismissing(label(x)) ? missing : Symbol(label(op), "(", label(x), ")")
+        if !ismissing(op.labeler)
+            L = op.labeler(x)
+        elseif !ismissing(label(x)) && !ismissing(label(op))
+            L = Symbol(label(op), "(", label(x), ")")
+        else
+            L = missing
+        end
         y = sample(Y, L)
-        push!(graph(op), convert(Object{CartesianProduct}, (x,y) ))
+        push!(graph(op), as_space(x,y))
         y
     end
 end
 
 function (op::Object{<:AbstractSetValuedMap{X,Y}})(x::Object{X}) where {X<:Space, Y<:Space}
-    L = ismissing(label(x)) ? missing : Symbol(label(op), "(", label(x), ")")
+    if !ismissing(op.labeler)
+        L = op.labeler(x)
+    elseif !ismissing(label(x)) && !ismissing(label(op))
+        L = Symbol(label(op), "(", label(x), ")")
+    else
+        L = missing
+    end
     y = sample(Y, L)
-    push!(graph(op), convert(Object{CartesianProduct}, (x,y) ))
+    push!(graph(op), as_space(x,y))
     y
 end
 
@@ -185,6 +211,10 @@ struct LinearMap{X<:Space, Y<:Space} <: AbstractLinearMap{X, Y}
         )
     end
 end
+
+# For linear maps, also use * to denote sampling
+*(f::Object{<:AbstractLinearMap}, x::Object) = f(x)
+
 
 ############################################################################################
 # SYMMETRIC

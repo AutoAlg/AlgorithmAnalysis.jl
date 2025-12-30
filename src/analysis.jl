@@ -9,7 +9,7 @@ function maximize(performance::Object)
     @info "PERFORMANCE ESTIMATION"
 
     if !isimplementable(performance)
-        error("The performance measure must be a real number in $R.")
+        error("The performance measure must be implementable.")
     end
 
     @info "Maximizing the performance measure $performance"
@@ -105,6 +105,16 @@ function components(x::Component)
         end
     end
     visited
+end
+
+
+export simplify
+
+function simplify(objective::Object)
+    S = space(objective)
+    cache = _CACHE
+
+    
 end
 
 

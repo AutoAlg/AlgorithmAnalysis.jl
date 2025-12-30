@@ -197,9 +197,11 @@ struct Convex{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
     subdifferential::Dict{Object{SingleValuedMap{X,Y}}, Object{SetValuedMap{X,X}}}
 
     Convex{X,Y}() where {X,Y} = get!(_CACHE, Convex{X,Y}) do
-        new{X,Y}(Dict{Object{SingleValuedMap{X,Y}}, Object{SetValuedMap{X,X}}}())
+        new{X,Y}(Dict{Object{X → Y}, Object{X ⇒ X}}())
     end
 end
+
+Convex{T}() where {T<:Map} = Convex{domain(T),codomain(T)}()
 
 function ∈(x::Object{SingleValuedMap{X,Y}}, ::Convex{X,Y}) where {X,Y}
     push!(properties(x), Convex{X,Y}())
@@ -216,27 +218,40 @@ function subdifferential(f::Object{T}) where {X, Y, T<:SingleValuedMap{X,Y}}
     end
 end
 
+# struct Convex{F,X} <: Property{F}
+#     func::SingleValuedMap{X,Y}
+#     subdifferential::Object{SingleValuedMap{F, SetValuedMap{X,X}}}
+
+#     function Convex{F,X}() where {F,X}
+#         ℱ = new{F,X}(Atom{F → (X ⇒ X)}())
+#         push!(properties(F), ℱ)
+#         # @eval adjoint(::Type{$F}) = subdifferential($F)
+#         # register_methods!(ℱ)
+#         # @eval adjoint(f::Object{$F}) = $F.subdifferential(f)
+#     end
+# end
+
 
 ############################################################################################
 # STRONGLY CONVEX
 ############################################################################################
 
-struct StronglyConvex{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
-    parameter::Number
-end
+# struct StronglyConvex{X,Y} <: Property{Object{SingleValuedMap{X,Y}}}
+#     parameter::Number
+# end
 
-function ∈(x::Object{SingleValuedMap{X,Y}}, p::StronglyConvex{X,Y}) where {X,Y}
-    m = p.parameter
-    if m == 0
-        push!(properties(x), Convex{X,Y}())
-    elseif m > 0
-        push!(properties(x), p)
-        push!(properties(x), Differentiable{X,Y}())
-    else
-        error("Function is not convex; need m ≥ 0")
-    end
-    nothing
-end
+# function ∈(x::Object{SingleValuedMap{X,Y}}, p::StronglyConvex{X,Y}) where {X,Y}
+#     m = p.parameter
+#     if m == 0
+#         push!(properties(x), Convex{X,Y}())
+#     elseif m > 0
+#         push!(properties(x), p)
+#         push!(properties(x), Differentiable{X,Y}())
+#     else
+#         error("Function is not convex; need m ≥ 0")
+#     end
+#     nothing
+# end
 
 
 ############################################################################################
@@ -265,6 +280,61 @@ end
 # The fields of the struct should store all quantities related to the structure, such as unary and binary operators, and special elements of the set such as one and zero. Accessor methods should be defined for each field.
 
 
+"""
+Registers a property by turning its relevant fields into global methods.
+"""
+function register_methods!(prop::Property)
+
+    p = ProgressMeter.ProgressUnknown(desc="Registering methods for property $prop", spinner=true)
+
+    S = space(prop)
+    
+    # @info "Registering methods for property $prop"
+
+    for field in fieldnames(typeof(prop))
+
+        ProgressMeter.next!(p)
+
+        obj = getfield(prop, field)
+
+        # recursively register methods for properties of properties
+        if obj isa Property
+
+            # field(S)
+            # println("  $field(::Type{$S})")
+            @eval export $field
+            @eval $field(::Type{$S}) = $obj
+            
+            register_methods!(obj)
+            
+        elseif obj isa Object
+            
+            # sym(S)
+            sym = label(obj)
+            # @info "  $sym(::Type{$S})"
+            @eval export $sym
+            @eval $sym(::Type{$S}) = $obj
+
+            if space(obj) <: Map
+                D = domain(obj)
+
+                # function syntax f(x)
+                # @info "  $sym(x::Object{$D})"
+                @eval $sym(x::Object{$D}) = $obj(x)
+
+                # for Cartesian product domains, also allow the function syntax f(x1,x2,...)
+                if D <: CartesianProduct
+                    arg_names = [Symbol("x$i") for i in 1:length(D)]
+                    typed_args = [:($arg::Object{$type}) for (arg, type) in zip(arg_names, as_tuple(D))]
+                    @eval $sym($(typed_args...)) = $obj($(arg_names...))
+                end
+            end
+        end
+    end
+    ProgressMeter.finish!(p)
+    nothing
+end
+
 
 ############################################################################################
 # MAGMA
@@ -272,32 +342,121 @@ end
 
 export Magma
 
-struct Magma{X} <: Property{X}
-    op::Object{BinaryOperator{X}}
+struct Magma{T} <: Property{T}
+    op::Object{BinaryOperator{T}}
 
-    Magma{X}(s::Symbol) where X = get!(_CACHE, Magma{X}) do
-        new{X}( Atom{X × X → X}(s) )
+    function Magma{T}(op::Symbol) where T
+        M = new{T}( Atom{T × T → T}(op) )
+        push!(properties(T), M)
+        register_methods!(M)
     end
 end
 
 op(M::Magma) = M.op
 
-function ∈(::Type{T}, prop::Magma{T}) where T
-    push!(properties(T), prop)
-    @eval $(prop.op.label)(x::Object{$T}, y::Object{$T}) = op(magma($T))(x,y)
-    nothing
-end
 
-function magma(s::Space)
-    M = get(s, Magma)
-    if ismissing(M)
-        error("Space $s is not a magma")
+############################################################################################
+# GROUP
+############################################################################################
+
+export Group
+
+struct Group{T} <: Property{T}
+    id::Object{T}
+    op::Object{BinaryOperator{T}}
+    inv::Object{Operator{T}}
+
+    function Group{T}(id::Symbol, op::Symbol, inv::Symbol) where T
+        G = new{T}( Atom{T}(id), Atom{T × T → T}(op), Atom{T → T}(inv) )
+        push!(properties(T), G)
+        @eval $inv(x::Object{$T}, y::Object{$T}) = $op(x, $inv(y))
+        register_methods!(G)
+        G
     end
-    M
 end
 
-magma(T::Type{<:Space}) = magma(instance(T))
+id(G::Group) = G.id
+op(G::Group) = G.op
+inv(G::Group) = G.inv
 
+
+############################################################################################
+# RING
+############################################################################################
+
+export Ring
+
+struct Ring{T} <: Property{T}
+    add_group::Group{T}
+    mul_group::Group{T}
+
+    function Ring{T}() where T
+        R = new{T}( Group{T}(:zero, :+, :-), Group{T}(:one, :*, :/) )
+        push!(properties(T), R)
+        register_methods!(R)
+    end
+end
+
+zero(R::Ring) = id(R.add_group)
+one(R::Ring) = id(R.mul_group)
+plus(R::Ring) = op(R.add_group)
+mult(R::Ring) = op(R.mul_group)
+neg(R::Ring) = inv(R.add_group)
+inv(R::Ring) = inv(R.mul_group)
+
+
+############################################################################################
+# VECTOR SPACE
+############################################################################################
+
+export VectorSpace
+
+struct VectorSpace{V,F} <: Property{V}
+    vectors::Group{V}
+    scale::Object{SingleValuedMap{CartesianProduct{Tuple{F,V}},V}}
+
+    function VectorSpace{V,F}() where {V,F}
+        VS = new{V,F}( Group{V}(:zero, :+, :-), Atom{F × V → V}(:⋅) )
+        push!(properties(V), VS)
+        register_methods!(VS)
+    end
+end
+
+zero(V::VectorSpace) = zero(vectors(V))
+add(V::VectorSpace) = op(vectors(V))
+neg(V::VectorSpace) = inv(vectors(V))
+field(::VectorSpace{V,F}) where {V,F} = F
+
+
+############################################################################################
+# INNER PRODUCT SPACE
+############################################################################################
+
+export InnerProductSpace, innerproductspace
+
+struct InnerProductSpace{V,F} <: Property{V}
+    vectors::Group{V}
+    scale::Object{SingleValuedMap{CartesianProduct{Tuple{F,V}},V}}
+    adjoint::Object{SingleValuedMap{V, LinearMap{V,F}}}
+
+    function InnerProductSpace{V,F}() where {V,F}
+        adj = Atom{V → LinearMap{V,F}}(:adjoint)
+        adj.labeler = x -> ismissing(label(x)) ? missing : Symbol(label(x), "'")
+        VS = new{V,F}( Group{V}( :zero, :+, :- ), Atom{F × V → V}(:⋅), adj )
+        push!(properties(V), VS)
+        register_methods!(VS)
+    end
+end
+
+zero(V::InnerProductSpace) = zero(vectors(V))
+add(V::InnerProductSpace) = op(vectors(V))
+neg(V::InnerProductSpace) = inv(vectors(V))
+field(::InnerProductSpace{V,F}) where {V,F} = F
+
+
+############################################################################################
+# IMPLEMENTATION
+############################################################################################
 
 export @implementation, implement, isimplementable
 
@@ -308,11 +467,16 @@ function value! end
 function properties end
 function implement end
 
+isimplementable(::Type{<:Component}) = false
+isimplementable(::Type{T}) where {T<:CartesianProduct} = all(isimplementable.(as_tuple(T)))
+
 """
     @implementation(S, T)
 
-Defines methods associating the Space type `S` with the Julia type `T`.
+Defines methods associating the type `S<:Space` with the Julia type `T`.
 Recursively calls `implement` for all properties of `S`.
+
+An object is implementable if it can be instantiated by a concrete type in Julia.
 """
 macro implementation(S::Symbol, T::Symbol)
     s = esc(S)
@@ -334,155 +498,18 @@ macro implementation(S::Symbol, T::Symbol)
     end
 end
 
-# by default, properties have no additional implementation
-implement(::Property, ::DataType) = nothing
+function implement(prop::Property{T1}, T2::DataType) where T1
+    for field in fieldnames(typeof(prop))
+        func = getfield(prop, field)
+        op = label(func)
 
-
-
-############################################################################################
-# GROUP
-############################################################################################
-
-export Group
-
-struct Group{X} <: Property{X}
-    id::Object{X}
-    op::Object{BinaryOperator{X}}
-    inv::Object{Operator{X}}
-
-    Group{X}(op::Symbol, id::Symbol) where X = get!(_CACHE, Group{X}) do
-        new{X}( Atom{X}(id), Atom{X × X → X}(op), Atom{X → X}(:⁻¹) )
-    end
-end
-
-id(G::Group) = G.id
-op(G::Group) = G.op
-inv(G::Group) = G.inv
-
-function ∈(::Type{T}, G::Group{T}) where T
-    push!(properties(T), G)
-    @eval $(label(op(G)))(x::Object{$T}, y::Object{$T}) = op(get($T, Group))(x,y)
-    nothing
-end
-
-function group(s::Space)
-    G = get(s, Group)
-    if ismissing(G)
-        error("Space $s is not a group")
-    end
-    G
-end
-
-group(T::Type{<:Space}) = group(instance(T))
-
-function implement(G::Group{T1}, T2::DataType) where T1
-    op_sym = label(op(G))
-    @eval begin
-        $(op_sym)(x::Object{$T1}, y::$T2) = $(op_sym)(promote(x,y)...)
-        $(op_sym)(x::$T2, y::Object{$T1}) = $(op_sym)(promote(x,y)...)
-    end
-    nothing
-end
-
-
-############################################################################################
-# RING
-############################################################################################
-
-export Ring
-
-struct Ring{X} <: Property{X}
-    zero::Object{X}
-    one::Object{X}
-    plus::Object{BinaryOperator{X}}
-    mult::Object{BinaryOperator{X}}
-    neg::Object{Operator{X}}
-    inv::Object{Operator{X}}
-
-    Ring{X}() where X = get!(_CACHE, Ring{X}) do
-        zero = Atom{X}(Symbol(0))
-        one  = Atom{X}(Symbol(1))
-        plus = Atom{X × X → X}(:+)
-        mult = Atom{X × X → X}(:*)
-        neg  = Atom{X → X}(:-)
-        inv  = Atom{X → X}(:/)
-        new{X}( zero, one, plus, mult, neg, inv )
-    end
-end
-
-zero(R::Ring) = R.zero
-one(R::Ring) = R.one
-plus(R::Ring) = R.plus
-mult(R::Ring) = R.mult
-neg(R::Ring) = R.neg
-inv(R::Ring) = R.inv
-
-zero(S::Type{<:Space}) = zero(get(S, Ring))
-one(S::Type{<:Space}) = one(get(S, Ring))
-
-iszero(x::Object{X}) where X = x === zero(X)
-isone(x::Object{X}) where X = x === one(X)
-
-function ∈(::Type{T}, R::Ring{T}) where T
-    push!(properties(T), R)
-    @eval begin
-        function $(label(plus(R)))(x::Object{$T}, y::Object{$T})
-            p = get($T, Ring)
-            if ismissing(p)
-                error("$T is not a ring")
-            elseif iszero(x)
-                y
-            elseif iszero(y)
-                x
-            else
-                plus(p)(x,y)
-            end
-        end
-        function $(label(mult(R)))(x::Object{$T}, y::Object{$T})
-            p = get($T, Ring)
-            if ismissing(p)
-                error("$T is not a ring")
-            elseif isone(x)
-                y
-            elseif isone(y)
-                x
-            else
-                mult(p)(x,y)
-            end
-        end
-        function $(label(neg(R)))(x::Object{$T})
-            p = get($T, Ring)
-            if ismissing(p)
-                error("$T is not a ring")
-            end
-            iszero(x) ? x : neg(p)(x)
-        end
-        function $(label(inv(R)))(x::Object{$T})
-            p = get($T, Ring)
-            if ismissing(p)
-                error("$T is not a ring")
-            end
-            isone(x) ? x : inv(p)(x)
-        end
-        function $(label(neg(R)))(x::Object{$T}, y::Object{$T})
-            $(label(plus(R)))(x, $(label(neg(R)))(y))
-        end
-        function $(label(inv(R)))(x::Object{$T}, y::Object{$T})
-            $(label(mult(R)))(x, $(label(inv(R)))(y))
+         if space(func) <: BinaryOperator
+            @eval $op(x::Object{$T1}, y::$T2) = $op(promote(x,y)...)
+            @eval $op(x::$T2, y::Object{$T1}) = $op(promote(x,y)...)
         end
     end
     nothing
 end
-
-function ring(s::Space)
-    R = get(s, Ring)
-    if ismissing(R)
-        error("Space $s is not a ring")
-    end
-    R
-end
-
-ring(T::Type{<:Space}) = ring(instance(T))
 
 function implement(R::Ring{T1}, T2::DataType) where T1
     plus_sym = label(plus(R))
@@ -501,160 +528,3 @@ function implement(R::Ring{T1}, T2::DataType) where T1
     end
     nothing
 end
-
-
-############################################################################################
-# VECTOR SPACE
-############################################################################################
-
-export VectorSpace
-
-struct VectorSpace{V,F} <: Property{V}
-    zero::Object{V}
-    add::Object{BinaryOperator{V}}
-    neg::Object{Operator{V}}
-    scale::Object{SingleValuedMap{CartesianProduct{Tuple{F,V}},V}}
-
-    VectorSpace{V,F}() where {V,F} = get!(_CACHE, VectorSpace{V,F}) do
-        new{V,F}(
-            Atom{V}(Symbol(0)),
-            Atom{V × V → V}(:+),
-            Atom{V → V}(:-),
-            Atom{F × V → V}(:⋅)
-        )
-    end
-end
-
-zero(V::VectorSpace) = V.zero
-add(V::VectorSpace) = V.add
-neg(V::VectorSpace) = V.neg
-scale(V::VectorSpace) = V.scale
-field(::VectorSpace{V,F}) where {V,F} = F
-
-function ∈(::Type{T}, V::VectorSpace{T,F}) where {T,F}
-    push!(properties(T), V)
-    @eval begin
-        function $(label(add(V)))(x::Object{$T}, y::Object{$T})
-            p = get($T, VectorSpace)
-            if ismissing(p)
-                error("$T is not a vector space")
-            elseif iszero(x)
-                y
-            elseif iszero(y)
-                x
-            else
-                add(p)(x,y)
-            end
-        end
-        function $(label(scale(V)))(x::Object{$F}, y::Object{$T})
-            p = get($T, VectorSpace)
-            if isone(x)
-                y
-            elseif iszero(x)
-                zero($T)
-            else
-                scale(p)(x,y)
-            end
-        end
-        function $(label(neg(V)))(x::Object{$T})
-            p = get($T, VectorSpace)
-            iszero(x) ? x : neg(p)(x)
-        end
-        function $(label(neg(V)))(x::Object{$T}, y::Object{$T})
-            $(label(add(V)))(x, $(label(neg(V)))(y))
-        end
-    end
-    nothing
-end
-
-function vectorspace(s::Space)
-    V = get(s, VectorSpace)
-    if ismissing(V)
-        error("Space $s is not a vector space")
-    end
-    V
-end
-
-vectorspace(T::Type{<:Space}) = vectorspace(instance(T))
-
-
-############################################################################################
-# INNER PRODUCT SPACE
-############################################################################################
-
-export InnerProductSpace, innerproductspace
-
-struct InnerProductSpace{V,F} <: Property{V}
-    zero::Object{V}
-    add::Object{BinaryOperator{V}}
-    neg::Object{Operator{V}}
-    scale::Object{SingleValuedMap{CartesianProduct{Tuple{F,V}},V}}
-    adjoint::Object{SingleValuedMap{V, LinearMap{V,F}}}
-
-    InnerProductSpace{V,F}() where {V,F} = get!(_CACHE, InnerProductSpace{V,F}) do
-        new{V,F}(
-            Atom{V}(Symbol(0)),
-            Atom{V × V → V}(:+),
-            Atom{V → V}(:-),
-            Atom{F × V → V}(:⋅),
-            Atom{V → LinearMap{V,F}}(:adjoint)
-        )
-    end
-end
-
-zero(V::InnerProductSpace) = V.zero
-add(V::InnerProductSpace) = V.add
-neg(V::InnerProductSpace) = V.neg
-scale(V::InnerProductSpace) = V.scale
-adjoint(V::InnerProductSpace) = V.adjoint
-field(::InnerProductSpace{V,F}) where {V,F} = F
-
-function ∈(::Type{T}, V::InnerProductSpace{T,F}) where {T,F}
-    push!(properties(T), V)
-    @eval begin
-        function $(label(add(V)))(x::Object{$T}, y::Object{$T})
-            p = get($T, InnerProductSpace)
-            if ismissing(p)
-                error("$T is not an inner product space")
-            elseif iszero(x)
-                y
-            elseif iszero(y)
-                x
-            else
-                add(p)(x,y)
-            end
-        end
-        function $(label(scale(V)))(x::Object{$F}, y::Object{$T})
-            p = get($T, InnerProductSpace)
-            if isone(x)
-                y
-            elseif iszero(x)
-                zero($T)
-            else
-                scale(p)(x,y)
-            end
-        end
-        function $(label(neg(V)))(x::Object{$T})
-            p = get($T, InnerProductSpace)
-            iszero(x) ? x : neg(p)(x)
-        end
-        function $(label(neg(V)))(x::Object{$T}, y::Object{$T})
-            $(label(add(V)))(x, $(label(neg(V)))(y))
-        end
-        function $(label(adjoint(V)))(x::Object{$T})
-            p = get($T, InnerProductSpace)
-            adjoint(p)(x)
-        end
-    end
-    nothing
-end
-
-function innerproductspace(s::Space)
-    V = get(s, InnerProductSpace)
-    if ismissing(V)
-        error("Space $s is not an inner product space")
-    end
-    V
-end
-
-innerproductspace(T::Type{<:Space}) = innerproductspace(instance(T))

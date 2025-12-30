@@ -15,9 +15,7 @@ mutable struct Subset{T<:Space} <: AbstractSubset{T}
     elements::Objects{T}
 
     function Subset{T}(label::Label = missing) where {T<:Space}
-        s = new{T}( label, Objects{T}() )
-        # push!(Powerset{T}, s)
-        # s
+        new{T}( label, Objects{T}() )
     end
 end
 

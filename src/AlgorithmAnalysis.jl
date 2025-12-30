@@ -49,7 +49,7 @@ export AbstractSkewSymmetricLinearMap, SkewSymmetricLinearMap
 export ConeConstraint, Positive, PositiveOrthant, PositiveSemidefiniteCone
 export Component, Components, components, constraints, next, expression, set
 export ⋅, id, op, inv, magma, group, ring, VectorSpace, implementation, plus, mult, neg
-export as_space, scale
+export as_space, scale, labeler, source
 
 ############################################################################################
 # IMPORTS
@@ -59,6 +59,7 @@ using JuMP
 
 import Zeros: Zero, One, 𝟎, 𝟏
 import AbstractTrees: children, print_tree
+import ProgressMeter
 
 import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ∪
 import Base: isempty, iszero, isone, isequal, hash, get
@@ -69,19 +70,23 @@ import Base: numerator, denominator, empty!, setdiff, getindex, delete!
 include("abstract.jl")
 include("object.jl")
 include("set.jl")
+include("set/union.jl")
+include("set/intersection.jl")
 include("set/subset.jl")
-include("set/powerset.jl")
+# include("set/powerset.jl")
 include("set/cartesian-product.jl")
 include("set/map.jl")
-include("set/natural.jl")
-# include("set/real.jl")
+# # include("set/natural.jl")
+# # include("set/real.jl")
 include("property.jl")
 include("constraint.jl")
-# include("algebra.jl")
 include("label.jl")
-include("hash.jl")
-include("adjoint.jl")
+# include("hash.jl")
 include("show.jl")
-# include("analysis.jl")
+include("analysis.jl")
+
+
+# Πx : A.B   # dependent product type, maps x of type A to an object of type B(x)
+# A → B ≡ Π_ : A.B
 
 end

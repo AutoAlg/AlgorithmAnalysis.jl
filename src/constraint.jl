@@ -1,10 +1,4 @@
-############################################################################################
-# Add constraint
-
-"Add a constraint to all variables in an expression."
-function add_constraint!(x::Object, c::Constraint)
-    map(v -> push!(constraints(v), c), collect(objects(x)))
-end
+export ZeroSet
 
 
 ############################################################################################
@@ -38,13 +32,9 @@ struct ConeConstraint{K<:Cone} <: Constraint
     x::Object
     
     function ConeConstraint{K}(x) where {K<:Cone}
-        if !hasvalue(x)
-            this = new(x)
-            add_constraint!(x, this)
-            this
-        else
-            check(x,K) ? Satisfied() : Unsatisfied()
-        end
+        c = new(x)
+        push!(constraints(x), c)
+        c
     end
 end
 
