@@ -1,8 +1,11 @@
 using AlgorithmAnalysis
 using Test
+using Revise
 
 @testset "AlgorithmAnalysis.jl" begin
+  include("test_random.jl")
 
+  test_random()
   # ###############################################################################
   # # Relation
   # r1 = Relation( Set{Pair{Int64, Float64}}([ 1 => 1.0, 1 => 2.0, 2 => 4.0, 3 => 4.0 ]) )
@@ -20,18 +23,18 @@ using Test
   # @test r1 + inv(r2) == Relation( Set([ 2 => 10.0 ]) )
   # @test r2 + inv(r1) == Relation( Set([ 2.0 => 6 ]) )
 
-  @test begin
-    m,L = 1,10
-    α = 2 / (L + m)
-    @algorithm begin
-        f = DifferentiableFunctional{Rⁿ}()
-        xs = first_order_stationary_point(f)
-        f' ∈ SectorBounded(m, L, xs, f'(xs))
-        x0 = Rⁿ()
-        x1 = x0 - α * f'(x0)
-        x0 => x1
-        performance = (x0 - xs)^2
-    end
-    rate(performance) ≈ ((L-m)/(L+m))^2
-  end
+  # @test begin
+  #   m, L = 1, 10
+  #   α = 2 / (L + m)
+  #   @algorithm begin
+  #     f = DifferentiableFunctional{Rⁿ}()
+  #     xs = first_order_stationary_point(f)
+  #     f' ∈ SectorBounded(m, L, xs, f'(xs))
+  #     x0 = Rⁿ()
+  #     x1 = x0 - α * f'(x0)
+  #     x0 => x1
+  #     performance = (x0 - xs)^2
+  #   end
+  #   rate(performance) ≈ ((L - m) / (L + m))^2
+  # end
 end

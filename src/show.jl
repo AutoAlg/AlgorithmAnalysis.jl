@@ -33,7 +33,7 @@ end
 function show(io::IO, ::MIME"text/plain", x::LinearDecomposition{T}) where {T}
     print(io, "\nLinear decomposition over $T: ")
     isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
-    foreach( p -> print(io, "\n", "  "^get(io, :indent, 1), p.first, " → ", p.second), collect(weights(x)))
+    foreach(p -> print(io, "\n", "  "^get(io, :indent, 1), p.first, " → ", p.second), collect(weights(x)))
 end
 
 
@@ -56,14 +56,15 @@ end
 
 elementname(::Type{<:VectorSpace}) = "vector"
 elementname(::Type{<:Field}) = "scalar"
+elementname(::Type{<:RandomField}) = "random scalar"
 elementname(::Type{<:Gram}) = "gram matrix"
 # elementname(::Type{<:GaussianRV}) = "GaussianRV variable"
 
 function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     if iszero(e)
         print(io, "\nZero $(lowercase(elementname(T))) in $(typeof(e))")
-    # elseif hasvalue(e)
-    #     print(io, value(e))
+        # elseif hasvalue(e)
+        #     print(io, value(e))
     else
         print(io, "\n$(uppercasefirst(elementname(T))) in $(typeof(e))")
         isdefined(e, :vecs) && print(io, "\n Value: $(e.vecs) ⊗ $(e.vecs)")
@@ -73,11 +74,12 @@ function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
         !isempty(constraints(e)) && print(io, "\n  Constraints: ", join(constraints(e), ", "))
         !isempty(oracles(e)) && print(io, "\n  Oracles: ", join(oracles(e), ", "))
         !ismissing(next(e)) && print(io, "\n  Next: ", next(e))
-        !isempty(associations(e)) && print(io, "\n  Associations: ", join(associations(e),", "))
+        !isempty(associations(e)) && print(io, "\n  Associations: ", join(associations(e), ", "))
+        # TODO: print the mean
     end
 end
 
-show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", last(p))
+show(io::IO, p::Pair{Type{<:Wrapper},Oracle}) = print(io, first(p), " => ", last(p))
 
 # Associations
 # show(io::IO, a::Associations) = print(io, a...)
@@ -144,7 +146,7 @@ function show(io::IO, ::MIME"text/plain", o::Oracle)
     print(io, "\n  Description: $(description(o))")
     print(io, "\n  Label: $(label(o))")
     print(io, "\n  Properties: $(properties(o))")
-    !isempty(associations(o)) && print(io, "\n  Associations: ", join(associations(o),", "))
+    !isempty(associations(o)) && print(io, "\n  Associations: ", join(associations(o), ", "))
     # print(io, "\n  Associations: ")
     # if isempty(associations(o))
     #     print(io, "No associations")

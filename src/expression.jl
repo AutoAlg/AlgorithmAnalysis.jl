@@ -43,7 +43,7 @@ macro randomfield(s::Symbol, t::Symbol)
             next::State{$(esc(s))}
             mean::$(esc(t))
 
-            function $(esc(s))(label::String, value::ScalarValue{$(esc(s))}, constraints::Constraints, oracles::Oracles, next::State{$(esc(s))}, mean::$(esc(t)) = $(esc(t))() )
+            function $(esc(s))(label::String, value::ScalarValue{$(esc(s))}, constraints::Constraints, oracles::Oracles, next::State{$(esc(s))}, mean::$(esc(t))=$(esc(t))())
                 new(label, value, constraints, oracles, next, mean)
             end
         end
@@ -127,7 +127,7 @@ macro randominnerproductspace(ex::Expr)
         throw(ArgumentError("@randominnerproductspace: `$(ex)` must be of the form: `V, K, F` where `V` is an inner product space over a field `F` and `K` is the vector type."))
     end
     quote
-        mutable struct $(esc(ex.args[1])) <: RandomInnerProductSpace{$(esc(ex.args[3])), $(esc(ex.args[2]))}
+        mutable struct $(esc(ex.args[1])) <: RandomInnerProductSpace{$(esc(ex.args[3])),$(esc(ex.args[2]))}
             label::String
             value::VectorValue{$(esc(ex.args[1]))}
             constraints::Constraints
@@ -136,7 +136,7 @@ macro randominnerproductspace(ex::Expr)
             associations::Associations
             mean::$(esc(ex.args[2]))
 
-            function $(esc(ex.args[1]))(label::String, value::VectorValue, constraints::Constraints, oracles::Oracles, next::State, mean::$(esc(ex.args[2])))
+            function $(esc(ex.args[1]))(label::String, value::VectorValue, constraints::Constraints, oracles::Oracles, next::State, mean::$(esc(ex.args[2]))=$(esc(ex.args[2]))())
                 associations = Dict(Dual => LinearFunctional{$(esc(ex.args[1]))}())
                 new(label, value, constraints, oracles, next, associations, mean)
             end
@@ -149,20 +149,20 @@ end
 
 A Gram matrix is a matrix of inner product between all pairs of a set of vectors.
 """
-struct Gram{V} <: Expression where {F<:Field, V<:InnerProductSpace{F}}
-    label:: String 
-    value:: Missing
+struct Gram{V} <: Expression where {F<:Field,V<:InnerProductSpace{F}}
+    label::String
+    value::Missing
     constraints::Constraints
     oracles::Oracles
     vecs1::Vector{V}
     vecs2::Vector{V}
 
-    function Gram(v1::Vector{V}, v2::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}}
+    function Gram(v1::Vector{V}, v2::Vector{V}) where {F<:Field,V<:InnerProductSpace{F}}
         new{V}("", missing, Constraints(), Oracles(), v1, v2)
     end
 end
 
-Gram(vecs::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}} = Gram(vecs, vecs)
+Gram(vecs::Vector{V}) where {F<:Field,V<:InnerProductSpace{F}} = Gram(vecs, vecs)
 
 vecs1(g::Gram) = g.vecs1
 vecs2(g::Gram) = g.vecs2
@@ -172,7 +172,7 @@ vecs2(g::Gram) = g.vecs2
 # Constructors
 
 # label
-function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
+function (::Type{T})(label::String="Variable{$T}") where {T<:AbstractVectorSpace}
     T(label, missing, Constraints(), Oracles(), missing)
 end
 
@@ -192,7 +192,7 @@ function (::Type{T})(value::ScalarValue{T}) where {T<:Field}
     end
 end
 # AFTER
-function (::Type{T})(value::Union{Missing, Zero, Decomposition, Vector}) where {T<:VectorSpace}
+function (::Type{T})(value::Union{Missing,Zero,Decomposition,Vector}) where {T<:VectorSpace}
     if isempty(value)
         label = "Variable{$T}"
     elseif iszero(value)
@@ -212,8 +212,8 @@ end
 # Methods
 constraints(e::Expression) = e.constraints
 
-field(::Type{T}) where {F<:Field, T<:VectorSpace{F}} = F
- 
+field(::Type{T}) where {F<:Field,T<:VectorSpace{F}} = F
+
 """
     oracles(e)
 
@@ -345,7 +345,7 @@ function value(e::Expression)
     hasvalue(e) ? e.value : error("Expression $e does not have a value")
 end
 
-value(a::AbstractArray{<:Expression}) = [ value(e) for e ∈ a ]
+value(a::AbstractArray{<:Expression}) = [value(e) for e ∈ a]
 
 """
     value!(e, val)
@@ -363,7 +363,7 @@ function value!(a::AbstractArray{<:Expression}, val::AbstractArray)
     if size(a) ≠ size(val)
         error("Sizes incompatible for assignment")
     else
-        foreach( (e,v) -> value!(e, v), zip(a,val) )
+        foreach((e, v) -> value!(e, v), zip(a, val))
     end
 end
 
@@ -521,9 +521,9 @@ function next(x::Expression)
         end
         next!(x, nextx)
         return nextx
-    end   
+    end
 end
-next(a::AbstractArray{<:Expression}) = [ next(x) for x ∈ a ]
+next(a::AbstractArray{<:Expression}) = [next(x) for x ∈ a]
 
 """
     update!(p)
@@ -537,7 +537,7 @@ julia> x⁺ = Rⁿ()
 julia> update!( x => x⁺ )
 ```
 """
-function update!(p::Pair{T, <:State{T}}) where {T}
+function update!(p::Pair{T,<:State{T}}) where {T}
     next!(first(p), last(p))
     nothing
 end
@@ -556,12 +556,12 @@ julia> weights(x1)
 weights(e::Expression) = weights(decomposition(e))
 
 
-size(::Expression) = (1,1)
+size(::Expression) = (1, 1)
 size(g::Gram) = size(evaluate(g))
 
 length(::Expression) = 1
-iterate(e::Expression) = iterate(e,1)
-iterate(e::Expression, state::Int) = (state > 1 ? nothing : (e, state+1))
+iterate(e::Expression) = iterate(e, 1)
+iterate(e::Expression, state::Int) = (state > 1 ? nothing : (e, state + 1))
 
 
 ############################################################################################
@@ -583,11 +583,11 @@ function evaluate(e::Expression)
         missing
     end
 end
-evaluate(x::LinearDecomposition) = mapreduce(p -> last(p)*evaluate(first(p)), +, weights(x))
-evaluate(a::AbstractArray{<:Expression}) = [ evaluate(e) for e ∈ a ]
+evaluate(x::LinearDecomposition) = mapreduce(p -> last(p) * evaluate(first(p)), +, weights(x))
+evaluate(a::AbstractArray{<:Expression}) = [evaluate(e) for e ∈ a]
 
-function evaluate(g::Gram{V}) where {F<:Field, V<:InnerProductSpace{F}}
-    F[ x'*y for x ∈ vecs1(g), y ∈ vecs2(g) ]
+function evaluate(g::Gram{V}) where {F<:Field,V<:InnerProductSpace{F}}
+    F[x' * y for x ∈ vecs1(g), y ∈ vecs2(g)]
 end
 
 """
@@ -597,5 +597,5 @@ Return whether or not Gram matrix `G1` is a subset of Gram matrix `G2`.
 """
 function ⊆(g1::Gram, g2::Gram)
     Expressions(vecs1(g1)) ⊆ Expressions(vecs1(g2)) &&
-    Expressions(vecs2(g1)) ⊆ Expressions(vecs2(g2))
+        Expressions(vecs2(g1)) ⊆ Expressions(vecs2(g2))
 end

@@ -14,6 +14,8 @@ export R, Rⁿ, Rᵐ, X
 
 # random types
 export @randomfield, RandomField, @randominnerproductspace, RandomInnerProductSpace, deterministic
+export RandomR, RandomRⁿ
+export ExpectationOperator, 𝔼, E, covariance
 
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
@@ -134,13 +136,13 @@ include("oracle.jl")
 include("adjoint.jl")
 include("interpolation.jl")
 include("reals.jl")
+include("random_reals.jl")
 include("label.jl")
 include("primitives.jl")
 include("algorithms.jl")
 include("hash.jl")
 include("algebra.jl")
 include("analysis.jl")
-# include("stochastic.jl")
 include("show.jl")
 
 end

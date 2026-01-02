@@ -10,134 +10,44 @@ import LinearAlgebra as la
 using AbstractTrees
 using LiveServer
 
-m,L = 1,10
-α = 2 / (L + m)
-@algorithm begin
-    f = DifferentiableFunctional{Rⁿ}()
-    xs = first_order_stationary_point(f)
-    f' ∈ SectorBounded(m, L, xs, f'(xs))
-    x0 = Rⁿ()
-    x1 = x0 - α * f'(x0)
-    x0 => x1
-    performance = (x0 - xs)^2
-end
-@show rate(performance)
+# m, L = 1, 10
+# α = 2 / (L + m)
+# @algorithm begin
+#     f = DifferentiableFunctional{Rⁿ}()
+#     xs = first_order_stationary_point(f)
+#     f' ∈ SectorBounded(m, L, xs, f'(xs))
+#     x0 = Rⁿ()
+#     x1 = x0 - α * f'(x0)
+#     x0 => x1
+#     performance = (x0 - xs)^2
+# end
+# @show rate(performance)
 
-import Base.:+, Base.:-, Base.:*
 
 function dump_fancy(e)
     show(stdout, MIME("text/plain"), e)
     println()
 end
 
-@randomfield(RandomR, R)
-@randominnerproductspace RandomRⁿ, Rⁿ, RandomR
-
-# reals:28
-
-function convert(::Type{RandomR}, r::R)
-    randomR = RandomR(label(r));
-    randomR.mean = r;
-    # TODO: should I copy r.value too??
-    randomR
-end
-promote_rule(::Type{RandomR}, ::Type{<:R}) = RandomR
-
-+(x::R, y::RandomR) = convert(RandomR, x) + y
-+(x::RandomR, y::R) = y + x
--(x::R, y::RandomR) = x + (-y)
--(x::RandomR, y::R) = x + (-y)
-
-
-function convert(::Type{RandomRⁿ}, r::Rⁿ)
-    randomR = RandomR(label(r));
-    randomR.mean = r;
-    # TODO: should I copy r.value&associations too??
-    randomR
-end
-promote_rule(::Type{RandomRⁿ}, ::Type{<:Rⁿ}) = RandomRⁿ
-
-+(x::Rⁿ, y::RandomRⁿ) = convert(RandomRⁿ, x) + y
-+(x::RandomRⁿ, y::Rⁿ) = y + x
--(x::Rⁿ, y::RandomRⁿ) = x + (-y)
--(x::RandomRⁿ, y::Rⁿ) = x + (-y)
-
-*(::RandomR, ::RandomR) = error("Cannot multiply two scalars")
-
-# function RandomR(r::R) 
-#     randomR = RandomR();
-
-#     randomR.mean = r
-
-#     return randomR;
-# end
-
-# TODO: linear decompositions
-
-struct ExpectationOperator <: AbstractLinearMap{Expression, Expression}
-    # oracle:51
-    label::String
-    properties::Properties
-    relation::SingleValuedRelation{Expression, Expression}
-
-    function ExpectationOperator() 
-        return new("not labeled", Properties([Linear()]), SingleValuedRelation{Expression,Expression}())
-    end
-end
-
-(::ExpectationOperator)(r::R) = r
-(::ExpectationOperator)(rn::Rⁿ) = rn
-
-# (::ExpectationOperator)(rn::RandomR) = rn.mean
-(::ExpectationOperator)(rn::RandomRⁿ) = rn.mean
-
-# rewrite for generic linear map
-function (op::ExpectationOperator)(e::RandomR)
-    if hasdecomposition(e)
-        mapreduce(p -> last(p) * op(first(p)), +, weights(e); init=Zero())
-    else
-        e.mean
-    end
-end
-
-# TODO: fix this shit
-# function getindex(op::ExpectationOperator, e::Expression)
-#     return op(e)
-# end
-
-# TODO fix priting of w - E(w)
-# TODO: fix isequal(E(w+k), E(w) + E(k))
-
-covariance(x::Expression, y::Expression) = E((x-E(x))'*(y - E(y)))
-
-# const 𝔼 = ExpectationOperator()
-const E = ExpectationOperator()
+# TODO julia> @algorithm begin x = RandomR(); y = RandomR(); s = x+y; end
+# julia> label(s.mean)
+# "Variable{R}"
+# julia> 
 
 @algorithm begin
     w = RandomR()
     k = RandomR()
-    r = R()
-    a = R()
-    b = R()
-end
+    x = R()
+    rx = RandomR()
 
+    h = RandomRⁿ()
+    u = RandomRⁿ()
 
-@algorithm begin
-
-    # x = Rⁿ()
-    # μ = Rⁿ()
-    # σ = R()
-
-    # w = GaussianRV{R,Rⁿ}()
-    # v = GaussianRV{R,Rⁿ}()
-    # expectation(g) == x
-    
 
 end
-
 
 # function RVTest()
- 
+
 #     @algorithm begin
 #         x = Rⁿ()
 #         μ = Rⁿ()
@@ -211,64 +121,65 @@ end
 # end
 
 function SGD(m, L, prev_rate=0)
-    α = 2/(L+m)
-    @algorithm begin    
+    α = 2 / (L + m)
+    @algorithm begin
         f = DifferentiableFunctional{Rⁿ}()
         xs = first_order_stationary_point(f)
         f' ∈ SectorBounded(m, L, xs, f'(xs))
-        ω = RandomRⁿ();
-        covariance(ω,ω) ≤ 0.3
+        ω = RandomRⁿ()
+        covariance(ω, ω) ≤ 0.3
         x0 = Rⁿ()
-        x1 = x0 - α*(f'(x0) + ω)
+        x1 = x0 - α * (f'(x0) + ω)
         x0 => x1
-        performance = (x0-xs)^2
+        performance = (x0 - xs)^2
     end
     @show rate(performance, prev_rate)
 end
 
 # GD
 function GD(m, L, prev_rate=0)
-    α = 2/(L+m)
-    @algorithm begin    
+    α = 2 / (L + m)
+    @algorithm begin
         f = DifferentiableFunctional{Rⁿ}()
         xs = first_order_stationary_point(f)
         f' ∈ SectorBounded(m, L, xs, f'(xs))
         x0 = Rⁿ()
-        x1 = x0 - α*f'(x0)
+        x1 = x0 - α * f'(x0)
         x0 => x1
-        performance = (x0-xs)^2
+        performance = (x0 - xs)^2
     end
     @show rate(performance, prev_rate)
 end
 
 # FG
-function FG(m, L, lift_dimension=0, prev_rate = 0)
+function FG(m, L, lift_dimension=0, prev_rate=0)
     m, L, lift_dimension = 1, 10, 1
-    α = 4/(3*L+m); β=(sqrt(3*L+1)-2)/(sqrt(3*L+1)+2)
+    α = 4 / (3 * L + m)
+    β = (sqrt(3 * L + 1) - 2) / (sqrt(3 * L + 1) + 2)
     @algorithm begin
         f = DifferentiableFunctional{Rⁿ}()
         xs = first_order_stationary_point(f)
         f ∈ SmoothStronglyConvex(m, L)
         x0 = Rⁿ()
         x1 = Rⁿ()
-        y1 = x1 + β*(x1 - x0)
-        x2 = y1 - α*f'(y1)
+        y1 = x1 + β * (x1 - x0)
+        x2 = y1 - α * f'(y1)
         x0 => x1
         x1 => x2
         lift(x2, lift_dimension)
-        performance = (y1-xs)^2
+        performance = (y1 - xs)^2
     end
     @show rate(performance, prev_rate)
 end
-        
+
 # TM
 function TM(m, L, prev_rate=0)
-    κ = L/m
-    ρ = 1 - 1/(sqrt(κ))
-    α = (1 + ρ)/L
-    β = ρ^2/(2-ρ)
-    γ = ρ^2/((1+ρ)*(2-ρ))
-    δ = ρ^2/(1-ρ^2)
+    κ = L / m
+    ρ = 1 - 1 / (sqrt(κ))
+    α = (1 + ρ) / L
+    β = ρ^2 / (2 - ρ)
+    γ = ρ^2 / ((1 + ρ) * (2 - ρ))
+    δ = ρ^2 / (1 - ρ^2)
 
     @algorithm begin
         f = DifferentiableFunctional{Rⁿ}()
@@ -276,35 +187,35 @@ function TM(m, L, prev_rate=0)
         f ∈ SmoothStronglyConvex(m, L)
         x0 = Rⁿ()
         x1 = Rⁿ()
-        y1 = (1+γ)*x1 - γ*x0
-        x2 = (1+β)*x1 - β*x0 - α*f'(y1)
-        y2 = (1+γ)*x2 - γ*x1
+        y1 = (1 + γ) * x1 - γ * x0
+        x2 = (1 + β) * x1 - β * x0 - α * f'(y1)
+        y2 = (1 + γ) * x2 - γ * x1
         x0 => x1
         x1 => x2
-        performance = ((1+δ)*x2 - δ*x1 -xs)^2
+        performance = ((1 + δ) * x2 - δ * x1 - xs)^2
     end
     @show rate(performance, prev_rate)
 end
 
 # HB
 function HB(m, L, prev_rate=0)
-    κ = L/m
-    α = 4/((√L + √m)^2)
-    β = ((sqrt(L/m)-1)/(sqrt(L/m)+1))^2
+    κ = L / m
+    α = 4 / ((√L + √m)^2)
+    β = ((sqrt(L / m) - 1) / (sqrt(L / m) + 1))^2
     @algorithm begin
         f = DifferentiableFunctional{Rⁿ}()
         xs = first_order_stationary_point(f)
         f ∈ SmoothStronglyConvex(m, L)
         x0 = Rⁿ()
         x1 = Rⁿ()
-        x2 = x1 - α*f'(x1) + β*(x1-x0)
-        x3 = x2 - α*f'(x2) + β*(x2-x1)
-        x4 = x3 - α*f'(x3) + β*(x3-x2)
+        x2 = x1 - α * f'(x1) + β * (x1 - x0)
+        x3 = x2 - α * f'(x2) + β * (x2 - x1)
+        x4 = x3 - α * f'(x3) + β * (x3 - x2)
         x0 => x1
         x1 => x2
         x2 => x3
         x3 => x4
-        performance = (x1-xs)^2
+        performance = (x1 - xs)^2
     end
     # certify(performance, 0.9)
     # maximize(performance)
@@ -316,22 +227,22 @@ function HB(m, L, prev_rate=0)
     f' ∈ SectorBounded(m, L, xs, f'(xs))
 
     # iterates
-    x = Vector{Rⁿ}(undef, n+1)
+    x = Vector{Rⁿ}(undef, n + 1)
 
     # initial condition
     x[1] = Rⁿ()
 
     # constraint on initial condition
     # (scale so that the maximum performance should be one to avoid numerical issues)
-    (x[1]-xs)^2 ≤ ρ^(-2n)
+    (x[1] - xs)^2 ≤ ρ^(-2n)
 
     # algorithm
     for k = 1:n
-        x[k+1] = x[k] - α*f'(x[k])
+        x[k+1] = x[k] - α * f'(x[k])
     end
 
     # performance measure
-    performance = (x[end]-xs)^2
+    performance = (x[end] - xs)^2
 
 end
 
@@ -394,10 +305,10 @@ hierarchy(d::DataType) = AbstractTrees.print_tree(d; maxdepth=10)
 #     performance = (v1-vs)^2
 # end
 
-function PD(σl, σu, prev_rate = 0)
-    m,L = 1,2 # Kf = 2
-    σl, σu = 1,1 # kA = 1
-    kA = σu/σl
+function PD(σl, σu, prev_rate=0)
+    m, L = 1, 2 # Kf = 2
+    σl, σu = 1, 1 # kA = 1
+    kA = σu / σl
     # Primal Dual # 1
     # c = 2*L*σu^3/(m^2 * σl^2)
     # αx = 2/(m+L)
@@ -405,44 +316,56 @@ function PD(σl, σu, prev_rate = 0)
     # μ = 0
     # γ = 0
     # Primal Dual # 2
-    αx = kA ≤ sqrt(2) ? 1/(2*L) : (1-kA^(-2))/L
-    αl = kA ≤ sqrt(2) ? (m/4)*(2/(σu^2) + (1/(σl^2))) : m/(σu^2)
+    αx = kA ≤ sqrt(2) ? 1 / (2 * L) : (1 - kA^(-2)) / L
+    αl = kA ≤ sqrt(2) ? (m / 4) * (2 / (σu^2) + (1 / (σl^2))) : m / (σu^2)
     μ = 0
     γ = 1
     @algorithm begin
         Σ = SymmetricLinearMap{Rⁿ}()
-        Σ ∈ Eigenvalues{σl^2, σu^2}()
-        ps, ups = Rⁿ(), Rⁿ(); 
-        qs, uqs = Rᵐ(), Rᵐ(); 
-        vs = Rⁿ() 
+        Σ ∈ Eigenvalues{σl^2,σu^2}()
+        ps, ups = Rⁿ(), Rⁿ()
+        qs, uqs = Rᵐ(), Rᵐ()
+        vs = Rⁿ()
 
-        ps == Zero(); uqs == Zero();  Σ*ps == Zero()
+        ps == Zero()
+        uqs == Zero()
+        Σ * ps == Zero()
         vs - ups == Zero()
 
 
-        v0 = Rⁿ(); v0 == Zero()
+        v0 = Rⁿ()
+        v0 == Zero()
         f0, f1, fs = R(), R(), R()
         p0, up0, up1 = Rⁿ(), Rⁿ(), Rⁿ()
         q0, uq0, uq1 = Rᵐ(), Rᵐ(), Rᵐ()
-        
-        p1 = p0 - αx*up0 + αx*(v0 - μ*(Σ*p0))
-        q1 = q0 - αx*uq0
 
-        v1 = v0 - αl*(Σ*(p0 + γ*(p1-p0)))
-        p2 = p1 - αx*up1 + αx*(v1 - μ*(Σ*p1))
-        q2 = q1 - αx*uq1
-        
-        up0 => up1; uq0 => uq1; ups => ups; uqs => uqs; f0 => f1; fs => fs
-        
+        p1 = p0 - αx * up0 + αx * (v0 - μ * (Σ * p0))
+        q1 = q0 - αx * uq0
+
+        v1 = v0 - αl * (Σ * (p0 + γ * (p1 - p0)))
+        p2 = p1 - αx * up1 + αx * (v1 - μ * (Σ * p1))
+        q2 = q1 - αx * uq1
+
+        up0 => up1
+        uq0 => uq1
+        ups => ups
+        uqs => uqs
+        f0 => f1
+        fs => fs
+
         # v2 = v1 - αl*(Σ*(p1)) #+ γ*(p2-p1)))
         # p3 = p2 - αx*fp'(p2) + αx*(v2 - μ*(Σ*p2))
         # q3 = q2 - αx*fq'(q2)
 
-        p0 => p1; p1 => p2; #p2 => p3
-        q0 => q1; q1 => q2; #q2 => q3
-        v0 => v1; #v1 => v2 
-        vs => vs; ps => ps; qs => qs;
-        
+        p0 => p1
+        p1 => p2 #p2 => p3
+        q0 => q1
+        q1 => q2 #q2 => q3
+        v0 => v1 #v1 => v2 
+        vs => vs
+        ps => ps
+        qs => qs
+
         # ps == Zero()
         # αx*(fp'(ps) - vs + μ*(Σ*ps)) == Zero()
         # αl*(Σ*(ps)) == Zero()#+ γ*(ps-ps))) == Zero()
@@ -450,12 +373,12 @@ function PD(σl, σu, prev_rate = 0)
         # performance = evaluate(Gram([p3-ps, v2-vs]))
         # performance = (p2-ps)^2# + (v1-vs)^2 + (q2-qs)^2
         # performance = ((p2-ps)^2+(q2-qs)^2)
-        performance = (v1-vs)^2
+        performance = (v1 - vs)^2
     end
     # Interpolation conditions
     interpolated_points = [(f0, [p0; q0], [up0; uq0]), (f1, [p1; q1], [up1; uq1]), (fs, [ps; qs], [ups; uqs])]
-    for (fᵢ,xᵢ,uᵢ) in interpolated_points, (fⱼ,xⱼ,uⱼ) in interpolated_points
-        fᵢ - fⱼ - uⱼ'*(xᵢ-xⱼ) ≥ 1/(2*(1-m/L))*(((uᵢ - uⱼ)'*(uᵢ - uⱼ)) + m*((xᵢ - xⱼ)'*(xᵢ - xⱼ)) - 2*m*((uⱼ - uᵢ)'*(xⱼ - xᵢ))/L)/L
+    for (fᵢ, xᵢ, uᵢ) in interpolated_points, (fⱼ, xⱼ, uⱼ) in interpolated_points
+        fᵢ - fⱼ - uⱼ' * (xᵢ - xⱼ) ≥ 1 / (2 * (1 - m / L)) * (((uᵢ - uⱼ)' * (uᵢ - uⱼ)) + m * ((xᵢ - xⱼ)' * (xᵢ - xⱼ)) - 2 * m * ((uⱼ - uᵢ)' * (xⱼ - xᵢ)) / L) / L
     end
     # f0 - f1 - [up1; uq1]'*([p0; q0] - [p1; q1]) ≥ 1/(2*(1-m/L))*((([up0; uq0] - [up1; uq1])'*([up0; uq0] - [up1; uq1])) + m*(([p0; q0] - [p1; q1])'*([p0; q0] - [p1; q1])) - 2*m*(([up1; uq1] - [up0; uq0])'*([p1; q1] - [p0; q0]))/L)/L
     # f1 - f0 - [up0; uq0]'*([p1; q1] - [p0; q0]) ≥ 1/(2*(1-m/L))*((([up1; uq1] - [up0; uq0])'*([up1; uq1] - [up0; uq0])) + m*(([p1; q1] - [p0; q0])'*([p1; q1] - [p0; q0])) - 2*m*(([up0; uq0] - [up1; uq1])'*([p0; q0] - [p1; q1]))/L)/L
