@@ -366,7 +366,7 @@ function prune!(cons::Constraints)
             should_add = true
             for existing_c in pruned
                 if expression(existing_c) isa Gram
-                    if expression(existing_c) ⊂ expression(c) # Existing is a strict subset → Mark it for removal
+                    if expression(existing_c) ⊆ expression(c) # Existing is a subset → Mark it for removal
                         push!(to_remove, existing_c)
                     end
                     if expression(c) ⊆ expression(existing_c)  # New one is a subset of existing

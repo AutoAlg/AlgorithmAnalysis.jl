@@ -1,1 +1,1 @@
-using LiveServer; serve(dir="docs/build")
+using AlgorithmAnalysis, LiveServer; servedocs()

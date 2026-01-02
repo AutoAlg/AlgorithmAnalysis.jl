@@ -13,7 +13,7 @@ Pkg.add("AlgorithmAnalysis")
 ```
 
 !!! tip
-    By default, AlgorithmAnalysis uses the SCS solver to solve cone programs. If you would like to use a different solver (such as Mosek), you will need to install that as well.
+    By default, AlgorithmAnalysis uses [SCS](https://www.cvxgrp.org/scs/) to solve convex cone programs. If you would like to use a different solver (such as [Mosek](https://www.mosek.com/)), you will need to install that as well.
 
 ## Example
 
@@ -22,15 +22,15 @@ This example code finds the worst-case performance guarantee of the gradient des
 ```julia
 using AlgorithmAnalysis
 m, L = 1, 10
-α = 2/(L+m)
+α = 2 / (L + m)
 @algorithm begin
     f = DifferentiableFunctional{Rⁿ}()
     xs = first_order_stationary_point(f)
-    f ∈ SmoothStronglyConvex(m, L)
-    x0 = Rⁿ()
-    x1 = x0 - α*f'(x0)
+    f' ∈ SectorBounded(m, L, xs, f'(xs))
+    x0 ∈ Rⁿ
+    x1 = x0 - α * f'(x0)
     x0 => x1
-    performance = (x0-xs)^2
+    performance = (x0 - xs)^2
 end
 @show rate(performance)
 ```

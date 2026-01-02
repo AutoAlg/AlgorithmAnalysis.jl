@@ -4,11 +4,24 @@ using Revise
 using AlgorithmAnalysis
 using Logging
 using Plots
-using LaTeXStrings
 import JuMP
 import SCS
 import LinearAlgebra as la
 using AbstractTrees
+using LiveServer
+
+m,L = 1,10
+α = 2 / (L + m)
+@algorithm begin
+    f = DifferentiableFunctional{Rⁿ}()
+    xs = first_order_stationary_point(f)
+    f' ∈ SectorBounded(m, L, xs, f'(xs))
+    x0 = Rⁿ()
+    x1 = x0 - α * f'(x0)
+    x0 => x1
+    performance = (x0 - xs)^2
+end
+@show rate(performance)
 
 import Base.:+, Base.:-, Base.:*
 

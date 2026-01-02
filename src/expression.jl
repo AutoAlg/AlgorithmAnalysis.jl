@@ -149,18 +149,24 @@ end
 
 A Gram matrix is a matrix of inner product between all pairs of a set of vectors.
 """
-struct Gram <: Expression
+struct Gram{V} <: Expression where {F<:Field, V<:InnerProductSpace{F}}
     label:: String 
     value:: Missing
     constraints::Constraints
     oracles::Oracles
-    next::State{Zero}
-    vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}}
+    vecs1::Vector{V}
+    vecs2::Vector{V}
 
-    function Gram(vecs::Vector{V} where {F<:Field, V<:InnerProductSpace{F}})
-        new("", missing, Constraints(), Oracles(), missing, vecs)
+    function Gram(v1::Vector{V}, v2::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}}
+        new{V}("", missing, Constraints(), Oracles(), v1, v2)
     end
 end
+
+Gram(vecs::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}} = Gram(vecs, vecs)
+
+vecs1(g::Gram) = g.vecs1
+vecs2(g::Gram) = g.vecs2
+
 
 ############################################################################################
 # Constructors
@@ -277,6 +283,7 @@ julia> iszero(x)
 
 """
 iszero(e::Expression) = e.value isa Zero
+iszero(w::Wrapper) = iszero(unwrap(w))
 
 """
     hasdecomposition(e)
@@ -375,7 +382,7 @@ function variables(e::Expression)
     if hasdecomposition(e)
         variables(decomposition(e))
     elseif e isa Gram
-        Set(e.vecs)
+        Set(vecs1(e)) ∪ Set(vecs2(e))
     elseif isvariable(e)
         Expressions([e])
     else
@@ -479,16 +486,15 @@ function next(f::AbstractFunction)
     end
 end
 
-next(f::Oracle) = f
-next(f::Wrapper{<:Oracle}) = f
-next(d:: Dual{}) = d'.next'
+next(f::OracleOrWrapper) = f
+next(d::Dual) = d'.next'
 next(::Missing) = missing
+next(g::Gram) = next(vecs1(g)) ⊗ next(vecs2(g))
 
 function next(x::Expression)
     if !ismissing(x.next)
         return x.next
-    end
-    if !hasdecomposition(x)
+    elseif !hasdecomposition(x)
         orc, input = get_oracle_input(x)
         nextx = next(input)
         nextoracle = next(orc)
@@ -579,23 +585,17 @@ function evaluate(e::Expression)
 end
 evaluate(x::LinearDecomposition) = mapreduce(p -> last(p)*evaluate(first(p)), +, weights(x))
 evaluate(a::AbstractArray{<:Expression}) = [ evaluate(e) for e ∈ a ]
-function evaluate(g::Gram)
-    return g.vecs ⊗ g.vecs
+
+function evaluate(g::Gram{V}) where {F<:Field, V<:InnerProductSpace{F}}
+    F[ x'*y for x ∈ vecs1(g), y ∈ vecs2(g) ]
 end
-
-"""
-    ⊂(G1, G2)
-
-Returns whether or not Gram matrix `G1` is a strict subset of Gram matrix `G2`.
-"""
-⊂(g1::Gram, g2::Gram) = ⊂(Expressions(g1.vecs), Expressions(g2.vecs))
 
 """
     ⊆(g1, g2)
 
-Return whether or not Gram matrix `G1` is a subset or equal of Gram matrix `G2`.
+Return whether or not Gram matrix `G1` is a subset of Gram matrix `G2`.
 """
-⊆(g1::Gram, g2::Gram) = ⊆(Expressions(g1.vecs), Expressions(g2.vecs))
-
-⊂(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2)) && !isempty(setdiff(s2, s1))
-⊆(s1::Expressions, s2::Expressions) = isempty(setdiff(s1, s2))
+function ⊆(g1::Gram, g2::Gram)
+    Expressions(vecs1(g1)) ⊆ Expressions(vecs1(g2)) &&
+    Expressions(vecs2(g1)) ⊆ Expressions(vecs2(g2))
+end

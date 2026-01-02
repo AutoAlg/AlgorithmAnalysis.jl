@@ -145,22 +145,6 @@ Property of objects of type `T`.
 """
 abstract type Property{T} end
 
-# abstract type OnePointProperty <: Property end
-# abstract type TwoPointProperty <: Property end
-# abstract type AllPointProperty <: Property end
-
-# abstract type OperatorProperty <: Property end
-# abstract type FunctionProperty <: Property end
-
-# abstract type InnerProductSpaceProperty <: OperatorProperty end
-# abstract type NormedVectorSpaceProperty <: OperatorProperty end
-# abstract type Monotonicity <: InnerProductSpaceProperty end
-# abstract type RelativeBoundedness <: NormedVectorSpaceProperty end
-# abstract type Boundedness <: NormedVectorSpaceProperty end
-# abstract type LinearMapProperty <: Property end
-# abstract type SquareLinearMapProperty <: Property end
-# abstract type FunctionalProperty <: Property end
-
 
 ############################################################################################
 # Constants

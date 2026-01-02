@@ -1,7 +1,6 @@
 push!(LOAD_PATH,"../src/")
 
-using Documenter
-using AlgorithmAnalysis
+using AlgorithmAnalysis, Documenter
 
 makedocs(
     sitename = "AlgorithmAnalysis",
@@ -12,7 +11,17 @@ makedocs(
         "Introduction" => "index.md",
         "Manual" => "manual/index.md",
         "Examples" => "examples/index.md",
-        "API" => "api/index.md",
+        "API" => [
+            "Analysis" => "api/analysis.md",
+            "Expressions" => "api/expressions.md",
+            "Oracles" => "api/oracles.md",
+            "Label" => "api/label.md",
+            "Relations" => "api/relation.md",
+            "Constraints" => "api/constraints.md",
+            "Wrappers" => "api/wrappers.md",
+            "Properties" => "api/properties.md",
+            "Miscellaneous" => "api/miscellaneous.md",
+        ],
         "Developer Guide" => "developers/index.md"
     ]
 )
