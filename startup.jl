@@ -93,8 +93,11 @@ end
 #     return op(e)
 # end
 
-# TODO: should it instead say Random Scalar in R instead of Scalar in RandomR?
+# TODO fix priting of w - E(w)
+# TODO: fix isequal(E(w+k), E(w) + E(k))
 
+# TODO: should it instead say Random Scalar in R instead of Scalar in RandomR?
+# not a determisitc vector of scalar random variables
 function covariance(x::Expression, y::Expression)    
     # cov(x, y) = E((x-E(x))(y - E(y)))
     return E((x-E(x))'*(y - E(y)));
@@ -106,6 +109,7 @@ const E = ExpectationOperator()
 w = RandomR()
 k = RandomR()
 r = R()
+
 
 @algorithm begin
 
