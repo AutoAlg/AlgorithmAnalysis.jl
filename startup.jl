@@ -10,7 +10,7 @@ import SCS
 import LinearAlgebra as la
 using AbstractTrees
 
-import Base.:+, Base.:-
+import Base.:+, Base.:-, Base.:*
 
 function dump_fancy(e)
     show(stdout, MIME("text/plain"), e)
@@ -49,6 +49,7 @@ promote_rule(::Type{RandomRⁿ}, ::Type{<:Rⁿ}) = RandomRⁿ
 -(x::Rⁿ, y::RandomRⁿ) = x + (-y)
 -(x::RandomRⁿ, y::Rⁿ) = x + (-y)
 
+*(::RandomR, ::RandomR) = error("Cannot multiply two scalars")
 
 # function RandomR(r::R) 
 #     randomR = RandomR();
@@ -69,23 +70,21 @@ struct ExpectationOperator <: AbstractLinearMap{Expression, Expression}
     function ExpectationOperator() 
         return new("not labeled", Properties([Linear()]), SingleValuedRelation{Expression,Expression}())
     end
-
 end
 
 (::ExpectationOperator)(r::R) = r
 (::ExpectationOperator)(rn::Rⁿ) = rn
 
-(::ExpectationOperator)(rn::RandomR) = rn.mean
+# (::ExpectationOperator)(rn::RandomR) = rn.mean
 (::ExpectationOperator)(rn::RandomRⁿ) = rn.mean
 
-function (::ExpectationOperator)(d::LinearDecomposition)
-    return mapreduce(p -> last(p) * sample(op, first(p)), +, weights(d); init=Zero())
-end
-
-function (op::ExpectationOperator)(e::Expression)
-    assert(hasdecomposition(e));
-
-    return op(decomposition(e));
+# rewrite for generic linear map
+function (op::ExpectationOperator)(e::RandomR)
+    if hasdecomposition(e)
+        mapreduce(p -> last(p) * op(first(p)), +, weights(e); init=Zero())
+    else
+        e.mean
+    end
 end
 
 # TODO: fix this shit
@@ -96,19 +95,18 @@ end
 # TODO fix priting of w - E(w)
 # TODO: fix isequal(E(w+k), E(w) + E(k))
 
-# TODO: should it instead say Random Scalar in R instead of Scalar in RandomR?
-# not a determisitc vector of scalar random variables
-function covariance(x::Expression, y::Expression)    
-    # cov(x, y) = E((x-E(x))(y - E(y)))
-    return E((x-E(x))'*(y - E(y)));
-end
+covariance(x::Expression, y::Expression) = E((x-E(x))'*(y - E(y)))
 
 # const 𝔼 = ExpectationOperator()
 const E = ExpectationOperator()
 
-w = RandomR()
-k = RandomR()
-r = R()
+@algorithm begin
+    w = RandomR()
+    k = RandomR()
+    r = R()
+    a = R()
+    b = R()
+end
 
 
 @algorithm begin
@@ -205,8 +203,8 @@ function SGD(m, L, prev_rate=0)
         f = DifferentiableFunctional{Rⁿ}()
         xs = first_order_stationary_point(f)
         f' ∈ SectorBounded(m, L, xs, f'(xs))
-        ω = GaussianRV{R, Rⁿ}();
-        ω'*ω <= 0.3
+        ω = RandomRⁿ();
+        covariance(ω,ω) ≤ 0.3
         x0 = Rⁿ()
         x1 = x0 - α*(f'(x0) + ω)
         x0 => x1
