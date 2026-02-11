@@ -20,8 +20,8 @@ export isvariable, hasdecomposition, previous, previous!, next, next!, update, u
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
 # constraint
-export expression, set, add_constraint!
-export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite, Equality
+export expression, set, add_constraint!, Equality
+export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite
 export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
 export ⪯, ⪰, ⊆
 export Gram, evaluate, gram_to_constraint
@@ -33,21 +33,21 @@ export domain, codomain, inputs, outputs, inputs_outputs
 # oracle
 export Oracle, Oracles, DualOracle, FunctionOracle, OperatorOracle, Functional
 export ConvexFunction, DifferentiableFunction
-export Operator, ContinuousOperator, LinearOperator
-export oracle, oracles, superoracle, suboracle, suboracles, sample, samples, relation, get_oracle
+export Operator, ContinuousOperator, LinearOperator, get_oracle
+export oracle, oracles, superoracle, suboracle, suboracles, sample, samples, relation
 export associations, description, relation
 
-export AbstractOperator, AbstractFunction, AbstractLinearMap, AbstractLocallyLipschitzFunctional
+export AbstractOperator, AbstractFunction, AbstractLinearMap
+export AbstractLocallyLipschitzFunctional
 export AbstractSymmetricLinearMap, AbstractSkewSymmetricLinearMap
 export AbstractFunctional, AbstractSubdifferentiableFunctional
 export AbstractDifferentiableFunctional, AbstractTwiceDifferentiableFunctional
 export AbstractInfinitelyDifferentiableFunctional, AbstractLinearFunctional
 
 export Operator, Map, LinearMap, SymmetricLinearMap, SkewSymmetricLinearMap
-export Functional, SubdifferentiableFunctional, DifferentiableFunctional, DualInputFunctional
+export Functional, SubdifferentiableFunctional, DifferentiableFunctional
 export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
-export LinearFunctional, ZeroFunctional
-
+export LinearFunctional, ZeroFunctional, DualInputFunctional
 export get_oracle_input
 
 # wrappers
@@ -71,12 +71,15 @@ export triplets, Triplets, interpolate, allvecs, gram
 export Property, Properties
 export OperatorClass, FunctionClass, OnePointOperatorClass, TwoPointOperatorClass
 export Monotone, Comonotone, WeaklyMonotone, WeaklyComonotone
-export AbstractQuadraticConstraint, AbstractPointwiseQuadraticConstraint, AbstractIncrementalQuadraticConstraint
+export AbstractQuadraticConstraint, AbstractPointwiseQuadraticConstraint
+export AbstractIncrementalQuadraticConstraint
 export PointwiseQuadraticConstraint, IncrementalQuadraticConstraint
-export AbstractLinearQuadraticConstraint, AbstractTwoPointLinearQuadraticConstraint, TwoPointLinearQuadraticConstraint
+export AbstractLinearQuadraticConstraint, AbstractTwoPointLinearQuadraticConstraint
+export TwoPointLinearQuadraticConstraint
 export SlopeRestricted, SectorBounded
 export reference, quadraticform, linearquadraticform
-export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded, WeaklyRelativelyCobounded
+export RelativelyBounded, RelativelyCobounded, WeaklyRelativelyBounded
+export WeaklyRelativelyCobounded
 export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded, Convex
 export Linear, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
 export Monotonicity, RelativeBoundedness, Boundedness
@@ -84,7 +87,7 @@ export propertyof, properties
 export Co, Weakly, PropertyOrWrapper
 
 # solve
-export maximize, lift, project, variables, constraints, variables_constraints_oracles
+export lift, project, variables, constraints, variables_constraints_oracles
 
 # primitives
 export first_order_stationary_point
@@ -93,7 +96,7 @@ export first_order_stationary_point
 export maximize, certify, rate
 export stateupdate, getmatrix, getparams, solve, eye, grams
 export quadraticform, linearform, tr, optvar, optcon
-export variable_dictionary, optimization_variable_dictionary, isimplementable, multiplier
+export optimization_variable_dictionary, isimplementable, multiplier
 export get_states_inputs, get_formulas, lift, neighbors, nodes
 
 ############################################################################################

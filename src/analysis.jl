@@ -18,6 +18,16 @@ end
 
 variables(X::Union{ArrayOrSet,Generator}) = mapreduce(variables, ∪, X; init=Expressions())
 
+function evaluate(P::PerformanceMeasure, f::Object, x::Object, xs::Object)
+    if P == OptimalityGap
+        performance = f(x) - f(xs)
+    elseif P == DistanceToOptimality
+        performance = (x - xs)^2
+    elseif P == DistanceToStationarity
+        performance = f'(x)^2
+    end
+end
+
 # function constraints(X::Union{ArrayOrSet,Generator})
 #     cons = Constraints()
 #     for c ∈ X
@@ -158,14 +168,10 @@ function optcon(model::JuMP.Model, con::Constraint, optvar_dict::Dict)
         JuMP.@constraint(model, 0 ≤ ex )
     elseif con isa Semidefinite
         JuMP.@constraint(model, ex .== ex' )
-        JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
+        JuMP.@constraint(model, ex >= 0, JuMP.PSDCone() )
     else
         error("Optimization with constraint $con not implemented")
     end
-end
-
-function variable_dictionary(vars::Expressions)
-    Dict( T => Set{T}( v for v ∈ vars if v isa T ) for T ∈ Set( typeof(v) for v ∈ vars ) )
 end
 
 function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions)
@@ -180,8 +186,12 @@ function optimization_variable_dictionary(model::JuMP.Model, vars::Expressions)
     optvar_dict
 end
 
+"""
+    multiplier(model, con)
+
+Given a constraint, return the corresponding multiplier variable in the optimization model. The multiplier is an element of the dual cone of the constraint. For example, for a positive constraint, the multiplier is a nonnegative variable; for a semidefinite constraint, the multiplier is a positive semidefinite matrix variable.
+"""
 function multiplier(model::JuMP.Model, con::ConeConstraint)
-    K = cone(con)
     sz = size(con)
     if sz == (1,1)
         var = JuMP.@variable(model)
@@ -194,8 +204,12 @@ function multiplier(model::JuMP.Model, con::ConeConstraint)
     elseif con isa Positive
         JuMP.@constraint(model, var .≥ 0 )
     elseif con isa Semidefinite
-        JuMP.@constraint(model, var .== var' )
-        JuMP.@constraint(model, 0 ≤ var, JuMP.PSDCone() )
+        if sz == (1,1)
+            JuMP.@constraint(model, var >= 0 )
+        else
+            JuMP.@constraint(model, var .== var' )
+            JuMP.@constraint(model, var >=0, JuMP.PSDCone() )
+        end
     else
         error("Optimization with constraint $con not implemented")
     end
@@ -268,13 +282,15 @@ function maximize(performance::Expression)
     @info "Analysis complete! Use `evaluate()` to obtain the value of any expression in the algorithm."
 end
 
+"""
+    stateupdate(vars)
+
+Given a set of variables, find the state update equations. The state update equations are defined as the equations that relate the current state to the next state. The function returns the linear forms of the current state and next state, as well as the state vector `x` and input vector `u`.
+"""
 function stateupdate(vars)
     x  = collect(v for v ∈ vars if !ismissing(next(v)) && v isa R)
-    real_vars = collect(v for v ∈ vars if v isa R)
     x⁺ = next(x)
-    # u  = collect(setdiff(variables(x⁺), variables(vars)))
     u  = collect(v for v ∈ vars if ismissing(next(v)) && v isa R)
-    # u  = setdiff(variables(real_vars), variables(x))
     X  = linearform([x; u] => x)
     X⁺ = linearform([x; u] => x⁺)
     
@@ -302,60 +318,51 @@ Use the control methodology to search for a Lyapunov function that certifies con
 ## Requirements
 - The performance measure must be a real expression (that is, an element of `R`).
 """
-function certify(performance::Expression, ρ::Number)
+function certify(performance::Expression, ρ::Number; solver = SCS.Optimizer, verbose=false)
+
     if !isa(performance, R)
         error("The performance measure must be a real number in $R.")
     end
+    
     # variables, constraints, and oracles associated with the performance measure
     vars, cons, _ = variables_constraints_oracles(performance)
     vars = collect(vars)
     X, X⁺, x, u = stateupdate(vars)
-    model = JuMP.Model(SCS.Optimizer)
+    model = JuMP.Model(solver)
     JuMP.set_silent(model)
-    JuMP.@variable(model, P[1:length(x)])
+    JuMP.@variable(model, θ[1:length(x)])
 
     # Lyapunov function
-    V = X'*P
-    V⁺ = X⁺'*P
+    V = X'*θ
+    V⁺ = X⁺'*θ
 
     # performance measure
-    𝒫 = vec(linearform( [x; u] => performance ))
+    P = vec(linearform( [x; u] => performance ))
 
     # linear forms
-    L1 = 𝒫 - V
-    L2 = V⁺ - ρ*V
-
-    # stochastic case?
-    # L1 = -V
-    # L2 = V⁺ - ρ*V + 𝒫
+    L₁ = P - V
+    L₂ = V⁺ - ρ*V
 
     for con ∈ cons
         λ = multiplier(model, con)
         μ = multiplier(model, con)
         e = expression(con)
-        L1 += nonnegative(λ, e, [x; u])
-        L2 += nonnegative(μ, e, [x; u])
+        L₁ += nonnegative(λ, e, [x; u])
+        L₂ += nonnegative(μ, e, [x; u])
     end
-    JuMP.@constraint(model, L1 .== 0 )
-    JuMP.@constraint(model, L2 .== 0 )
+    JuMP.@constraint(model, L₁ .== 0 )
+    JuMP.@constraint(model, L₂ .== 0 )
 
     JuMP.optimize!(model)
+
+    if verbose
+        @info "Rate: $ρ, Termination status: $(JuMP.termination_status(model))"
+    end
 
     JuMP.termination_status(model) == JuMP.OPTIMAL
 end
 
 linearform(p::Pair) = [ get(weights(selfdecomp(y)), x, 0) for y ∈ last(p), x ∈ first(p) ]
-
-# function linearform(G::GramMatrix{V}, x::F) where {F<:Field, V<:InnerProductSpace{F}}
-#     if any(!isvariable(a) for a ∈ decomposition(G))
-#         error("The Gram matrix $G must contain only variables to construct linear forms.")
-#     end
-#     A = Float64[ get(weights(selfdecomp(x)), a, 0) for a ∈ decomposition(G) ]
-#     if !isequal(x, tr(A*G))
-#         error("The expression $x is not a linear form in the Gram matrix $G")
-#     end
-#     A
-# end
 
 """
     Bisection search to find minimum
@@ -398,13 +405,12 @@ at each iteration ``k``.
 ## Requirements
 - The performance measure must be a real expression (that is, an element of `R`).
 """
-function rate(performance::Expression, lb=0)
+function rate(performance::Expression; lb=0, ub=1, tol=1e-5, solver = SCS.Optimizer, verbose=false)
     if !isa(performance, R)
         error("The performance measure must be a real number in $R")
     end
-    @info "Finding the convergence rate of $performance"
-    @info "Searching for ρ between $lb and 1"
-    bsmin( ρ -> certify(performance,ρ), lb, 1 )
+    @info "Computing the convergence rate of $performance between $lb and $ub with tolerance $tol"
+    bsmin( ρ -> certify(performance, ρ; solver=solver, verbose=verbose), lb, ub, tol )
 end
 
 function lift(state::Expression, dimension::Int)
