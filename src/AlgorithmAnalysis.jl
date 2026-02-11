@@ -97,7 +97,7 @@ export maximize, certify, rate
 export stateupdate, getmatrix, getparams, solve, eye, grams
 export quadraticform, linearform, tr, optvar, optcon
 export optimization_variable_dictionary, isimplementable, multiplier
-export get_states_inputs, get_formulas, lift, neighbors, nodes, nonnegative
+export get_states_inputs, get_formulas, lift, neighbors, nodes, negative!
 
 ############################################################################################
 # Import

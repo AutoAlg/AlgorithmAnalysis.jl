@@ -261,6 +261,11 @@ end
 dot(x, y::Expression) = x*y
 dot(x, y::Gram) = la.tr(x * evaluate(y))
 
+"""
+    negative!(model, vars, cons, f)
+
+Constrains a given linear form `f` with variables `vars` to be negative by adding nonnegative terms associated with the constraints `cons` and then setting the result to zero in the optimization `model`.
+"""
 function negative!(model, vars, cons, f)
     for con ∈ cons
         λ = multiplier(model, con)
@@ -297,8 +302,8 @@ function certify(performance::Expression, ρ::Number; solver = SCS.Optimizer, ve
     θ = JuMP.@variable(model, [1:length(x)])
 
     # Lyapunov function
-    V = X'*θ
-    V⁺ = X⁺'*θ
+    V  = X' * θ
+    V⁺ = X⁺' * θ
 
     # performance measure
     P = vec(linearform( [x; u] => performance ))
@@ -334,7 +339,7 @@ function bsmin( f, a, b, tol=1e-5 )
         return a
     end
     if !f(b)
-        return b
+        error("Top of interval returns false")
     end
     while (b-a) > tol
         c = (a+b)/2
@@ -359,10 +364,9 @@ at each iteration ``k``.
 ## Requirements
 - The performance measure must be a real expression (that is, an element of `R`).
 """
-function rate(performance::Expression; lb=0, ub=1, tol=1e-5, solver = SCS.Optimizer, verbose=false)
-    if !isa(performance, R)
-        error("The performance measure must be a real number in $R")
-    end
+function rate(performance::Expression;
+        lb=0, ub=1, tol=1e-5, solver = SCS.Optimizer, verbose=false)
+
     if verbose
         @info "Computing the convergence rate of $performance between $lb and $ub with tolerance $tol"
     end

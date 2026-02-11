@@ -9,5 +9,5 @@ rate
 ## Helper methods
 
 ```@docs
-variables_constraints_oracles
+variables_constraints
 ```
