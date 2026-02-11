@@ -67,6 +67,11 @@ Base.promote_rule(::Type{RandomRⁿ}, ::Type{<:Rⁿ}) = RandomRⁿ
 
 # TODO: RandomR and RandomRⁿ operators
 
+"""
+    ExpectationOperator
+
+The structure which defines the relation between a random variable and its expected value
+"""
 struct ExpectationOperator <: AbstractLinearMap{Expression,Expression}
     label::String
     properties::Properties
@@ -79,9 +84,7 @@ end
 
 (::ExpectationOperator)(r::R) = r
 (::ExpectationOperator)(rn::Rⁿ) = rn
-
 (::ExpectationOperator)(rn::RandomRⁿ) = rn.mean
-
 function (op::ExpectationOperator)(e::RandomR)
     if hasdecomposition(e)
         mapreduce(p -> last(p) * op(first(p)), +, weights(e); init=Zero())
@@ -92,10 +95,43 @@ end
 
 # TODO: what should this be named
 # TODO: this needs operators for Rⁿ - R (mean offset)
-covariance(x::Expression, y::Expression) = E((x - E(x))' * (y - E(y)))
 
+
+"""
+    𝔼
+
+A global instantiation of ExpectationOperator to allow for more ergonomic
+expression of expectations.
+
+# Examples
+```julia
+@algorithm begin
+    x = RandomR() # define a random variable with an unconstrained mean
+    y = RandomR() # define another random variable with an unconstrained mean
+
+    z = 2x + y # produce another random variable whose mean is dependent on the means of x and y
+
+    @test isequal(𝔼(z), 𝔼(y) + 2 * 𝔼(x)) # demonstration of the linearity of expectation
+    @test isequal(z, -(-z))
+end
+```
+"""
 const 𝔼 = ExpectationOperator()
+"""
+    E
+
+    see [`𝔼`](@ref)
+"""
 const E = 𝔼;
 
 # TODO fix priting of w - E(w)
 # TODO: fix isequal(E(w+k), E(w) + E(k))
+
+
+"""
+    covariance
+
+The function which calculates the covariance of random variables using the standard relation
+Cov(x, y) = 𝔼((x - 𝔼(x))' * (y - 𝔼(y)))
+"""
+covariance(x::Expression, y::Expression) = E((x - E(x))' * (y - E(y)))

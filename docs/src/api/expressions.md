@@ -41,9 +41,11 @@ evaluate
 
 ```@docs
 @field
+@randomfield
 @vectorspace
 @normedvectorspace
 @innerproductspace
+@randominnerproductspace
 ```
 
 ## Concrete expression types
@@ -52,5 +54,7 @@ evaluate
 R
 Rⁿ
 Rᵐ
+RandomR
+RandomRⁿ
 Gram
 ```

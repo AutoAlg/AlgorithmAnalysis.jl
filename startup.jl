@@ -130,7 +130,8 @@ function SGD(m, L, prev_rate=0)
         covariance(ω, ω) ≤ 0.3
         x0 = Rⁿ()
         x1 = x0 - α * (f'(x0) + ω)
-        x0 => x1
+        # x0 => x1
+        x0.next = x1
         performance = (x0 - xs)^2
     end
     @show rate(performance, prev_rate)

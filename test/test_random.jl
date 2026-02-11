@@ -29,6 +29,7 @@ function test_random()
             @test z isa RandomR
             @test hasdecomposition(z)
             @test isequal(𝔼(z), 𝔼(y) + 2 * 𝔼(x))
+            @test isequal(z, -(-z));
         end
     end
 

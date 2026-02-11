@@ -1,1 +1,1 @@
-## Examples
+This folder contains a number of sample examples combined with a reasonable output

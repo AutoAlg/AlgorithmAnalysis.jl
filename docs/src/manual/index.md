@@ -198,3 +198,7 @@ julia> P ⪰ 0   # positive semidefinite
 ```
 
 ## Analysis
+
+In order to apply the automated analysis techniques, the algorithm must satisfy the following:
+
+- The performance measure must be a real expression (that is, an element of `R`).
