@@ -2,7 +2,6 @@
 
 [![Build Status](https://github.com/vanscoy/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/vanscoy/AlgorithmAnalysis.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://vanscoy.github.io/AlgorithmAnalysis.jl/stable)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://vanscoy.github.io/AlgorithmAnalysis.jl/dev)
 
 AlgorithmAnalysis.jl is a Julia package for the automated analysis of algorithms.
 
@@ -16,8 +15,8 @@ import Pkg
 Pkg.add("AlgorithmAnalysis")
 ```
 
-!!! tip
-    By default, AlgorithmAnalysis uses [SCS](https://www.cvxgrp.org/scs/) to solve convex cone programs. If you would like to use a different solver (such as [Mosek](https://www.mosek.com/)), you will need to install that as well.
+> [!TIP]
+> By default, AlgorithmAnalysis uses [SCS](https://www.cvxgrp.org/scs/) to solve convex cone programs. If you would like to use a different solver (such as [Mosek](https://www.mosek.com/)), you will need to install that as well.
 
 ## Example
 
