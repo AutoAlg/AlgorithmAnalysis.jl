@@ -5,6 +5,9 @@ show(io::IO, ::EmptyDecomposition{T}) where {T} = print(io, "Empty decomposition
 
 function show(io::IO, x::LinearDecomposition)
     isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
+    if !all(v isa Float64 for v ∈ values(weights(x)))
+        return print(io, "Linear decomposition with non-Float64 weights")
+    end
     first = true
     for (key, value) ∈ weights(x)
         if first
@@ -44,7 +47,11 @@ function show(io::IO, e::Expression)
     if iszero(e)
         print(io, "𝟎")
     elseif e isa Gram
-        print(io, "Gram matrix of vector $(e.vecs)")
+        if e.vecs1 === e.vecs2
+            print(io, "Gram matrix of vectors $(e.vecs1)")
+        else
+             print(io, "Gram matrix of vectors $(e.vecs1) and $(e.vecs2)")
+        end
     elseif hasvalue(e)
         print(io, value(e))
     elseif !isempty(label(e))
@@ -85,11 +92,28 @@ show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", las
 ############################################################################################
 # Constraints
 
-show(io::IO, c::Equality) = print(io, "0 = ", expression(c))
-show(io::IO, c::Positive) = print(io, "0 ≤ ", expression(c))
-show(io::IO, c::Semidefinite) = print(io, "0 ⪯ ", expression(c))
+show(io::IO, c::Constraint) = print(io, expression(c), " ∈ ", set(c))
 
-function show(io::IO, mime::MIME"text/plain", C::Constraints)
+function show(io::IO, c::ConeConstraint)
+    x = expression(c)
+    K = cone(c)
+    if K == UnrestrictedCone()
+        print(io, x, " unrestricted")
+    elseif K == ZeroSet()
+        print(io, "0 = ", x)
+    elseif K == PositiveOrthant()
+        print(io, "0 ≤ ", x)
+    elseif K == PositiveSemidefiniteCone()
+        print(io, "0 ⪯ ", x)
+    else
+        print(io, x, " ∈ ", K)
+    end
+end
+# show(io::IO, c::Equality) = print(io, "0 = ", expression(c))
+# show(io::IO, c::Positive) = print(io, "0 ≤ ", expression(c))
+# show(io::IO, c::Semidefinite) = print(io, "0 ⪯ ", expression(c))
+
+function show(io::IO, ::MIME"text/plain", C::Constraints)
     prune!(C)
     if isempty(C)
         print(io, "Empty set of constraints")

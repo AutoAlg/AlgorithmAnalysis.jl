@@ -22,8 +22,6 @@ A real inner product space.
 """
 @innerproductspace Rᵐ, R
 
-@innerproductspace X, R
-
 
 convert(::Type{R}, x::Number) = R(x)
 promote_rule(::Type{R}, ::Type{<:Number}) = R
@@ -46,6 +44,45 @@ function *(X::Matrix{<:Union{JuMP.VariableRef,JuMP.AffExpr}}, Y::Matrix{R})
     end
     Z
 end
+
+# Scalar multiplication: Matrix * R
+function *(X::Matrix{<:Union{JuMP.VariableRef,JuMP.AffExpr}}, y::R)
+    Z = similar(X, R)
+    for i in eachindex(X)
+        Z[i] = X[i] * y
+    end
+    Z
+end
+
+# Scalar multiplication: R * Matrix
+function *(y::R, X::Matrix{<:Union{JuMP.VariableRef,JuMP.AffExpr}})
+    Z = similar(X, R)
+    for i in eachindex(X)
+        Z[i] = y * X[i]
+    end
+    Z
+end
+
+# # Symmetric matrix multiplication: Symmetric * Matrix{R}
+# function *(X::la.Symmetric{<:Union{JuMP.VariableRef,JuMP.AffExpr},<:Matrix}, Y::Matrix{R})
+#     parent(X) * Y
+# end
+
+# Symmetric matrix multiplication: Symmetric * Gram
+function *(X::la.Symmetric{<:Union{JuMP.VariableRef,JuMP.AffExpr},<:Matrix}, g::Gram)
+    Y = evaluate(g)
+    parent(X) * Y
+end
+
+# # Symmetric scalar multiplication: Symmetric * R
+# function *(X::la.Symmetric{<:Union{JuMP.VariableRef,JuMP.AffExpr},<:Matrix}, y::R)
+#     parent(X) * y
+# end
+
+# # Symmetric scalar multiplication: R * Symmetric
+# function *(y::R, X::la.Symmetric{<:Union{JuMP.VariableRef,JuMP.AffExpr},<:Matrix})
+#     y * parent(X)
+# end
 
 zero(::R) = R(0)
 

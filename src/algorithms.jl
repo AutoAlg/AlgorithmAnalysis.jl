@@ -8,7 +8,8 @@ function gradient_descent(m, L;
         α = 2/(L+m),
         ρ = missing,
         measure::PerformanceMeasure = DistanceToOptimality,
-        verbose=false
+        verbose = false,
+        solver = SCS.Optimizer
     )
 
     @algorithm begin
@@ -27,17 +28,22 @@ function gradient_descent(m, L;
     end
 
     if ismissing(ρ)
-        rate(performance, verbose=verbose)
+        rate(performance, verbose=verbose, solver=solver)
     else
-        certify(performance, ρ, verbose=verbose)
+        certify(performance, ρ, verbose=verbose, solver=solver)
     end
 end
 
+"""
+    fast_gradient(m, L)
+
+
+"""
 function fast_gradient(m, L;
         n = 1,
         ρ = missing,
         measure::PerformanceMeasure = DistanceToOptimality,
-        verbose=false
+        verbose=false,
     )
     α = 4/(3L+m)
     β = (√(3L+1)-2)/(√(3L+1)+2)
@@ -48,10 +54,10 @@ function fast_gradient(m, L;
         f ∈ SmoothStronglyConvex(m, L)
 
         x = Vector{Rⁿ}(undef, n+1)
-        y = Vector{Rⁿ}(undef, n+1)
         x[1] = Rⁿ()
         x[2] = Rⁿ()
         for k = 1:n
+            y[k] = x[k] + β*(x[k] - x[k-1])
             x[k+1] = x[k] - α * f'(x[k])
             x[k] => x[k+1]
         end

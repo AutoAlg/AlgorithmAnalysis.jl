@@ -32,6 +32,8 @@ set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
 
 size(c::Constraint) = size(expression(c))
 
+variables(c::Constraint) = variables(expression(c))
+
 """
     Satisfied <: Constraint
 
@@ -97,6 +99,13 @@ A cone representing the zero set, used to enforce equality constraints (i.e. req
 struct ZeroSet <: Cone end
 
 """
+    UnrestrictedCone <: Cone
+
+A cone representing the unrestricted set, used to indicate that a variable is not subject to any specific constraints.
+"""
+struct UnrestrictedCone <: Cone end
+
+"""
     ConeConstraint{K<:Cone} <: Constraint
 
 A constraint that associates an expression with a cone `K` to enforce cone-specific properties.
@@ -116,12 +125,13 @@ julia> x0 = Rⁿ()
 julia> c = ConeConstraint{PositiveOrthant}(x0)
 ```
 """
-struct ConeConstraint{K<:Cone} <: Constraint
+struct ConeConstraint <: Constraint
     x::Expression
+    K::Cone
     
-    function ConeConstraint{K}(x) where {K<:Cone}
+    function ConeConstraint(x::Expression, K::Cone)
         if !hasvalue(x)
-            this = new(x)
+            this = new(x, K)
             add_constraint!(x, this)
             this
         else
@@ -129,27 +139,6 @@ struct ConeConstraint{K<:Cone} <: Constraint
         end
     end
 end
-
-"""
-    Positive
-
-A shortcut for creating a ConeConstraint with the PositiveOrthant cone. Use this constant to impose non-negativity constraints on an expression.
-"""
-const Positive = ConeConstraint{PositiveOrthant}
-
-"""
-    Semidefinite
-
-A shortcut for creating a ConeConstraint with the PositiveSemidefiniteCone cone. Use this constant to impose positive semidefiniteness constraints on an expression.
-"""
-const Semidefinite = ConeConstraint{PositiveSemidefiniteCone}
-
-"""
-    Equality
-
-A shortcut for creating a ConeConstraint with the ZeroSet cone. Use this constant to impose equality (zero) constraints on an expression. 
-"""
-const Equality = ConeConstraint{ZeroSet}
 
 """
     ∈(x::Expression, ::K) where {K<:Cone}
@@ -160,10 +149,10 @@ Creates a cone constraint for an expression `x` using the cone type `K`.
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> x ∈ PositiveOrthant   # Returns a ConeConstraint{PositiveOrthant}(x)
+julia> x ∈ PositiveOrthant   # Returns a ConeConstraint(x, PositiveOrthant())
 ```
 """
-∈(x::Expression, ::K) where {K<:Cone} = ConeConstraint{K}(x)
+∈(x::Expression, K::Cone) = ConeConstraint(x, K)
 
 """
     expression(c::ConeConstraint)
@@ -174,7 +163,7 @@ Extracts and returns the underlying expression `x` stored in a cone constraint `
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> c = ConeConstraint{PositiveOrthant}(x0)
+julia> c = ConeConstraint(x0, PositiveOrthant())
 julia> expression(c)   # Returns the expression associated with the constraint
 ```
 """
@@ -189,11 +178,11 @@ Returns the cone type `K` associated with the given cone constraint. This functi
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> c = ConeConstraint{PositiveOrthant}(x0)
-julia> set(c)   # Returns PositiveOrthant
+julia> c = ConeConstraint(x0, PositiveOrthant())
+julia> set(c)   # Returns PositiveOrthant()
 ```
 """
-set(::ConeConstraint{K}) where {K<:Cone} = K
+set(c::ConeConstraint) = c.K
 
 """
     cone(c::ConeConstraint)
@@ -204,8 +193,8 @@ Alias for `set(c)`. Returns the cone type associated with the cone constraint `c
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> c = ConeConstraint{PositiveOrthant}(x0)
-julia> cone(c)   # Returns PositiveOrthant
+julia> c = ConeConstraint(x0, PositiveOrthant())
+julia> cone(c)   # Returns PositiveOrthant()
 ```
 """
 cone(c::ConeConstraint) = set(c)
@@ -225,9 +214,9 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x == y   # Returns Equality(x - y)
 ```
 """
-==(lhs::Expression, rhs::Expression) = Equality(lhs-rhs)
-==(lhs::Expression, rhs) = Equality(lhs-rhs)
-==(lhs, rhs::Expression) = Equality(lhs-rhs)
+==(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, ZeroSet())
+==(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, ZeroSet())
+==(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, ZeroSet())
 
 """
     ≤(lhs::Expression, rhs::Expression)
@@ -245,9 +234,9 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x ≤ y   # Returns Positive(y - x)
 ```
 """
-≤(lhs::Expression, rhs::Expression) = Positive(rhs-lhs)
-≤(lhs::Expression, rhs) = Positive(rhs-lhs)
-≤(lhs, rhs::Expression) = Positive(rhs-lhs)
+≤(lhs::Expression, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveOrthant())
+≤(lhs::Expression, rhs) = ConeConstraint(rhs-lhs, PositiveOrthant())
+≤(lhs, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveOrthant())
 
 """
     ≥(lhs::Expression, rhs::Expression)
@@ -265,9 +254,9 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x ≥ y   # Returns Positive(x - y)
 ```
 """
-≥(lhs::Expression, rhs::Expression) = Positive(lhs-rhs)
-≥(lhs::Expression, rhs) = Positive(lhs-rhs)
-≥(lhs, rhs::Expression) = Positive(lhs-rhs)
+≥(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveOrthant())
+≥(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, PositiveOrthant())
+≥(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveOrthant())
 
 """
     ⪯(lhs::Expression, rhs::Expression)
@@ -284,14 +273,14 @@ julia> A, B = Rⁿ(), Rⁿ()
 julia> A ⪯ B   # Returns Semidefinite(B - A)
 ```
 """
-⪯(lhs::Expression, rhs::Expression) = Semidefinite(rhs-lhs)
-⪯(lhs::Expression, rhs) = Semidefinite(rhs-lhs)
-⪯(lhs, rhs::Expression) = Semidefinite(rhs-lhs)
+⪯(lhs::Expression, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveSemidefiniteCone())
+⪯(lhs::Expression, rhs) = ConeConstraint(rhs-lhs, PositiveSemidefiniteCone())
+⪯(lhs, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveSemidefiniteCone())
 
 """
-    ⪰(lhs::Expression, rhs::Expression) = Semidefinite(lhs-rhs)
-    ⪰(lhs::Expression, rhs) = Semidefinite(lhs-rhs)
-    ⪰(lhs, rhs::Expression) = Semidefinite(lhs-rhs)
+    ⪰(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
+    ⪰(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
+    ⪰(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
 
 Defines a positive semidefinite constraint on the difference between two expressions.
 
@@ -302,31 +291,61 @@ julia> A, B = Rⁿ(), Rⁿ()
 julia> A ⪯ B   # Returns Semidefinite(B - A)
 ```
 """
-⪰(lhs::Expression, rhs::Expression) = Semidefinite(lhs-rhs)
-⪰(lhs::Expression, rhs) = Semidefinite(lhs-rhs)
-⪰(lhs, rhs::Expression) = Semidefinite(lhs-rhs)
+⪰(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
+⪰(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
+⪰(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
 
 
 ############################################################################################
 # Duality
 
 # dual cones
-dual(::Type{PositiveSemidefiniteCone}) = PositiveSemidefiniteCone
-dual(::Type{PositiveOrthant}) = PositiveOrthant
-dual(::Type{ZeroSet}) = Any
+dual(::PositiveSemidefiniteCone) = PositiveSemidefiniteCone()
+dual(::PositiveOrthant) = PositiveOrthant()
+dual(::ZeroSet) = UnrestrictedCone()
+dual(::UnrestrictedCone) = ZeroSet()
 
-function dual(c::Positive, G, model)
-    JuMP.@variable(model, λ[1:length(x)] ≥ 0)
-    M = linearform(G, expression(c))
+# function dual(c::Positive, G, model)
+#     JuMP.@variable(model, λ[1:length(x)] ≥ 0)
+#     M = linearform(G, expression(c))
     
-    λ*M
-end
+#     λ*M
+# end
 
-function dual(c::Semidefinite, G, model)
-    JuMP.@variable(model, λ[1:length(x)] ≥ 0)
-    M = linearform(G, expression(c))
+# function dual(c::Semidefinite, G, model)
+#     JuMP.@variable(model, λ[1:length(x)] ≥ 0)
+#     M = linearform(G, expression(c))
     
-    λ*M
+#     λ*M
+# end
+
+
+"""
+    get_element(model::JuMP.Model, K::Cone, sz::Tuple)
+
+Given a JuMP model, a cone type `K`, and a size tuple `sz`, this function creates and returns a variable that belongs to the specified cone `K` with the given size. The variable is constrained according to the properties of the cone.
+"""
+function get_element(model::JuMP.Model, K::Cone, sz::Tuple)
+
+    if K == UnrestrictedCone()
+        var = JuMP.@variable(model, [1:sz[1], 1:sz[2]])
+
+    elseif K == ZeroSet()
+        var = JuMP.@variable(model, [1:sz[1], 1:sz[2]])
+        JuMP.@constraint(model, var == 0)
+
+    elseif K == PositiveOrthant()
+        var = JuMP.@variable(model, [1:sz[1], 1:sz[2]])
+        JuMP.@constraint(model, var .≥ 0)
+
+    elseif K == PositiveSemidefiniteCone()
+        var = JuMP.@variable(model, [1:sz[1], 1:sz[2]], Symmetric)
+        JuMP.@constraint(model, var >= 0, JuMP.PSDCone())
+
+    else
+        error("Unsupported cone type: $K")
+    end
+    return var
 end
 
 
@@ -343,9 +362,9 @@ function check end
 
 check(c::Constraint) = check(expression(c), set(c))
 
-check(x, ::Type{ZeroSet}) = hasvalue(x) && evaluate(x) == 0
-check(x, ::Type{PositiveOrthant}) = hasvalue(x) && evaluate(x) ≥ 0
-check(x, ::Type{PositiveSemidefiniteCone}) = hasvalue(x) && evaluate(x) ⪰ 0
+check(x, ::ZeroSet) = hasvalue(x) && evaluate(x) == 0
+check(x, ::PositiveOrthant) = hasvalue(x) && evaluate(x) ≥ 0
+check(x, ::PositiveSemidefiniteCone) = hasvalue(x) && evaluate(x) ⪰ 0
 
 
 ############################################################################################

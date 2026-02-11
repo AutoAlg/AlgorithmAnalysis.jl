@@ -2,13 +2,69 @@ using Pkg
 Pkg.activate(".")
 using Revise
 using AlgorithmAnalysis
-# using Logging
-# using Plots
-# import JuMP
-# import SCS
-# using LiveServer
-using MosekTools
 
+# m = 1
+# L = 10
+# α = 2/(L+m)
+# n = 1
+# ρ = ((L-m)/(L+m))^2
+# measure = DistanceToOptimality
+
+# @algorithm begin
+#     f = DifferentiableFunctional{Rⁿ}()
+#     xs = first_order_stationary_point(f)
+#     f' ∈ SectorBounded(m, L, xs, f'(xs))
+    
+#     x = Vector{Rⁿ}(undef, n+1)
+#     x[1] = Rⁿ()
+#     for k = 1:n
+#         x[k+1] = x[k] - α * f'(x[k])
+#         x[k] => x[k+1]
+#     end
+
+#     performance = evaluate(measure, f, x[1], xs)
+# end
+
+# using JuMP, SCS
+# import LinearAlgebra as la
+# solver = SCS.Optimizer
+
+# vars, cons = variables_constraints(performance)
+# vars = collect(vars)
+# X, X⁺, x, u = stateupdate(vars)
+# model = JuMP.Model(solver)
+# JuMP.set_silent(model)
+# θ = JuMP.@variable(model, [1:length(x)])
+
+# # Lyapunov function
+# V = X'*θ
+# V⁺ = X⁺'*θ
+
+# # performance measure
+# P = vec(linearform( [x; u] => performance ))
+
+# # linear forms
+# L₁ = P - V
+# L₂ = V⁺ - ρ*V
+
+# for con ∈ cons
+#     λ = multiplier(model, con)
+#     μ = multiplier(model, con)
+#     e = expression(con)
+#     @show λ, e, λ ⋅ e
+#     L₁ += vec(linearform( [x; u] => λ ⋅ e ))
+#     L₂ += vec(linearform( [x; u] => μ ⋅ e ))
+# end
+# JuMP.@constraint(model, L₁ .== 0 )
+# JuMP.@constraint(model, L₂ .== 0 )
+
+# JuMP.optimize!(model)
+
+# if verbose
+#     @info "Rate: $ρ, Termination status: $(JuMP.termination_status(model))"
+# end
+
+# JuMP.termination_status(model) == JuMP.OPTIMAL
 
 # TM
 function TM(m, L, ρmin=0)

@@ -62,4 +62,5 @@ function adjoint(x::X) where {X<:InnerProductSpace}
     end
 end
 
+adjoint(K::Cone) = dual(K)
 adjoint(K::Type{<:Cone}) = dual(K)

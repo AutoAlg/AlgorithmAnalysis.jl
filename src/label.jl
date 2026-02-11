@@ -54,10 +54,15 @@ Return the label and type information of an oracle
 julia> x0 = Rⁿ()
 julia> label(x0, "x0")
 julia> description(x0) # Returns "x0"
+```
 """
 description(e::Expression) = (isempty(label(e)) ? description(decomposition(e)) : label(e))
+
 function description(d::LinearDecomposition)
     isempty(d) && return "(empty)"
+    if !all(v isa Float64 for v ∈ values(weights(d)))
+        return "Linear decomposition with non-Float64 weights"
+    end
     str = ""
     first = true
     for (key, value) ∈ weights(d)
@@ -145,6 +150,7 @@ Create a label for an expression depending on its type `T`` and its label `label
 ```julia-repl
 julia> f = QuadraticFunctional{Rⁿ}()
 julia> defaultlabel(Type{f'}, label(f))
+```
 """
 defaultlabel(::Type{Transpose}, label::String) = label * "*"
 defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label

@@ -10,7 +10,7 @@ export Constraint, Constraints, ConstraintSet
 export Variable, Variables, Expression, Expressions, Field, Reals
 export AbstractVectorSpace, VectorSpace, NormedVectorSpace, InnerProductSpace
 export ScalarValue, VectorValue, Object, Objects
-export R, Rⁿ, Rᵐ, X
+export R, Rⁿ, Rᵐ
 
 # expression
 export linear, constant, weights, evaluate, constraints, variables, ⊗, Zero
@@ -22,7 +22,7 @@ export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 # constraint
 export expression, set, add_constraint!, Equality
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite
-export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone
+export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone, UnrestrictedCone
 export ⪯, ⪰, ⊆
 export Gram, evaluate, gram_to_constraint
 
@@ -87,7 +87,7 @@ export propertyof, properties
 export Co, Weakly, PropertyOrWrapper
 
 # solve
-export lift, project, variables, constraints, variables_constraints_oracles
+export lift, project, variables, constraints, variables_constraints
 
 # primitives
 export first_order_stationary_point
@@ -97,7 +97,7 @@ export maximize, certify, rate
 export stateupdate, getmatrix, getparams, solve, eye, grams
 export quadraticform, linearform, tr, optvar, optcon
 export optimization_variable_dictionary, isimplementable, multiplier
-export get_states_inputs, get_formulas, lift, neighbors, nodes
+export get_states_inputs, get_formulas, lift, neighbors, nodes, nonnegative
 
 ############################################################################################
 # Import
@@ -116,6 +116,7 @@ import Base: isempty, iszero, isequal
 import Base: promote_rule, convert, show, zero, zeros, adjoint
 import Base: length, Generator, iterate, size, push!, inv, pairs
 
+import LinearAlgebra: dot, ⋅
 
 ############################################################################################
 # Include
