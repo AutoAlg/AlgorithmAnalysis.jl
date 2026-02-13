@@ -1,35 +1,22 @@
 function variables(o::OracleOrWrapper)
-    # if !(typeof(unwrap(o)) <: AbstractLinearFunctional)
     vars = variables(inputs(o) ∪ outputs(o))
-    # else
-    #     vars = variables(outputs(o))
-    # end
-    # for a ∈ values(associations(o))
     for a ∈ associations(o)
-        if first(a) != GradientOf
+        if first(a) ≠ GradientOf
             union!(vars, variables(unwrap(last(a))))
         end
     end
     vars
 end
 
-variables(X::Union{ArrayOrSet,Generator}) = mapreduce(variables, ∪, X; init=Expressions())
-
-function evaluate(P::PerformanceMeasure, f::Object, x::Object, xs::Object)
-    if P == OptimalityGap
-        f(x) - f(xs)
-    elseif P == DistanceToOptimality
-        (x - xs)^2
-    elseif P == DistanceToStationarity
-        f'(x)^2
-    end
+function variables(X::Union{AbstractArray,Set,Generator})
+    mapreduce(variables, ∪, X; init=Expressions())
 end
 
-function constraints(X::Union{ArrayOrSet,Generator})
+function constraints(X::Union{AbstractArray,Set,Generator})
     prune!(mapreduce(constraints, ∪, X; init=Constraints()))
 end
 
-function oracles(X::Union{ArrayOrSet,Generator})
+function oracles(X::Union{AbstractArray,Set,Generator})
     mapreduce(oracles, ∪, X; init=Oracles())
 end
 
@@ -57,7 +44,7 @@ end
 
 
 """
-    constraints_oracles
+    variables_constraints
 
 Recursively find all variables and constraints associated with an expression.
 """
@@ -123,12 +110,11 @@ function info(orcs::Oracles)
 end
 
 isimplementable(e::Expression) = e isa R
-isimplementable(c::Constraint) = expression(c) isa Union{R, ArrayOrSet{R}}
-isimplementable(X::Union{ArrayOrSet,Generator}) = all( isimplementable(x) for x ∈ X )
+isimplementable(c::Constraint) = isimplementable(expression(c))
+isimplementable(X::Union{AbstractArray,Set,Generator}) = all( isimplementable(x) for x ∈ X )
 
 function optvar(e::Expression, optvar_dict::Dict)
     if hasdecomposition(e)
-        # mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
         x = 0
         for (key,val) ∈ weights(e)
             if haskey(optvar_dict, key)
@@ -355,11 +341,11 @@ end
 """
     ρ = rate(performance)
 
-Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the fastest possible rate. The analysis guarantees that the performance measure satisfies the bound
+Use the control theoretic methodology to search for a Lyapunov function that certifies convergence of the performance measure for all problem instances with the fastest possible rate. The analysis guarantees that, at each iteration ``k``, the performance measure satisfies the bound
 
-``\\text{performance}(k) \\leq c\\,\\rho^k``
-
-at each iteration ``k``.
+```math
+\\text{performance}(k) \\leq \\rho^k\\,\\text{performance}(0).
+```
 
 ## Requirements
 - The performance measure must be a real expression (that is, an element of `R`).

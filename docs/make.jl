@@ -9,7 +9,10 @@ makedocs(
     checkdocs = :exports,
     pages = [
         "Introduction" => "index.md",
-        "Manual" => "manual/index.md",
+        "Manual" => [
+            "manual/code.md",
+            "manual/analysis.md"
+        ],
         "Examples" => "examples/index.md",
         "API" => [
             "Analysis" => "api/analysis.md",
@@ -20,6 +23,7 @@ makedocs(
             "Constraints" => "api/constraints.md",
             "Wrappers" => "api/wrappers.md",
             "Properties" => "api/properties.md",
+            "Performance Measures" => "api/performance.md",
             "Miscellaneous" => "api/miscellaneous.md",
         ],
         "Developer Guide" => "developers/index.md"

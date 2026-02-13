@@ -1,0 +1,18 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{block-diagram}
+
+
+\begin{document}
+
+\begin{tikzpicture}
+
+  \node [block,inner sep=4mm] (oracle) {$u_k = \mathcal{O}_f(y_k)$};
+  \node [block,inner sep=4mm,below=3mm of oracle] (alg) {$y_{k+1} = \mathcal{M}_k(y_0,u_0,\ldots,u_k)$};
+
+  \draw [<-] (alg.east) -- ++(5mm,0) -- node[pos=0.5,anchor=west] {$u$} (oracle -| \currentcoordinate) -- (oracle);
+  \draw [->] (alg.west) -- ++(-5mm,0) -- node[pos=0.5,anchor=east] {$y$} (oracle -| \currentcoordinate) -- (oracle);
+
+\end{tikzpicture}
+
+\end{document}

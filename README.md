@@ -1,5 +1,7 @@
 # AlgorithmAnalysis.jl
 
+![Algorithm Analysis Logo](docs/assets/logo.png)
+
 [![Build Status](https://github.com/vanscoy/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/vanscoy/AlgorithmAnalysis.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://vanscoy.github.io/AlgorithmAnalysis.jl/stable)
 

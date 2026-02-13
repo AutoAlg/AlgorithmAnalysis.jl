@@ -1,0 +1,45 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{amsmath}
+\usepackage{math}
+\usepackage{color-scheme}
+
+% colors
+\colorlet{light}{color2!5!white}
+\colorlet{dark}{color2!50!white}
+
+% block fill colors
+\colorlet{colorFun}{light}
+\colorlet{colorNet}{light}
+\colorlet{colorAlg}{light}
+\colorlet{colorLMI}{light}
+\colorlet{colorRho}{light}
+
+\usetikzlibrary{calc,positioning}
+
+% \renewcommand*\familydefault{\sfdefault}
+
+\renewcommand{\emph}[1]{\textcolor{color1}{\textbf{#1}}}
+
+\def\x{7.4mm}
+\def\y{4cm}
+
+\begin{document}
+
+\begin{tikzpicture}[every node/.style={draw,rounded corners,thick,inner sep=2mm,align=center},
+  every path/.style={->,very thick,>=latex,rounded corners}]
+
+  \node (analysis) [minimum height=\y,text width=6.2cm,fill=colorLMI] {\textbf{Automated analysis}\\[6mm] $\begin{aligned} \bmat{1-\rho^2-2mL\lambda & -\alpha+(L+m)\lambda \\ -\alpha+(L+m)\lambda & -2\lambda} &\preceq 0 \\ \lambda &\geq 0\end{aligned}$};
+
+  \node (performance) [minimum height=2cm,right=\x of analysis,text width=3.6cm,fill=colorRho] {\textbf{Result}\\[4mm] $\|x_k-x_\star\|\leq\rho^k\|x_0-x_\star\|$};
+  
+  \node (algorithm) [left=\x of analysis.south west,anchor=south east,text width=3.56cm,fill=colorAlg] {\textbf{Algorithm}\\[2mm] $x_{k+1} = x_k - \alpha\,\nabla\!f(x_k)$};
+
+  \node (functions) [left=\x of analysis.north west,anchor=north east,text width=3.9cm,fill=colorFun] {\textbf{Optimization problem}\\[2mm] $\minimize \quad f(x)$\\[2mm] $f$ is $L$-smooth and\\$m$-strongly convex};
+
+  \draw (algorithm) -- (algorithm.east -| analysis.west);
+  \draw (functions.east) -- (functions.east -| analysis.west);
+  \draw (analysis) -- (performance);
+\end{tikzpicture}
+
+\end{document}

@@ -1,21 +1,21 @@
-title: "My JuliaCon proceeding"
+title: "Automated Algorithm Analysis in Julia"
 keywords:
   - Julia
-  - Optimization
-  - Game theory
-  - Compiler
+  - Algorithm Analysis
+  - Performance Estimation Problems
+  - Control Theory
 authors:
-  - name: 1st author
-    orcid: 0000-0003-1361-440X
+  - name: Sam Skinner
+    orcid: 
     affiliation: 1
-  - name: 2nd author
-    affiliation: 1, 2
-  - name: 3rd author
-    affiliation: 2
+  - name: Lam Ha
+    orcid: 
+    affiliation: 1
+  - name: Bryan Van Scoy
+    orcid: 
+    affiliation: 1
 affiliations:
-  - name: University
+  - name: Miami University, Department of Electrical and Computer Engineering, Oxford, OH 45056, USA
     index: 1
-  - name: National Lab
-    index: 2
-date: 24 April 2019
+date: 01 March 2026
 bibliography: ref.bib

@@ -5,4 +5,6 @@ fast_gradient
 multiplier
 stateupdate
 negative!
+triple_momentum
+heavy_ball
 ```

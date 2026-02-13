@@ -1,5 +1,13 @@
 /Manifest.toml
 *.so
 *.bat
+*.aux
+*.log
+*.synctex.gz
 *.code-workspace
-docs/builds/
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+docs/build/

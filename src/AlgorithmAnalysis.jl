@@ -110,6 +110,11 @@ import InteractiveUtils
 import AbstractTrees
 import Zeros: Zero
 import MathOptInterface as MOI
+import HTTP
+import JSON
+import Markdown
+import AutoHashEquals
+import CodeTracking
 
 import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊆
 import Base: isempty, iszero, isequal
@@ -133,10 +138,12 @@ include("interpolation.jl")
 include("show.jl")
 include("label.jl")
 include("primitives.jl")
+include("performance.jl")
 include("algorithms.jl")
 include("hash.jl")
 include("algebra.jl")
 include("reals.jl")
 include("analysis.jl")
+include("results.jl")
 
 end

@@ -181,11 +181,3 @@ const DecompositionValue = Union{Number, JuMP.VariableRef, JuMP.AffExpr}
 const Object = Union{Expression, Constraint, Oracle, Wrapper}
 const Objects = Set{Object}
 
-
-export PerformanceMeasure, OptimalityGap, DistanceToOptimality, DistanceToStationarity
-
-@enum PerformanceMeasure begin
-    OptimalityGap           # f(x) - f(xₛ) where xₛ is an optimal solution
-    DistanceToOptimality    # ‖x - xₛ‖² where xₛ is an optimal solution
-    DistanceToStationarity  # ‖∇f(x)‖²
-end

@@ -1,0 +1,25 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{block-diagram}
+
+\begin{document}
+
+\begin{tikzpicture}
+
+  \node [block,inner sep=3.5mm] (plant) {$P$};
+  \node [block,below=3mm of plant] (controller) {$K$};
+  \node [block,above=3mm of plant] (uncertainty) {$\Delta$};
+  
+  % \draw (controller.east) -- ++(1cm,0) |- node[pos=0.25,anchor=west] {$u$} ($(plant.east)-(0,\sep)$);
+  % \draw (uncertainty.east) -- ++(1cm,0) |- node[pos=0.25,anchor=west] {$q$} ($(plant.east)+(0,\sep)$);
+  % \draw [<-] (controller.west) -- ++(-1cm,0) |- node[pos=0.25,anchor=east] {$y$} ($(plant.west)-(0,\sep)$);
+  % \draw [<-] (uncertainty.west) -- ++(-1cm,0) |- node[pos=0.25,anchor=east] {$p$} ($(plant.west)+(0,\sep)$);
+  
+  \draw (controller.east) -- ++(1,0) |- ($(plant.east)-(0,\sep)$);
+  \draw (uncertainty.east) -- ++(1,0) |- ($(plant.east)+(0,\sep)$);
+  \draw [<-] (controller.west) -- ++(-1,0) |- ($(plant.west)-(0,\sep)$);
+  \draw [<-] (uncertainty.west) -- ++(-1,0) |- ($(plant.west)+(0,\sep)$);
+
+\end{tikzpicture}
+
+\end{document}

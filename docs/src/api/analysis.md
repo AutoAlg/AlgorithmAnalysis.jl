@@ -1,7 +1,12 @@
-## Analysis methods
+## Performance Estimation Approach
 
 ```@docs
 maximize
+```
+
+## Control Theoretic Approach
+
+```@docs
 certify
 rate
 ```

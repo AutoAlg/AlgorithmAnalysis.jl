@@ -1,0 +1,20 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{block-diagram}
+
+\begin{document}
+
+\begin{tikzpicture}
+
+  \node [block,small] (plant) {$\Sigma$};
+  \node [block,small,above=5mm of plant] (uncertainty) {$\Delta$};
+
+  \draw (uncertainty.east) -- ++(1cm,0) |- node[pos=0.25,anchor=west] {$u$} (plant.east);
+  \draw [<-] (uncertainty.west) -- ++(-1cm,0) |- node[pos=0.25,anchor=east] {$y$} (plant.west);
+  
+  % \node [anchor=south east,inner sep=2pt,font=\footnotesize] (x) at (plant.south east) {$x$};
+  % \draw [-,rounded corners] (x.south west) -- (x.north west) -- (x.north east);
+
+\end{tikzpicture}
+
+\end{document}

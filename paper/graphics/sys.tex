@@ -1,0 +1,29 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{signals-and-systems}
+
+\def\sep{1.25mm}
+
+\begin{document}
+
+\begin{tikzpicture}[block diagram,
+  every node/.style={inner sep=4mm}]
+
+  \node [block,inner sep=4mm] (plant) {$P$};
+  \node [block,inner sep=4mm,below=3mm of plant] (controller) {$K$};
+  
+  \draw (controller.east) -- ++(1cm,0) |- node[pos=0.25,anchor=west] {$u$} ($(plant.east)-(0,\sep)$);
+  \draw [<-] (controller.west) -- ++(-1cm,0) |- node[pos=0.25,anchor=east] {$y$} ($(plant.west)-(0,\sep)$);
+
+  \draw ($(plant.west)+(0,\sep)$) -- node[pos=1,anchor=east] {$z$} ++(-1cm,0);
+  \draw [<-] ($(plant.east)+(0,\sep)$) -- node[pos=1,anchor=west] {$v$} ++(1cm,0);
+  
+  \node [anchor=south east,inner sep=2pt,font=\footnotesize] (x) at (plant.south east) {$x$};
+  \draw [-,rounded corners] (x.south west) -- (x.north west) -- (x.north east);
+  
+  \node [anchor=south east,inner sep=2pt,font=\footnotesize] (x) at (controller.south east) {$x_c$};
+  \draw [-,rounded corners] (x.south west) -- (x.north west) -- (x.north east);
+
+\end{tikzpicture}
+
+\end{document}

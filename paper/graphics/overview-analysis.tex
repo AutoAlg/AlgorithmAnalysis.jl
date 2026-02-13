@@ -1,0 +1,48 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{amsmath}
+\usepackage{math}
+\usepackage{enumitem}
+\usepackage{color-scheme}
+\usepackage{block-diagram}
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathmorphing,backgrounds}
+
+% colors
+\colorlet{light}{color2!5!white}
+\colorlet{dark}{color2!50!white}
+
+\def\F{\mathcal{F}}
+\def\X{\mathcal{X}}
+
+\def\x{12mm}
+\def\y{2.25cm}
+
+\tikzset{jagged/.style={%
+  -,rounded corners=0.5pt,
+  decorate,
+  decoration={random steps,segment length=4pt,amplitude=2.5pt},
+}}
+
+% \renewcommand*\familydefault{\sfdefault}
+
+\begin{document}
+
+\begin{tikzpicture}[every node/.style={draw,rounded corners,thick,inner sep=2mm,align=center},
+  every path/.style={->,very thick,>=latex,rounded corners}]
+  
+  \node (analysis) [inner sep=10pt,minimum height=\y,text width=1.85cm,jagged,fill=blue!10] {\textbf{Automated analysis}};
+
+  \node (performance) [minimum height=\y,right=\x of analysis,text width=2cm,draw=none] {\textbf{Worst-case\\performance\\ bound}};
+  
+  \node (specifications) [minimum height=\y,left=\x of analysis,text width=4.5cm,draw=none] {\textbf{Problem specifications}\begin{itemize}[topsep=2pt,itemsep=-2.5pt] \item function class \item oracle \item algorithm \item performance measure \end{itemize}};
+  
+  \draw (specifications) -- (analysis);
+  \draw (analysis) -- (performance);
+  
+  % width of a slide
+  % \draw [-] (specifications.south west) -- ++(307.29pt,0);
+  
+\end{tikzpicture}
+
+\end{document}

@@ -1,0 +1,67 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{block-diagram}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% PACKAGES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\RequirePackage{color-scheme}
+\RequirePackage{tikz}
+\RequirePackage{bm}
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+
+\def\sep{1.5mm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% TIK
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usetikzlibrary{calc,positioning,patterns,decorations.pathmorphing,decorations.markings,shapes.geometric}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% BLOCK DIAGRAMS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\tikzset{signal/.style={%
+  ->,
+  thick,
+  >=latex,
+  % rounded corners,
+  }
+}
+
+\tikzset{small/.style={inner sep=2.5mm}}
+\tikzset{medium/.style={inner sep=4mm}}
+\tikzset{large/.style={inner sep=5.5mm}}
+
+\tikzset{block/.style={%
+  inner sep=2mm,
+  anchor=center,
+  rounded corners=1mm,
+  thick,
+  draw,
+  fill=blue!10
+  }
+}
+
+\tikzset{every path/.style={signal}}
+
+\tikzset{square/.style={%
+  regular polygon,
+  regular polygon sides=4,
+  minimum size=1.2cm,
+  outer sep=0pt,
+  inner sep=0pt,
+  }
+}
+
+\tikzset{light/.style={opacity=0.3}}
+
+\tikzset{jagged/.style={%
+  -,rounded corners=0.5pt,
+  decorate,
+  decoration={random steps,segment length=4pt,amplitude=2.5pt},
+}}
+
+\colorlet{light}{color2!5!white}
+\colorlet{dark}{color2!50!white}
+
+\newcommand\currentcoordinate{\the\tikz@lastxsaved,\the\tikz@lastysaved}

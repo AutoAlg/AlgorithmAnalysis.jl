@@ -1,0 +1,31 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{block-diagram}
+
+\begin{document}
+
+\begin{tikzpicture}
+
+  \node [block,square] (plant) {$\Sigma$};
+  \node [block,square,above=3mm of plant,light] (oracle) {$\Delta$};
+  
+  \coordinate (yc) at ($(oracle.west)-(5mm,0)$);
+  \coordinate (uc) at ($(oracle.east)+(5mm,0)$);
+
+  \draw [light] (yc) -- (oracle.west);
+  \draw [light,-] (oracle.east) -- (uc);
+  
+  \draw [<-] (plant.east) -- ++(1cm,0) -- node[pos=0.5,anchor=west] {$u$} (\currentcoordinate |- oracle) -- (uc);
+  \draw [-] (plant.west) -- ++(-1cm,0) -- node[pos=0.5,anchor=east] {$y$} (\currentcoordinate |- oracle) -- (yc);
+  
+  \node [block,square,above right=0mm and 12mm of oracle] (filter) {$\Psi$};
+  % \node [block,above=2mm of filteru] (filtery) {$\psi$};
+  
+  \draw ($(oracle.west)-(5mm,0)$) |- ($(filter.west)+(0,\sep)$);
+  \draw ($(oracle.east)+(5mm,0)$) |- ($(filter.west)-(0,\sep)$);
+  
+  \draw (filter.east) -- node[pos=1,anchor=west] {$z$} ++(6mm,0);
+  % \draw (filteru.east) -- node[pos=1,anchor=west] {$q$} ++(6mm,0);
+\end{tikzpicture}
+
+\end{document}

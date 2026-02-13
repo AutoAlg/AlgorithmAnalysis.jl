@@ -235,6 +235,29 @@ function _algorithm(ex::Expr)
         elseif ex.head == :tuple && ex.args[end].args[1] == :(∈)
             eval_and_label(ex)
 
+        # else if the expression is of the form f : X → Y, then eval and label
+        # see Meta.@dump(f : X → Y)
+        elseif ex.head == :call && length(ex.args) == 3 && ex.args[1] == :(→) && length(ex.args[2].args) == 3 && ex.args[2].args[1] == :(:)
+            f = esc(ex.args[2].args[2])
+            X = esc(ex.args[2].args[3])
+            Y = esc(ex.args[3])
+            str = string(ex.args[2].args[2])
+            quote
+                $f = Map{$X, $Y}()
+                label!($f, $str)
+            end
+
+        # else if the expression is of the form f : X → Y, then eval and label
+        elseif ex.head == :call && length(ex.args) == 3 && ex.args[1] == :(⇒) && length(ex.args[2].args) == 3 && ex.args[2].args[1] == :(:)
+            f = esc(ex.args[2].args[2])
+            X = esc(ex.args[2].args[3])
+            Y = esc(ex.args[3])
+            str = string(ex.args[2].args[2])
+            quote
+                $f = Operator{$X, $Y}()
+                label!($f, $str)
+            end
+
         # else if the expression is an assignment, evaluate and label it
         elseif ex.head == :(=)
             eval_and_label(ex)
@@ -263,20 +286,20 @@ function eval_and_label(ex::Expr)
         end
 
     # else if the expression is an inclusion (e.g., x ∈ R)
-    # elseif ex.args[1] == :(∈) || ex.args[1] == :in
+    elseif ex.args[1] == :(∈) || ex.args[1] == :in
 
-        # lhs = esc(ex.args[2])
-        # rhs = esc(ex.args[3])
-        # str = string(ex.args[2])
+        lhs = esc(ex.args[2])
+        rhs = esc(ex.args[3])
+        str = string(ex.args[2])
 
-        # quote
-        #     if $rhs isa $DataType && $rhs <: Expression
-        #         $lhs = $rhs()
-        #         label!($lhs, $str)
-        #     else
-        #         $(esc(ex))
-        #     end
-        # end
+        quote
+            if $rhs isa $DataType && $rhs <: Expression
+                $lhs = $rhs()
+                label!($lhs, $str)
+            else
+                $(esc(ex))
+            end
+        end
 
     # else if the lhs is an element of an array (evalutes the index)
     elseif ex.args[1] isa Expr && ex.args[1].head == :ref

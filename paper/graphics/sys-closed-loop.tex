@@ -1,0 +1,24 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{block-diagram}
+
+\def\sep{2mm}
+
+
+\begin{document}
+
+\begin{tikzpicture}
+
+  \node [block,square] (plant) {$\hat\Sigma$};
+  
+  % \node [anchor=south east,inner sep=2pt,font=\footnotesize] (x) at (plant.south east) {$\bm{x}$};
+  % \draw [-,rounded corners] (x.south west) -- (x.north west) -- (x.north east);
+  
+  \draw ($(plant.west)-(1,0)$) -- node[pos=0,anchor=east] {$u$} (plant);
+  \draw (plant.east) -- node[pos=1,anchor=west] {$z$} ++(1,0);
+  % \draw ($(plant.east)+(0,\sep)$) -- node[pos=1,anchor=west] {$p$} ++(1,0);
+  % \draw ($(plant.east)-(0,\sep)$) -- node[pos=1,anchor=west] {$q$} ++(1,0);
+
+\end{tikzpicture}
+
+\end{document}

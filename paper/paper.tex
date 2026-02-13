@@ -1,7 +1,66 @@
-
-% JuliaCon proceedings template
 \documentclass{juliacon}
+
 \setcounter{page}{1}
+
+% \usepackage[skip=5pt]{caption}
+\captionsetup{skip=10pt}
+\usepackage{amsmath}
+\usepackage[capitalize,nameinlink]{cleveref}
+\usepackage[export]{adjustbox}
+\graphicspath{{./graphics/}}
+
+\crefname{listing}{Code}{Codes}
+
+\definecolor{TolMutedBlue}{HTML}{332288}
+\definecolor{TolMutedCyan}{HTML}{88CCEE}
+\definecolor{TolMutedTeal}{HTML}{44AA99}
+\definecolor{TolMutedGreen}{HTML}{117733}
+\definecolor{TolMutedOlive}{HTML}{999933}
+\definecolor{TolMutedSand}{HTML}{DDCC77}
+\definecolor{TolMutedRose}{HTML}{CC6677}
+\definecolor{TolMutedWine}{HTML}{882255}
+\definecolor{TolMutedPurple}{HTML}{AA4499}
+
+\hypersetup{%
+    colorlinks=true,%
+    urlcolor=TolMutedRose,%
+    linkcolor=TolMutedBlue,%
+    citecolor=TolMutedGreen%
+}
+
+\lstset{
+  extendedchars=true,
+  literate={∈}{{$\in$}}1 {⊆}{{$\subseteq$}}1 {≥}{{$\ge$}}1 {α}{{$\alpha$}}1 {ⁿ}{{{\textsuperscript{n}}}}1 {Rⁿ}{{{R\textsuperscript{n}}}}1
+}
+
+\def\F{\mathcal{F}}
+\def\tp{\mathsf{T}}
+
+% OPTIMIZATION
+\DeclareMathOperator*{\argmin}{\arg\min}
+\DeclareMathOperator*{\argmax}{\arg\max}
+\DeclareMathOperator*{\minimize}{minimize}
+\DeclareMathOperator*{\maximize}{maximize}
+\DeclareMathOperator*{\minimum}{minimum}
+\DeclareMathOperator*{\maximum}{maximum}
+\DeclareMathOperator*{\subjectto}{subject\ to}
+\DeclareMathOperator*{\st}{\text{s.t.}}
+\DeclareMathOperator*{\feasible}{feasible}
+
+% DERIVATIVES
+\def\df{\nabla\!f}
+\def\d{\mathrm{d}}
+\def\ddt{\frac{\d}{\d t}}
+
+% MATRIX CONSTRUCTORS
+\newcommand{\mat}[1]{\begin{matrix}#1\end{matrix}}
+\newcommand{\bmat}[1]{\begin{bmatrix}#1\end{bmatrix}}
+\newcommand{\pmat}[1]{\begin{pmatrix}#1\end{pmatrix}}
+\newcommand{\bmatl}[2]{\renewcommand{\arraystretch}{1.2}\left[\begin{array}{#1}#2\end{array}\right]}
+\newcommand{\pmatl}[2]{\renewcommand{\arraystretch}{1.2}\left(\begin{array}{#1}#2\end{array}\right)}
+\newcommand{\sbmat}[1]{\left[\begin{smallmatrix}#1\end{smallmatrix}\right]}
+\newcommand{\spmat}[1]{\left(\begin{smallmatrix}#1\end{smallmatrix}\right)}
+
 
 \begin{document}
 
@@ -11,304 +70,42 @@
 
 \begin{abstract}
 
-This is a guide for authors who are preparing papers for JuliaCon using the \LaTeX{} document
-preparation system and the \verb|juliacon|  class file.
+\href{https://github.com/vanscoy/AlgorithmAnalysis.jl/stable/}{\texttt{AlgorithmAnalysis.jl}} is a Julia package for the automated analysis of algorithms. The package provides a generic way to analyze algorithms in a systematic manner in the Julia programming language. Algorithm analysis seeks to find a mathematically proven guarantee of an algorithm's performance over a class of problems. AlgorithmAnalysis.jl includes both the performance estimation (PEP) and control theoretic methodologies to analysis.
 
 \end{abstract}
 
 \section{Introduction}
 
-The \LaTeX{} document preparation system is a special version of the
-\TeX; typesetting program where-in a collection of \TeX; commands
-are added to \LaTeX{} to simplify typesetting. Importantly, it allows
-the author to concentrate on the logical structure of the document
-rather than its visual layout.\vskip 6pt
-Moreover, \LaTeX{} provides a consistent and comprehensive document
-preparation interface. There are simple-to-use commands for
-generating a table of contents, lists of figures and/or tables, and indexes.
-\LaTeX{} can automatically number list entries, equations, figures,
-tables, and footnotes, as well as articles, sections, and subsections.
-Using this numbering system, bibliographic citations, page
-references, and cross references to any other numbered entity (e.g.
-article, section, equation, figure, list entry, etc.) become quite simple
-and straightforward. The use of \LaTeX{} document classes allows
-a simple change of class to transform the appearance of your document.\vskip 6pt
-\LaTeX{} is a powerful tool for managing long and complex documents.
-In particular, partial processing enables long documents to
-be produced article by article without losing sequential information.
-The use of document classes allows a simple change of style
-(or style option) to transform the appearance of your document.
 
+\href{https://github.com/vanscoy/AlgorithmAnalysis.jl/stable/}{\texttt{AlgorithmAnalysis.jl}} is a Julia package for the automated analysis of algorithms. The package provides a generic way to analyze algorithms in a systematic manner in the Julia programming language. Algorithm analysis seeks to find a mathematically proven guarantee of an algorithm's performance over a class of problems. AlgorithmAnalysis.jl includes both the performance estimation (PEP) and control theoretic methodologies to analysis.
 
+Our package enables users to write optimization algorithms using simple syntax that resembles the mathematical algorithm structure, as illustrated in \cref{code:label}.
 
-\section{The JuliaCon Article Class}
-\label{sec:documentclass}
-%
-The juliacon class file preserves the standard LATEX{} interface such
-that any document that can be produced using the standard LATEX{}
-article class can also be produced with the class file.\vskip 6pt
-It is likely that the make up will change after file submission. For
-this reason, we ask you to ignore details such as slightly long lines,
-page stretching, or figures falling out of synchronization, as these
-details can be dealt with at a later stage.\vskip 6pt
-Use should be made of symbolic references (\verb|\ref| ) in order to
-protect against late changes of order, etc.
-
-\section{USING THE JuliaCon Article CLASS FILE}
-
-If the file \verb|juliacon.cls|  is not already in the appropriate system directory
-for \LaTeX{} files, either arrange for it to be put there or copy
-it to your working directory. The \verb|juliacon|  document class is implemented
-as a complete class, not a document style option. In order to
-use the \verb|juliacon  document class, replace \verb|article|  by \verb|juliacon|  in the
-\verb|\documentclass|  command at the beginning of your document:
-\vskip 6pt
-\begin{centering}
-    \verb|\documentclass{article}|  \end{centering}
-\vskip 6pt
-replace by
-\vskip 6pt
- \verb|\documentclass{juliacon}|  \vskip 6pt
-In general, the following standard document \verb|style|  options should
-{ \itshape not} be used with the {\footnotesize \itshape article} class file:
-\begin{enumerate}
-\item[(1)] \verb|10pt|,  \verb|11pt|,  \verb|12pt|   ? unavailable;
-\item[(2)] \verb|twoside|  (no associated style file) ? \verb|twoside|  is the default;
-\item[(3)] \verb|fleqn|, \verb|leqno|, \verb|titlepage| ? should not be used;
-\end{enumerate}
-
-\section{Additional Document Style Options}
-\label{sec:additional_doc}
-%
-The following additional style option is available with the \verb|juliacon|  class file:
-\vskip 6pt
-Please place any additional command definitions at the very start of
-the \LaTeX{} file, before the \verb|\begin{document}|. For example, user-defined
-\verb|\def|  and \verb|\newcommand|   commands that define macros for
-technical expressions should be placed here. Other author-defined
-macros should be kept to a minimum.
-\vskip 6pt
-Commands that differ from the standard \LaTeX{} interface, or that
-are provided in addition to the standard interface, are explained in
-this guide. This guide is not a substitute for the \LaTeX{} manual itself.
-Authors planning to submit their papers in \LaTeX{} are advised to use
-\verb|juliacon.cls|  as early as possible in the creation of their files.
-
-%
-%
-%
-%
-\begin{table*}[t]
-\tabcolsep22pt
-\tbl{If necessary, the tables can be extended both columns.}{
-\begin{tabular}{|l|l|c|c|}\hline
-Label & \multicolumn{1}{c|}{Description}
-& Number of Users &
-Number of Queries\\\hline
-Test 1 & Training Data &
-\smash{\raise-7pt\hbox{70}} & 104\\
-\cline{1-2}\cline{4-4}
-Test 2 & Testing Data I & & 105\\\hline
-Test 3 & Testing Data II & 30 & 119\\\hline
-& Total & 100 & 328\\\hline
-\end{tabular}}
-\label{tab:symbols}
-\begin{tabnote}
-This is an example of table footnote.
-\end{tabnote}
-\end{table*}
-% \begin{figure*}[t]
-% \centerline{\includegraphics[width=11cm]{juliagraphs.png}}
-% \caption{If necessary, the images can be extended both columns.}
-%   \label{fig:sample_image}
-% \end{figure*}
-
-\section{Additional features}
-\label{sec:additional_faci}
-In addition to all the standard \LaTeX{} design elements, the \verb|juliacon|  class file includes the following features:
-In general, once you have used the additional \verb|juliacon.cls| facilities
-in your document, do not process it with a standard \LaTeX{} class
-file.
-
-\subsection{Titles, Author's Name, and Affiliation}
-\label{subsub:title_auth}
-The title of the article, author's name, and affiliation are used at the
-beginning of the article (for the main title). These can be produced
-using the following code:
-
-\begin{verbatim}
-\title{ This is an example of article title} }
-\author{
-   \large 1st Author \\[-3pt]
-   \normalsize 1st author's affiliation  \\[-3pt]
-    \normalsize 1st line of address \\[-3pt]
-    \normalsize 2nd line of address \\[-3pt]
-    \normalsize	1st author's email address \\[-3pt]
-  \and
-   \large 2nd Author \\[-3pt]
-   \normalsize 2nd author's affiliation  \\[-3pt]
-    \normalsize 1st line of address \\[-3pt]
-    \normalsize 2nd line of address \\[-3pt]
-    \normalsize	2nd author's email address \\[-3pt]
-\and
-   \large 3rd Author \\[-3pt]
-   \normalsize 3rd author's affiliation  \\[-3pt]
-    \normalsize 1st line of address \\[-3pt]
-    \normalsize 2nd line of address \\[-3pt]
-    \normalsize	3rd author's email address \\[-3pt]
-}
-\maketitle
-\end{verbatim}
-
-\subsection{Writing Julia code}
-
-A special environment is already defined for Julia code,
-built on top of \textit{listings} and \textit{jlcode}.
-
-\begin{verbatim}
 \begin{lstlisting}[
-    language = Julia, 
-    numbers=left, 
-    label={lst:exmplg}, 
-    caption={Example Code Block.}
+    language = Julia,
+    % numbers = left,
+    label = {code:label}, 
+    caption = {Example Code Block.}
 ]
-using Plots
+using AlgorithmAnalysis
+m, L = 1, 10
+α = 2 / (L + m)
+@algorithm begin
+    f = DifferentiableFunctional{Rⁿ}()
+    xs = first_order_stationary_point(f)
+    f ∈ SmoothStronglyConvex(m, L)
+    x1 = x0 - α * f'(x0)
+    x0 => x1
+    performance = (x0 - xs)^2
+end
 
-x = -3.0:0.01:3.0
-y = rand(length(x))
-plot(x, y)
-\end{lstlisting}
-\end{verbatim}
-\begin{lstlisting}[
-    language = Julia, 
-    numbers=left, 
-    label={lst:exmplg}, 
-    caption={Example Code Block.}
-]
-using Plots
-
-x = -3.0:0.01:3.0
-y = rand(length(x))
-plot(x, y)
+# compute the worst-case convergence rate
+rate(performance)
 \end{lstlisting}
 
+The automated analysis methodology has lead to the discovery of new algorithms and insights into existing algorithms. For example, the performance estimation problem (PEP) methodology has been used to analyze first-order optimization methods, leading to the discovery of new algorithms with improved convergence rates~\cite{pep}. The control theoretic analysis methodology has been used to analyze the stability and robustness of optimization algorithms, leading to the development of new algorithms that are more robust to noise and uncertainty.
 
-\subsection{Abstracts, Key words, term etc...}
-\label{subsub:abs_key_etc}
 
-At the beginning of your article, the title should be generated
-in the usual way using the \verb|\maketitle|  command. For genaral tem and keywords use
-\verb|\terms|,
-\verb|\keywords|  commands respectively. The abstract should be enclosed
-within an abstract environment, All these environment
-can be produced using the following code:
-\begin{verbatim}
-\terms{Experimentation, Human Factors}
-
-\keywords{Face animation, image-based modelling...}
-
-\begin{abstract}
-In this paper, we propose a new method for the
-systematic determination of the model's base of
-time varying delay system. This method based on
-the construction of the classification data related
-to the considered system. The number, the orders,
-the time delay and the parameters of the local
-models are generated automatically without any
-knowledge about the full operating range of the
-process. The parametric identification of the local
-models is realized by a new recursive algorithm for
-on line identification of systems with unknown time
-delay. The proposed algorithm allows simultaneous
-estimation of time delay and parameters of
-discrete-time systems. The effectiveness of
-the new method has been illustrated through
-simulation.
-\end{abstract}
-
-\end{verbatim}
-
-\section{Some guidelines}
-\label{sec:some_guide}
-The following notes may help you achieve the best effects with the
-\verb|juliacon|  class file.
-
-\subsection{Sections}
-\label{subsub:sections}
-\LaTeXe{}  provides four levels of section headings and they are all
-defined in the \verb|juliacon|  class file:
-\begin{itemize}
-\item \verb|\section|
-\item \verb|\subsection|
-\item \verb|\subsubsection|
-\item \verb|\paragraph|
-\end{itemize}
-Section headings are automatically converted to allcaps style.
-\subsection{Lists}
-\label{sec:lists}
-%
-The \verb|juliacon|   class file provides unnumbered lists using the
-\verb|unnumlist|  environment for example,
-
-\begin{unnumlist}
-\item First unnumbered item which has no label and is indented from the
-left margin.
-\item Second unnumbered item.
-\item Third unnumbered item.
-\end{unnumlist}
-The unnumbered list which has no label and is indented from the
-left margin. was produced by:
-\begin{verbatim}
-\begin{unnumlist}
-\item First unnumbered item...
-\item Second unnumbered item...
-\item Third unnumbered item...
-\end{unnumlist}
-\end{verbatim}
-
-The \verb|juliacon|  class file also provides hyphen list using the
-\verb|itemize|  environment for example,
-\begin{itemize}
-\item First unnumbered bulleted item which has no label and is indented
-from the left margin.
-\item Second unnumbered bulleted item.
-\item Third unnumbered bulleted item which has no label and is indented
-from the left margin.
-\end{itemize}
-was produced by:
-\begin{verbatim}
-\begin{itemize}
-\item First item...
-\item Second item...
-\item Third item...
-\end{itemize}
-\end{verbatim}
-
-Numbered list is also provided in acmtog class file using the
-enumerate environment for example,
-\begin{enumerate}
-\item The attenuated and diluted stellar radiation.
-\item Scattered radiation, and
-\item Reradiation from other grains.
-\end{enumerate}
-
-was produced by:
-\begin{verbatim}
-\begin{enumerate}
-\item The attenuated...
-\item Scattered radiation, and...
-\item Reradiation from other grains...
-\end{enumerate}
-\end{verbatim}
-\subsection{Illustrations (or figures)}
-\label{subsub:sec_Illus}
-The \verb|juliacon|  class file will cope with most of the positioning of
-your illustrations and you should not normally use the optional positional
-qualifiers on the \verb|figure|  environment that would override
-these decisions.
-\vskip 6pt
-
-%
 \begin{figure}[t]
 \centerline{\includegraphics[width=4cm]{juliagraphs.png}}
 \caption{This is example of the image in a column.}
@@ -318,226 +115,123 @@ these decisions.
 The figure \ref{fig:sample_figure} is taken from the JuliaGraphs
 organization \footnote{https://github.com/JuliaGraphs}.
 
-Figure captions should be \emph{below} the figure itself, therefore the
-\verb|\caption|  command should appear after the figure or space left for
-an illustration. For example, Figure 1 is produced using the following
-commands:
+\section{Algorithm Analysis Methodologies}
 
-\begin{verbatim}
-\begin{figure}
-\centerline{\includegraphics[width=20pc]{Graphics.eps}}
-\caption{An example of the testing process for a
-binary tree. The globa null hypothesis is tested
-first at level $\alpha$ (a), and the level of
-individual variables is reached last (d). Note
-that individual hypotheses can be tested at
-level $\alpha/4$ and not $\alpha/8$ as one might
-expect at first.}
-\label{sample-figure_2}
-\end{figure}
-\end{verbatim}
-Figures can be resized using first and second argument of
-\verb|\includegraphics|   command. First argument is used for modifying
-figure height and the second argument is used for modifying
-figure width respectively.
-\vskip 6pt
-Cross-referencing of figures, tables, and numbered, displayed
-equations using the \verb|\label|  and \verb|\ref|   commands is encouraged.
-For example, in referencing Figure 1 above, we used
-\verb|Figure~\ref{sample-figure}|
+Mathematically, optimization problems are modeled as minimizing a function subject to constraints. The automated analysis methodology applies to black-box algorithms, which obtain information about the objective function only through queries to an oracle that returns information about the queried point~\cite{nemirovski-yudin,nesterov-book}. %A first-order algorithm, for instance, uses the gradient oracle $\O_f(y) = \df(y)$.
+The main idea is to study the properties of an algorithm applied to an optimization problem in a systematic way as illustrated in Figure~\ref{fig:overview}.
 
- \subsection{Tables}
-\label{subsub:sec_Tab}
-The \verb|juliacon|   class file will cope with most of the positioning of
-your tables and you should not normally use the optional positional qualifiers on the table environment which would override these
-decisions. Table captions should be at the top.
-\begin{verbatim}
-\begin{table}
-\tbl{Tuning Set and Testing Set}{
-\begin{tabular}{|l|l|c|c|}\hline
-Label & \multicolumn{1}{c|}{Description}
-& Number of Users &
-Number of Queries\\\hline
-Train70 & Training Data &
-\smash{\raise-7pt\hbox{70}} & 104\\
-\cline{1-2}\cline{4-4}
-Test70 & Testing Data I & & 105\\\hline
-Test30 & Testing Data II & 30 & 119\\\hline
-& Total & 100 & 328\\\hline
-\end{tabular}}
-\end{table}
-\end{verbatim}
+\begin{figure*}[t]
+    \centering\includegraphics{overview}
+    \caption{Overview of the automated algorithm analysis methodology. The automated analysis procedure solves a convex optimization problem to produce a convergence result.}
+	\label{fig:overview}
+\end{figure*}
 
-\begin{table}
-\tbl{Tuning Set and Testing Set}{
-\begin{tabular}{|l|l|c|c|}\hline
-Label & \multicolumn{1}{c|}{Description}
-& Number of Users &
-Number of Queries\\\hline
-Test 1 & Training Data &
-\smash{\raise-7pt\hbox{70}} & 104\\
-\cline{1-2}\cline{4-4}
-Test 2 & Testing Data I & & 105\\\hline
-Test 3 & Testing Data II & 30 & 119\\\hline
-& Total & 100 & 328\\\hline
-\end{tabular}}
-\end{table}
-\subsection{Landscaping Pages}
-\label{subsub:landscaping_pages}
-If a table is too wide to fit the standard measure, it may be turned,
-with its caption, to 90 degrees. Landscape tables cannot be produced
-directly using the \verb|juliacon|   class file because \TeX{} itself cannot
-turn the page, and not all device drivers provide such a facility.
-The following procedure can be used to produce such pages.
-\vskip 6pt
-Use the package \verb|rotating|   in your document and change the coding
-from
-\begin{verbatim}
-\begin{table}...\end{table}
-to
-\begin{sidewaystable}...\end{sidewaystable}
-and for figures
-\begin{figure}...\end{figure}
-to
-\begin{sidewaysfigure}...\end{sidewaysfigure}
-\end{verbatim}
+There are two main approaches to automated algorithm analysis: the \textit{performance estimation problem} (PEP) approach from the optimization community and \textit{integral quadratic constraints} (IQCs) from the control community.
 
-environments in your document to turn your table on the appropriate
-page of your document. For instance, the following code prints
-a page with the running head, a message half way down and the
-table number towards the bottom.
-\begin{verbatim}
-\begin{sidewaystable}
-\tbl{Landscape table caption to go here.}{...}
-\label{landtab}
-\end{sidewaystable}
-\end{verbatim}
+The PEP approach formulates the automated analysis as the problem of finding the sequence of iterates and the optimization problem for which a given algorithm attains its worst-case behavior in terms of a specified measure of performance over some finite number of iterations~\cite{drori-teboulle}. While this optimization problem involves searching over an infinite-dimensional class of functions, it can be convexified by replacing the search over the function itself with constraints on the iterates such that there exists some function in the class that interpolates the points, along with a large-scale asumption on the dimension of the underlying domain of the optimization problem~\cite{pep}. While the PEP approach constructs provably tight bounds on the iterates of the algorithm, it can do so only over finite time horizons. Furthermore, the complexity of the analysis scales with the number of iterations, so the analysis is only computationally tractable for up to a few hundred iterations.
 
-\subsection{Double Column Figure and Tables}
-\label{subsub:double_fig_tab}
-For generating the output of figures and tables in double column
-we can use the following coding:
+In contrast, the IQC approach interprets an optimization algorithm as a dynamical system~\cite{lessard16}. Similar to the PEP approach, the ``uncertainty'' (such as the gradient of the objective function for first-order methods) is replaced by constraints between its inputs and outputs\footnote{The term \textit{integral quadratic constraint} comes from the fact that these constraints are often sums of quadratic forms, and the sums become integrals for continuous-time systems.}. These constraints are then used to search for a parameterized Lyapunov function whose existence is a certificate of convergence~\cite{taylor2018lyapunov}. This approach solves small semidefinite programs to produce bounds on the iterates of the algorithm that hold over any number of iterations. These bounds are tight in that, if a Lyapunov function of the parameterized form exists, this technique will find it~\cite{taylor2018lyapunov}. But there is in general no guarantee of such systems having a Lyapunov function of a particular form, so in general the convergence bounds may not be tight.
 
-\begin{enumerate}
-\item For Figures:
-\begin{verbatim}
-\begin{figure*}...\end{figure*}
-\end{verbatim}
-\item For landscape figures:
-\begin{verbatim}
-\begin{sidewaysfigure*}...\end{sidewaysfigure*}
-\end{verbatim}
-\item For Tables:
-\begin{verbatim}
-\begin{table*}...\end{table*}
-\end{verbatim}
-\item For landscape tables:
-\begin{verbatim}
-\begin{sidewaystable*}...\end{sidewaystable*}
-\end{verbatim}
-\end{enumerate}
+These approaches have been applied to a variety of algorithm forms such as fixed-step first-order methods~\cite{pep}, Nesterov's accelerated method~\cite{hu-lessard2017}, the alternating direction method of multipliers (ADMM)~\cite{admm,iqcadmm_ICML}, Markov jump linear systems~\cite{hu-syed2019}, inexact gradient and Newton methods~\cite{deklerk-glineur-taylor2020}, and decentralized methods~\cite{colla-hendrickx2023} among others.
 
-\subsection{Typesetting Mathematics}
-\label{subsub:type_math}
-The \verb|juliacon| class file will set displayed mathematics with center to
-the column width, provided that you use the \LaTeXe{} standard of
-open and closed square brackets as delimiters.
-The equation
+While the convergence properties of an algorithm depend on the specific objective function $f$, algorithms are typically designed and analyzed for an entire class of functions $\F$. In this case, the goal may be to characterize the \textit{worst-case} performance of the algorithm over any objective function in the class~\cite{rmm}, or to characterize the distribution of the performance over all problems in the class (such as \textit{average-case} performance~\cite{robey-chamon-pappas-hassani2022}).
+
+We now describe the main ideas behind the PEP and IQC approaches to worst-case automated algorithm analysis on the unconstrained optimization problem of minimizing an objective function $f$ in a class $\F$ of (differentiable) functions.
+
+\subsection{Performance Estimation}
+
+A performance estimation problem (PEP) is an optimization problem whose solution characterizes the exact worst-case convergence properties of a black-box algorithm over a finite number of iterations~\cite{pep-original,pep}. Given an oracle $O_f$ and initial point $y_0$, a black-box method $M$ constructs a sequence of points $y_1,y_2,\ldots$ as follows:
+\begin{align*}
+  y_1 &= M_0(y_0,O_f(y_0)), \\
+  y_2 &= M_1(y_0,O_f(y_0),O_f(u_1)), \\
+    &\ \, \vdots \\
+  y_{k+1} &= M_k(y_0,O_f(y_0),\ldots,O_f(y_k)).
+\end{align*}
+At iteration $k$, the next iterate $y_{k+1}$ is constructed from the initial condition $y_0$ and the oracle applied to all the previous iterates, $O_f(y_0),\ldots,O_f(y_k)$. Given a function class $\F$, a black-box algorithm $M$, and an initial point $y_0$, a typical PEP has the form
+\begin{align*}
+  \maximize \quad & \text{performance of algorithm $M$ with oracle $O_f$ over $N$ iterations} \\
+  \text{subject to} \quad & f\in\F
+\end{align*}
+where the variables are the function $f$ and the iterates of the algorithm. As stated, this problem is intractible since it requires optimizing over the function class $\F$. The first main idea in the analysis is to replace the objective function and its oracle with \textit{interpolation conditions}, which are necessary and sufficient conditions for there to exist a function $f\in\F$ that interpolates the data:
 \[
-\sum_{i=1}^p \lambda_i = (S)
+  \text{there exists }f\in\F \text{ such that }u_k = O_f(y_k) \text{ for all }k.
 \]
-
-was typeset using the acmtog class file with the commands
-
-\begin{verbatim}
+For instance, the interpolation conditions for a first-order oracle applied to a convex function is that $f_i \geq f_j + \langle g_j, y_i-y_j\rangle$ for all $i$ and $j$, where $O_f(y_i) = (f_i,g_i)$ with $f_i = f(y_i)$ and $g_i = \df(y_i)$. The PEP is still nonconvex since the performance measure and interpolation conditions are typically nonconvex in the iterates. The second main idea behind the analysis is that, for first-order oracles, the problem is convex in the Gram matrix of inner products and the vector of function values,
 \[
-\sum_{i=1}^p \lambda_i = (S)
+  G = \bmat{\langle y_0, g_0\rangle & \langle y_0, g_1\rangle & \ldots & \langle y_0,g_N\rangle \\ \langle y_1, g_0\rangle & \langle y_1, g_1\rangle & \ldots & \langle y_1,g_N\rangle \\ \vdots & \vdots & \ddots & \vdots \\ \langle y_N,g_0\rangle & \langle y_N,g_1\rangle & \ldots & \langle y_N,g_N\rangle}
+  \quad\text{and}\quad
+  F = \bmat{f_0 \\ f_1 \\ \vdots \\ f_N}.
 \]
-\end{verbatim}
+If the dimension of the iterates is sufficiently large, then the PEP can be formulated in terms of the Gram matrix and function values as the following \textit{convex} optimization problem:
+\begin{align*}
+  \maximize \quad & \text{performance of $(G,F)$ over $N$ iterations} \\
+  \text{subject to} \quad & \text{$(G,F)$ corresponds to iterates generated by algorithm $M$ with oracle $O_f$} \\
+    & \text{$(G,F)$ is $\F$-interpolable}
+\end{align*}
+This problem can be solved efficiently, for example, using standard interior point methods~\cite{boyd,numerical-optimization}. The optimal value is the exact worst-case performance after $N$ iterations over the function class $\F$. As the size of the problem grows with the time horizon $N$, the complexity of the analysis grows as well, so the PEP approach is typically only tractible for up to a few hundred iterations.
 
-For display equations, cross-referencing is encouraged. For example,
-\begin{verbatim}
-\begin{equation}
-(n-1)^{-1} \sum^n_{i=1} (X_i - \overline{X})^2.
-\label{eq:samplevar}
-\end{equation}
-Equation~(\ref{eq:samplevar}) gives the formula for
-sample variance.
-\end{verbatim}
-The following output is generated with the above coding:
-\begin{equation}
-(n-1)^{-1} \sum^n_{i=1} (X_i - \overline{X})^2.
-\label{eq:samplevar}
-\end{equation}
-Equation~(\ref{eq:samplevar}) gives the formula for
-sample variance.
+\subsection{Control Theoretic Analysis}
+
+In constrast to the performance estimation approach, the control community interprets optimization algorithms as \textit{iterative} black-box algorithms which are then amenable to tools from control theory~\cite{lessard,bhaya2006}. Given an oracle $O_f$ and initial state $\xi_0$, an iterative black-box algorithm constructs a sequence of iterates as follows:
+\begin{align*}
+    &\Sigma:\biggl\{\ \begin{aligned} \xi_{k+1} &= A \xi_k + B u_k \\ y_k &= C \xi_k \end{aligned}\\[2mm]
+    &\Delta:\{\quad\ u_k = O_f(y_k)
+\end{align*}
+which can be represented graphically as:
+\begin{center}
+  \includegraphics[valign=c]{sys-robust}
+\end{center}
+
+The dynamical system $\Sigma$ describes how the state $\xi_k$ of the system evolves in time as well as how the point $y_k$ at which the oracle is evaluated depends on the state and input of the system. The operator $\Delta$ evaluates the oracle at the point $y_k$ to produce the input $u_k$ to the system, which can be intepreted as an uncertainty over the functions $f\in\F$. This can be represented graphically as the system $\Sigma$ in feedback with the uncertainty $\Delta$, as is typical in robust control~\cite{ZDG}.
+
+The closed-loop system is typically a nonlinear dynamical system due to the oracle. The main idea behind the analysis is to replace the oracle with inequalities that hold between its input and output.
+%For instance, if $f$ is convex, then the inequality $(\df(y_2)-\df(y_1))^\tp (y_2-y_1) \geq 0$ holds for all $y_1,y_2\in\real^d$. Note that this condition involves the gradient evaluated at two points, such as two consecutive iterates of the algorithm.
+% The more points along the trajectory of the algorithm to which we apply this inequality, the tighter the analysis. To obtain a sequence of points, we filter the input and output signals of the gradient with a filter $\psi(z) = (1,z^{-1},\ldots,z^{-\ell+1})$ for some integer $\ell$ so that the filtered signals are as follows:\\
+% \[
+%   \bmat{\y \\ \u} = \Psi\bmat{y \\ u} \qquad\text{where}\qquad
+%   \y_t = \bmat{y_t \\ \vdots \\ y_{t-\ell+1}} \qquad\text{and}\qquad
+%   \u_t = \bmat{u_t \\ \vdots \\ u_{t-\ell+1}}.
+%   % \Psi(z) = \bmat{1 & z^{-1} & \ldots & z^{-\ell+1} & 0 & 0 & \ldots & 0 \\ 0 & 0 & \ldots & 0 & 1 & z^{-1} & \ldots & z^{-\ell+1}}^\tp
+% \]
+Consider applying a filter $\Psi$ to the input $y$ and output $u$ of the uncertainty. IQCs are then quadratic inequalities on the output of the filter that are known to hold for all possible uncertainties~\cite{iqc}. The uncertainty $\Delta$ can then be replaced by these constraints as follows:
+\begin{center}
+  \centering\includegraphics{iqc}
+\end{center}
+which simplifies to:
+\begin{center}
+  \includegraphics{sys-closed-loop}
+\end{center}
+subject to the IQC
+\[
+    0\leq\sum_{k=0}^{N-1} z_k^\tp M z_k.
+\]
+Here, $\hat\Sigma$ represents the closed-loop map from $u$ to $z$, which depends on both the system $\Sigma$ and filter $\Psi$. The analysis then reduces to studying the closed-loop system $\hat\Sigma$ subject to the IQCs on its output. If the system $\hat\Sigma$ has a certain convergence property whenever the IQC is satisfied, and the IQC holds for any uncertainty $\Delta$, then the convergence property must hold for the original feedback interconnection of $\Sigma$ with $\Delta$.
+
+To illustrate the analysis, suppose the closed-loop system $\hat\Sigma$ is linear and time invariant with state-space representation $(\hat A,\hat B,\hat C,\hat D)$. If we can find a positive definite matrix $P\succ 0$ and scalar $\lambda\geq 0$ such that the linear matrix inequality (LMI)
+\begin{multline*}
+    \bmat{\hat A & \hat B}^\tp P \bmat{\hat A & \hat B} - \rho^2\bmat{I & 0}^\tp P \bmat{I & 0} \\ + \lambda\bmat{\hat C & \hat D}^\tp M \bmat{\hat C & \hat D} \preceq 0
+\end{multline*}
+holds, then the quadratic form $V(\hat\xi) = \hat\xi^\tp P \hat\xi$ is a Lyapunov function for the system, where $\hat\xi_k$ is the state of the closed-loop system $\hat\Sigma$. In particular, feasibility of this LMI certifies that the iterates converge linearly since
+\[
+  \|\hat\xi_k\|^2 \leq V(\hat\xi_k) \leq \rho^2 V(\hat\xi_{k-1}) \leq \ldots \leq \rho^{2k} V(\hat\xi_0).
+\]
+The first inequality is due to $P$ being positive definite while the remaining ones are due to the LMI.
+
+\subsection{Relationship Between the Two Approaches}
+
+The IQC and PEP approaches to automated algorithm analysis are related: they are \textit{dual} problems of each other~\cite{taylor2018lyapunov}. This insight has numerous benefits. For instance, IQCs can be derived directly from the interpolation conditions for a class of uncertainties, which provides a systematic method to construct IQCs as well as theoretical guarantees about the tightness of the constraints and the resulting analysis. Similar to the PEP approach, the IQC analysis extends in a straightforward manner to include \textit{function values}. When the uncertainty is the gradient of a function, $\Delta = \df$, we can include the function values $f(y_t)$ in the analysis to handle function classes that are defined by inequalities involving them, such as quadratic growth which is defined by the inequality $f(x) \geq \frac{\mu}{2} \|x\|^2$ for all $x$. In either case, the analysis consists of solving a convex semidefinite program for which efficient solvers~\cite{mosek,cosmo,scs} and modeling languages~\cite{yalmip,cvx1,cvx2} are readily available.
+
+\section{Package Structure}
+
+The package transforms the algorithm description into a mathematical optimization problem, which is then modeled in JuMP~\cite{JuMP,JuMP-review} and solved using an appropriate solver. The package is designed to be extensible, allowing users to add new types of algorithms and performance measures as needed.
+
+\section{Examples}
+
+\section{Conclusion}
 
 
-\subsection{Enunciations}
-\label{subsub:enunciation}
-The \verb|juliacon|   class file generates the enunciations with the help of
-the following commands:
-\begin{verbatim}
-\begin{theorem}...\end{theorem}
-\begin{strategy}...\end{strategy}
-\begin{property}...\end{property}
-\begin{proposition}...\end{proposition}
-\begin{lemma}...\end{lemma}
-\begin{example}...\end{example}
-\begin{proof}...\end{proof}
-\begin{definition}...\end{definition}
-\begin{algorithm}...\end{algorithm}
-\begin{remark}...\end{remark}
-\end{verbatim}
-The above-mentioned coding can also include optional arguments
-such as
-\begin{verbatim}
-\begin{theorem}[...]. Example for theorem:
-\begin{theorem}[Generalized Poincare Conjecture]
-Four score and seven ... created equal.
-\end{theorem}
-\end{verbatim}
-
-\begin{theorem}[Generalized Poincare Conjecture]
-Four score and seven years ago our fathers brought forth,
-upon this continent, a new nation, conceived in Liberty,
- and dedicated to the proposition that all men are
-created equal.
-\end{theorem}
-
-
-\subsection{Extract}
-\label{subsub:extract}
-Extract environment should be coded within
-\begin{verbatim}
-\begin{extract}..\end{extract}
-\end{verbatim}
-
-\subsection{Balancing column at last page}
-\label{subsub:Balance}
-For balancing the both column length at last page use :
-\begin{verbatim}
-\vadjust{\vfill\pagebreak}
-\end{verbatim}
-
-%\vadjust{\vfill\pagebreak}
-
-at appropriate place in your \TeX{} file or in bibliography file.
-
-\section{Handling references}
-\label{subsub:references}
-References are most easily (and correctly) generated using the
-BIBTEX, which is easily invoked via
-\begin{verbatim}
-\bibliographystyle{juliacon}
-\bibliography{ref}
-\end{verbatim}
-When submitting the document source (.tex) file to external
-parties, the ref.bib file should be sent with it.
-\cite{bezanson2017julia}
+% \vadjust{\vfill\pagebreak} % to balance the last page
 
 \input{bib.tex}
 
 \end{document}
-
-% Inspired by the International Journal of Computer Applications template

@@ -1,0 +1,18 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{block-diagram}
+
+
+\begin{document}
+
+\begin{tikzpicture}
+
+  \node [block] (oracle) {$u_k = \mathcal{O}_f(y_k)$};
+  \node [block,below=3mm of oracle] (alg) {$G:\biggl\{\ \begin{aligned} x_{k+1} &= g_k(x_k,u_k) \\ y_k &= h_k(x_k) \end{aligned}$};
+
+  \draw [<-] (alg.east) -- ++(5mm,0) -- node[pos=0.5,anchor=west] {$u$} (oracle -| \currentcoordinate) -- (oracle);
+  \draw [->] (alg.west) -- ++(-5mm,0) -- node[pos=0.5,anchor=east] {$y$} (oracle -| \currentcoordinate) -- (oracle);
+
+\end{tikzpicture}
+
+\end{document}

@@ -1,4 +1,4 @@
-# Manual
+# Code
 
 ## Expressions
 
@@ -60,7 +60,7 @@ We make extensive use of this macro throughout the manual. Whenever using the ma
 
 ## Oracles
 
-In addition to scalar and vector spaces, expressions can also be `Oracle`s, which are black-box functions (or more generally, relations) between other expression types. For instance, we can define a map from `Rⁿ` to `Rᵐ` like this:
+In addition to scalars and vector spaces, expressions can also be `Oracle`s, which are black-box functions (or more generally, relations) between other expression types. For instance, we can define a map from `Rⁿ` to `Rᵐ` like this:
 
 ```julia-repl
 julia> f = Map{Rⁿ, Rᵐ}()
@@ -103,7 +103,7 @@ true
 ```
 For a set-valued map, use
 ```julia-repl
-julia> @algorithm F : Rⁿ => Rᵐ
+julia> @algorithm F : Rⁿ ⇒ Rᵐ
 julia> F
 Oracle
   Description: Operator from Rⁿ to Rᵐ
@@ -196,5 +196,3 @@ julia> a == 0  # equal zero
 julia> u ≥ 0   # positive orthant
 julia> P ⪰ 0   # positive semidefinite
 ```
-
-## Analysis

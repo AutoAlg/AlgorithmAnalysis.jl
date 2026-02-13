@@ -1,0 +1,17 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{block-diagram}
+
+\begin{document}
+
+\begin{tikzpicture}
+
+  \node [block] (system) {$\Sigma$};
+  \node [block,above=3mm of system] (uncertainty) {$\Delta$};
+  
+  \draw (uncertainty.east) -- ++(1,0) |- (system.east);
+  \draw [<-] (uncertainty.west) -- ++(-1,0) |- (system.west);
+
+\end{tikzpicture}
+
+\end{document}
