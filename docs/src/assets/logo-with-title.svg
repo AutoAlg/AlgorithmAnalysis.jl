@@ -1,0 +1,36 @@
+<svg width="2950" height="450" viewBox="0 0 2950 450" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <style type="text/css">
+      .title { font: bold 250px sans-serif; fill: #404040; }
+    </style>
+  </defs>
+
+  <mask id="mask">
+    <rect width="512" height="450" fill="white" fill-opacity="0.5" />
+    <circle cx="200" cy="200" r="117.5" fill="white" />
+  </mask>
+
+  <g id="graph" mask="url(#mask)">
+    <path d="M 216 110 L 110 260" stroke="#555555" stroke-width="12" stroke-linecap="round" />
+    <path d="M 216 110 L 316 220" stroke="#555555" stroke-width="12" stroke-linecap="round" />
+    <path d="M 100 260 L 316 220" stroke="#555555" stroke-width="12" stroke-linecap="round" />
+
+    <circle cx="216" cy="100" r="60" fill="#9558B2" />
+    <circle cx="100" cy="260" r="65" fill="#CB3C33" />
+    <circle cx="316" cy="220" r="50" fill="#389826" />
+  </g>
+
+  <g id="magnifying-glass">
+    <path d="M 300 300 L 380 380" stroke="#404040" stroke-width="45" stroke-linecap="round" />
+    
+    <circle cx="200" cy="200" r="130" fill="none" stroke="#404040" stroke-width="25" />
+    
+    <path d="M 140 140 Q 170 110 210 120" stroke="white" stroke-width="15" stroke-linecap="round" fill="none" opacity="0.4" />
+  </g>
+
+  <text x="520" y="50%" class="title" alignment-baseline="middle">AlgorithmAnalysis.jl</text>
+
+  <!-- bounding box -->
+  <!-- <rect x="0" y="0" width="2950" height="450" stroke="green" stroke-width="3" fill="none"></rect> -->
+</svg>

@@ -286,20 +286,20 @@ function eval_and_label(ex::Expr)
         end
 
     # else if the expression is an inclusion (e.g., x ∈ R)
-    elseif ex.args[1] == :(∈) || ex.args[1] == :in
+    # elseif ex.head == :call && (ex.args[1] == :(∈) || ex.args[1] == :in)
 
-        lhs = esc(ex.args[2])
-        rhs = esc(ex.args[3])
-        str = string(ex.args[2])
+    #     lhs = esc(ex.args[2])
+    #     rhs = esc(ex.args[3])
+    #     str = string(ex.args[2])
 
-        quote
-            if $rhs isa $DataType && $rhs <: Expression
-                $lhs = $rhs()
-                label!($lhs, $str)
-            else
-                $(esc(ex))
-            end
-        end
+    #     quote
+    #         if $rhs isa $DataType && $rhs <: Expression
+    #             $lhs = $rhs()
+    #             label!($lhs, $str)
+    #         else
+    #             $(esc(ex))
+    #         end
+    #     end
 
     # else if the lhs is an element of an array (evalutes the index)
     elseif ex.args[1] isa Expr && ex.args[1].head == :ref

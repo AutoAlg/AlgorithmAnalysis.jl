@@ -1,4 +1,6 @@
-# AlgorithmAnalysis.jl
+<!-- # AlgorithmAnalysis.jl -->
+
+![Alt text](/docs/src/assets/logo-with-title.svg)
 
 AlgorithmAnalysis.jl is a Julia package for the automated analysis of algorithms.
 
