@@ -1,6 +1,4 @@
-# AlgorithmAnalysis.jl
-
-![Algorithm Analysis Logo](docs/src/assets/logo.png)
+![Algorithm Analysis](/docs/src/assets/logo-with-title-dark.svg)
 
 [![Build Status](https://github.com/vanscoy/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/vanscoy/AlgorithmAnalysis.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://vanscoy.github.io/AlgorithmAnalysis.jl/stable)
@@ -17,9 +15,6 @@ import Pkg
 Pkg.add("AlgorithmAnalysis")
 ```
 
-> [!TIP]
-> By default, AlgorithmAnalysis uses [SCS](https://www.cvxgrp.org/scs/) to solve convex cone programs. If you would like to use a different solver (such as [Mosek](https://www.mosek.com/)), you will need to install that as well.
-
 ## Example
 
 This example code finds the worst-case performance guarantee of the gradient descent algorithm at minimizing $L$-smooth and $m$-strongly convex functions.
@@ -27,15 +22,13 @@ This example code finds the worst-case performance guarantee of the gradient des
 ```julia
 using AlgorithmAnalysis
 m, L = 1, 10
-α = 2 / (L + m)
 @algorithm begin
     f = DifferentiableFunctional{Rⁿ}()
     xs = first_order_stationary_point(f)
-    f' ∈ SectorBounded(m, L, xs, f'(xs))
+    f ∈ SmoothStronglyConvex(m, L)
     x0 ∈ Rⁿ
-    x1 = x0 - α * f'(x0)
-    x0 => x1
+    x0 => x0 - (1/L) * f'(x0)
     performance = (x0 - xs)^2
 end
-@show rate(performance)
+rate(performance)
 ```

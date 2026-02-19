@@ -121,9 +121,22 @@ m = 1
 L = 10
 α = 2/(L+m)
 ρ = 1-2α*m*L/(L+m)
-gradient_descent(m, L, α=α, ρ=ρ, measure=DistanceToOptimality, n=1) &&
-gradient_descent(m, L, α=α, ρ=ρ, measure=DistanceToStationarity, n=2) &&
-abs( gradient_descent(m, L, α=α, measure=DistanceToStationarity, n=2) - ρ ) < 1e-3
+@algorithm begin
+    f = DifferentiableFunctional{Rⁿ}()
+    xs = first_order_stationary_point(f)
+    f' ∈ SmoothStronglyConvex(m, L)
+    
+    x0 = Rⁿ()
+    x0 => x0 - α * f'(x0)
+
+    performance = (x0 - xs)^2
+end
+
+certify(performance, ρ)
+
+# gradient_descent(m, L, α=α, ρ=ρ, measure=DistanceToOptimality, n=1) &&
+# gradient_descent(m, L, α=α, ρ=ρ, measure=DistanceToStationarity, n=2) &&
+# abs( gradient_descent(m, L, α=α, measure=DistanceToStationarity, n=2) - ρ ) < 1e-3
 """
     ),
     Result(

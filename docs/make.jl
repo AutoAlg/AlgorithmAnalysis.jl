@@ -1,12 +1,19 @@
 push!(LOAD_PATH,"../src/")
 
-using AlgorithmAnalysis, Documenter
+using AlgorithmAnalysis, Documenter, DocumenterCitations
+
+bib = CitationBibliography(joinpath(@__DIR__, "src", "references.bib"))
 
 makedocs(
     sitename = "AlgorithmAnalysis",
-    format = Documenter.HTML(edit_link="master", prettyurls=false),
+    format = Documenter.HTML(
+        edit_link = "master",
+        prettyurls = false,
+        assets = ["assets/style.css"],
+    ),
     modules = [AlgorithmAnalysis],
     checkdocs = :exports,
+    plugins = [bib],
     pages = [
         "Introduction" => "index.md",
         "Manual" => [

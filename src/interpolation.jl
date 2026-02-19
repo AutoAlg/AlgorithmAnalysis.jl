@@ -203,20 +203,26 @@ function constraints end
 
 constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
 
-function constraints(o::OracleOrWrapper, checked)
-    if o ∈ checked
-        return Constraints()
-    else
-        push!(checked, o)
-        cons = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
-        # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
-        for a in values(associations(o))
-            union!(cons, constraints(a, checked))
-        end    
-        cons
-    end
+function constraints(o::OracleOrWrapper)
+    cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
+    cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+    cons1 ∪ cons2
 end
-constraints(o::OracleOrWrapper) = constraints(o, Set())
+
+# function constraints(o::OracleOrWrapper, checked)
+#     if o ∈ checked
+#         return Constraints()
+#     else
+#         push!(checked, o)
+#         cons = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
+#         # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+#         for a in values(associations(o))
+#             union!(cons, constraints(a, checked))
+#         end
+#         cons
+#     end
+# end
+# constraints(o::OracleOrWrapper) = constraints(o, Set())
 
 # Operators
 
