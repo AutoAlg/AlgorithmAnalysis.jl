@@ -5,11 +5,9 @@ Mathematically, optimization problems are modeled as minimizing a function subje
 !!! example "Example: First-order oracle"
     A first-order oracle for a differentiable function $f$ has the form $o(x) = (f(x), \nabla f(x))$, where $\nabla f$ is the gradient of $f$.
 
-## Key Ideas
+## Interpolation
 
 There are several key ideas that are common to both types of analysis. We now describe the main ideas behind the PEP and IQC approaches to worst-case automated algorithm analysis on the unconstrained optimization problem of minimizing an objective function $f$ in a class $\mathcal{F}$ of (differentiable) functions.
-
-### Interpolation
 
 The first main idea in the analysis is to replace all oracles with their *interpolation conditions*. Consider a class $\mathcal{O}$ of oracles, where each oracle in $\mathcal{O}$ is a set-valued function from $X$ to $Y$. Consider also a set of points $S \subset X\times Y$, where each element of $S$ has the form $(x,y)$ with $x\in X$ and $y\in Y$. The interpolation conditions are necessary and sufficient conditions on the set $S$ for there to exist an oracle $o\in\mathcal{O}$ that interpolates the data:
 ```math
@@ -18,24 +16,22 @@ The first main idea in the analysis is to replace all oracles with their *interp
 For an algorithm involving an oracle $o\in\mathcal{O}$, its worst-case performance is equivalent to that of its iterates subject to the interpolation conditions. We can therefore replace the oracle with its interpolation conditions in the analysis.
 
 !!! example "Example: Convex interpolation"
-    Let $\mathcal{O}$ be the class of first-order oracles for differentiable convex functions from $\mathbb{R}^n$ to $\mathbb{R}$. The domain of the oracle is $X = \mathbb{R}^n$, and the codomain is $Y = \mathbb{R}\times\mathbb{R}^n$. Given a finite set $S = \{x_i,(f_i,g_i)\}$, the interpolation conditions are that [pep](@cite)
+    Let $\mathcal{O}$ be the class of first-order oracles for differentiable convex functions from $\mathbb{R}^n$ to $\mathbb{R}$. The domain of the oracle is $X = \mathbb{R}^n$, and the codomain is $Y = \mathbb{R}\times\mathbb{R}^n$. Given a finite set $S = \{(x_i,(f_i,g_i))\}$, the interpolation conditions are that [pep](@cite)
     ```math
       f_i \geq f_j + g_j^\top ( y_i-y_j) \qquad\text{for all $i$ and $j$}.
     ```
     If these conditions hold, then there exists a convex function $f : \mathbb{R}^n\to\mathbb{R}$ such that $f_i = f(x_i)$ and $g_i = \nabla f(x_i)$ for all $i$.
 
 !!! example "Example: Gram transformation"
-    Consider a set of vectors $x_1,x_2,\ldots,x_n\in X$, where $X$ is a vector space with inner product $\langle\cdot,\cdot\rangle$. 
-
-### Gram Transformation
-
-The second main idea behind the analysis is that, for first-order oracles, the problem is convex in the Gram matrix of inner products and the vector of function values,
-```math
-  G = \begin{bmatrix} \langle y_0, g_0\rangle & \langle y_0, g_1\rangle & \ldots & \langle y_0,g_N\rangle \\ \langle y_1, g_0\rangle & \langle y_1, g_1\rangle & \ldots & \langle y_1,g_N\rangle \\ \vdots & \vdots & \ddots & \vdots \\ \langle y_N,g_0\rangle & \langle y_N,g_1\rangle & \ldots & \langle y_N,g_N\rangle \end{bmatrix}
-  \quad\text{and}\quad
-  F = \begin{bmatrix} f_0 \\ f_1 \\ \vdots \\ f_N \end{bmatrix}.
-```
-The Gram matrix is positive semidefinite for any set of iterates. Moreover, any positive semidefinite matrix is the Gram matrix of a set of iterates, provided that the dimension of the space in which the iterates belong is sufficiently large. In particular, the dimension must be at least the rank of the Gram matrix. The analysis can still be used to construct bounds when this "high dimension" assumption fails, but the analysis may not be tight in that case.
+    Consider a set of vectors $x_1,x_2,\ldots,x_m\in\mathbb{R}^n$. Associated with each vector $x_i$, we can define the associated linear function $y \mapsto x_i^\top y$, which we can intepret as an oracle. Evaluating each linear function at each of the vectors yields the scalars $g_{ij} = x_i^\top x_j$. With these outputs, we can form the Gram matrix of inner products,
+    ```math
+      G = \begin{bmatrix} g_{11} & g_{12} & \ldots & g_{1m} \\ g_{21} & g_{22} & \ldots & g_{2m} \\ \vdots & \vdots & \ddots & \vdots \\ g_{m1} & g_{m2} & \ldots & g_{mm} \end{bmatrix}.
+    ```
+    For any set of vectors $x_1,\ldots,x_m\in\mathbb{R}^n$, the the Gram matrix is positive semidefinite. Moreover, any positive semidefinite matrix in $\mathbb{R}^{n\times n}$ is the Gram matrix of a set of $m$ vectors, provided that the dimension $n$ is sufficiently large. In particular, the dimension must be at least the rank of the Gram matrix. In other words, the interpolation conditions are
+    ```math
+      G \succeq 0 \qquad\text{and}\qquad n \geq \text{rank}(G).
+    ```
+    If the dimension $n$ is larger than the number of vectors $m$, then the rank condition is trivially satisfied. Moreover, the analysis can still be used to construct bounds when this "high dimension" assumption fails, but the analysis may not be tight in that case.
 
 ## Types of Analysis
 
