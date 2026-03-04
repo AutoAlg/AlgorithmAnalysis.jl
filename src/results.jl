@@ -43,6 +43,7 @@ Base.@kwdef struct TestHandle
     function_name::String
     function_pointer::Function
     function_body::String
+    function_path::String
 end
 
 macro generate_test_handle(func_def)
@@ -52,11 +53,13 @@ macro generate_test_handle(func_def)
 
     local functionNameSymbol::Symbol = func_def.args[1].args[1]
 
-    if __source__.file === nothing || string(__source__.file) == "REPL"
+    local sourceFilePath::String = String(__source__.file);
+
+    if __source__.file === nothing || sourceFilePath == "REPL"
         error("bruh don't call this in the REPL")
     end
 
-    local source_text::String = read(String(__source__.file), String)
+    local source_text::String = read(sourceFilePath, String)
     
     start_idx = 1
     current_line = 1
@@ -86,7 +89,8 @@ macro generate_test_handle(func_def)
         TestHandle(
             function_name = $(string(functionNameSymbol)), 
             function_pointer = $(esc(functionNameSymbol)), 
-            function_body = $final_body_string::String
+            function_body = $final_body_string::String,
+            function_path = $sourceFilePath::String
         )
     end
 end

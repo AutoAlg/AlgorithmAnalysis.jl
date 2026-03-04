@@ -5,7 +5,7 @@ foobar_handle = @generate_test_handle function foobar()
 end
 
 baz_bar_handle = @generate_test_handle function bazbar()
-    3 == 4-122
+    3 == 3
 end
 
 TestFileDescriptor(
