@@ -11,3 +11,6 @@
 *.fls
 *.out
 docs/build/
+build
+.vscode/*
+checks.json
