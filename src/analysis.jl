@@ -3,6 +3,8 @@ function variables(o::OracleOrWrapper)
     for a ∈ associations(o)
         if first(a) ≠ GradientOf
             union!(vars, variables(unwrap(last(a))))
+        else
+            push!(vars, unwrap(last(a)))
         end
     end
     vars
@@ -26,30 +28,37 @@ end
 
 neighbors(x::Expression) = variables(x) ∪ constraints(x) ∪ oracles(x)
 neighbors(x::Constraint) = variables(x)
-neighbors(x::Oracle) = variables(x) ∪ constraints(x)
+neighbors(w::Wrapper) = neighbors(unwrap(w))
 
 # Get all objects in the graph using graph search
-function nodes(x::Object)
+function connected_components(x::Object; verbose=false)
     visited = Objects()
     queue = Objects([x])
     while !isempty(queue)
         node = pop!(queue)
+        if verbose
+            @info "Visiting $node"
+        end
         if node ∉ visited
             push!(visited, node)
-            union!(queue, neighbors(node))
+            for neighbor ∈ neighbors(node)
+                if neighbor ∉ visited
+                    if verbose
+                        @info " ⋅ Queueing $neighbor"
+                    end
+                    push!(queue, neighbor)
+                end
+            end
         end
     end
     visited
 end
-
 
 """
     variables_constraints
 
 Recursively find all variables and constraints associated with an expression.
 """
-function variables_constraints end
-
 function variables_constraints(x::Object)
     xs = nodes(x)
 
@@ -162,7 +171,7 @@ end
 
 Given a constraint, return the corresponding multiplier variable in the optimization model. The multiplier is an element of the dual cone of the constraint, so the inner product of the multiplier with the expression of the constraint is nonnegative for all feasible points.
 """
-multiplier(model::JuMP.Model, c::ConeConstraint) = get_element(model, cone(c)', size(c))
+multiplier(model::JuMP.Model, c::Constraint) = get_element(model, cone(c)', size(c))
 
 """
     maximize(performance)
@@ -181,7 +190,7 @@ function maximize(performance::Expression)
     @info "Maximizing the performance measure $performance"
 
     # variables, constraints, and oracles associated with the performance measure
-    vars, cons, orcs = variables_constraints_oracles(performance)
+    vars, cons = variables_constraints(performance)
 
     if !isimplementable(cons ∪ variables(cons))
         error("Analysis is not implementable! All constraints and associated variables must be implementable.")
@@ -222,7 +231,7 @@ function maximize(performance::Expression)
     foreach( p -> value!(first(p), JuMP.value(last(p))), optvar_dict )
 
     # interpolate each oracle
-    foreach( interpolate, orcs )
+    # foreach( interpolate, orcs )
 
     @info "Objective value: $(evaluate(performance))"
 

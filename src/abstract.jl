@@ -2,6 +2,13 @@
 # Abstract types
 
 """
+    Object
+
+An abstract object. An object can be an expression, a constraint, an oracle, or a wrapper of any of these.
+"""
+abstract type Object end
+
+"""
     Expression
 
 An abstract expression.
@@ -10,7 +17,7 @@ An expression can be a constant (nonzero or zero), a variable (with known or unk
 
 A subtype is [`AbstractVectorSpace`](@ref).
 """
-abstract type Expression end
+abstract type Expression <: Object end
 
 """
     AbstractVectorSpace <: Expression
@@ -56,19 +63,19 @@ An abstract inner product space. The inner product of two vectors produces a sca
 abstract type InnerProductSpace{F<:Field} <: NormedVectorSpace{F} end
 
 """
-    Constraint
+    AbstractConstraint
 
 An abstract constraint that consists of an [`Expression`](@ref) belonging to a [`ConstraintSet`](@ref).
 
 Concrete subtypes should provide methods for `expression`, `set`, `∈`, `isequal`, and `check`.
 """
-abstract type Constraint end
+abstract type AbstractConstraint <: Object end
 
 """
 
     ConstraintSet
 
-An abstract set for use in a [`Constraint`](@ref).
+An abstract set for use in a [`AbstractConstraint`](@ref).
 """
 abstract type ConstraintSet end
 
@@ -83,7 +90,7 @@ Any concrete subtype of `Oracle` must have the following fields:
 
 Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
 """
-abstract type Oracle end
+abstract type Oracle <: Expression end
 
 """
     Wrapper{T}
@@ -143,7 +150,7 @@ abstract type Property{T} end
 const Oracles = Set{Oracle}
 
 # A set of constraints
-const Constraints = Set{Constraint}
+const Constraints = Set{AbstractConstraint}
 
 # A set of properties
 const Properties = Set{Property}
@@ -178,6 +185,4 @@ const ArrayOrSet{T} = Union{AbstractArray{<:T}, AbstractSet{<:T}}
 
 const DecompositionValue = Union{Number, JuMP.VariableRef, JuMP.AffExpr}
 
-const Object = Union{Expression, Constraint, Oracle, Wrapper}
 const Objects = Set{Object}
-

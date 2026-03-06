@@ -106,12 +106,12 @@ end
 """
 mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X}
     label::String
-    properties::Properties
+    constraints::Constraints
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
     function DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
-        f = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
+        f = new{X}("DifferentiableFunctional{$X}", Constraints(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
         push!(unwrap(f').associations, GradientOf => f)
         f
     end
@@ -119,15 +119,33 @@ mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X
 end
 
 """
+    SmoothStronglyConvexFunction{X}
+"""
+mutable struct SmoothStronglyConvexFunction{X} <: AbstractDifferentiableFunctional{X}
+    label::String
+    constraints::Constraints
+    relation::SingleValuedRelation{X,<:Field}
+    associations::Associations
+    strong_convexity::Number
+    smoothness::Number
+    
+    function SmoothStronglyConvexFunction{X}(m::Number, L::Number) where {F<:Field, X<:VectorSpace{F}}
+        f = new{X}("SmoothStronglyConvexFunction{$X}", Constraints(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()), m, L)
+        push!(unwrap(f').associations, GradientOf => f)
+        f
+    end
+end
+
+"""
     TwiceDifferentiableFunctional{X}
 """
 mutable struct TwiceDifferentiableFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
     label::String
-    properties::Properties
+    constraints::Constraints
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    TwiceDifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("TwiceDifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}(), Hessian => Map{X,SymmetricLinearMap{X}}()))
+    TwiceDifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("TwiceDifferentiableFunctional{$X}", Constraints(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}(), Hessian => Map{X,SymmetricLinearMap{X}}()))
 end
 
 """
@@ -426,8 +444,8 @@ f = DifferentiableFunctional{Rⁿ}()
 f ∈ SmoothStronglyConvex(1, 10) # Push the property of being 1 smooth 10 strongly convex onto Oracle `f`
 ```
 """
-∈(o::OracleOrWrapper, property::Property) = push!(properties(o), property)
-∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties)
+# ∈(o::OracleOrWrapper, property::Property) = push!(properties(o), property)
+# ∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties)
 
 
 ############################################################################################

@@ -40,55 +40,6 @@ function label! end
 label(x::Union{Expression,Oracle}) = x.label
 label(w::Wrapper) = label(unwrap(w))
 
-"""
-    description(e::Expression)
-    description(o::Oracle)
-
-Return the label information of an input depending on its type:
--- **Expression**
-Return the label of an expression
--- **Oracle**
-Return the label and type information of an oracle
-
-```julia-repl
-julia> x0 = Rⁿ()
-julia> label(x0, "x0")
-julia> description(x0) # Returns "x0"
-```
-"""
-description(e::Expression) = (isempty(label(e)) ? description(decomposition(e)) : label(e))
-
-function description(d::LinearDecomposition)
-    isempty(d) && return "(empty)"
-    if !all(v isa Float64 for v ∈ values(weights(d)))
-        return "Linear decomposition with non-Float64 weights"
-    end
-    str = ""
-    first = true
-    for (key, value) ∈ weights(d)
-        if first
-            first = false
-            if value == 1
-                str *= string(key)
-            elseif value == -1
-                str *= "-" * string(key)
-            else
-                str *= string(value) * " " * string(key)
-            end
-        else
-            if value == 1
-                str *= " + " * string(key)
-            elseif value == -1
-                str *= " - " * string(key)
-            elseif value ≥ 0
-                str *= " + " * string(value) * " " * string(key)
-            else
-                str *= " - " * string(-value) * " " * string(key)
-            end
-        end
-    end
-    str
-end
 
 ############################################################################################
 # Expressions
@@ -96,11 +47,10 @@ end
 label!(::Any, ::String) = nothing
 
 label!(e::Expression, label::String) = (e.label=label; nothing)
-# label!(x::InnerProductSpace, label::String) = (x.label=label; label!(x.dual,label*"*"); nothing)
 
 function label!(x::InnerProductSpace, label::String)
     x.label = label
-    label!(x.associations[Dual],label*"*")
+    label!(x.associations[Dual],label*"'")
     nothing
 end
 

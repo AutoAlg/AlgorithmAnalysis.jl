@@ -1,4 +1,6 @@
 
+export field, vectorspace
+
 ############################################################################################
 # The zero expression
 
@@ -99,9 +101,9 @@ end
 
 A Gram matrix is a matrix of inner product between all pairs of a set of vectors.
 """
-struct Gram{V} <: Expression where {F<:Field, V<:InnerProductSpace{F}}
-    label:: String 
-    value:: Missing
+mutable struct Gram{V} <: Expression where {F<:Field, V<:InnerProductSpace{F}}
+    label::String
+    value::Missing
     constraints::Constraints
     oracles::Oracles
     vecs1::Vector{V}
@@ -113,9 +115,20 @@ struct Gram{V} <: Expression where {F<:Field, V<:InnerProductSpace{F}}
 end
 
 Gram(vecs::Vector{V}) where {F<:Field, V<:InnerProductSpace{F}} = Gram(vecs, vecs)
+Gram(vecs::InnerProductSpace...) = Gram(collect(vecs))
 
 vecs1(g::Gram) = g.vecs1
 vecs2(g::Gram) = g.vecs2
+
+field(::Gram{V}) where {F<:Field, V<:InnerProductSpace{F}} = F
+vectorspace(::Gram{V}) where {F<:Field, V<:InnerProductSpace{F}} = V
+
+function getindex(x::Gram, i::Int, j::Int)
+    if i > length(vecs1(x)) || j > length(vecs2(x))
+        throw(BoundsError(x, (i,j)))
+    end
+    vecs1(x)[i]' * vecs2(x)[j]
+end
 
 
 ############################################################################################
@@ -159,7 +172,7 @@ end
 
 ############################################################################################
 # Methods
-constraints(e::Expression) = e.constraints
+constraints(e::Expression) = hasfield(typeof(e), :constraints) ? e.constraints : Constraints()
 
 """
     oracles(e)
@@ -172,7 +185,7 @@ julia> x = Rⁿ()
 julia> oracles(x)
 ```
 """
-oracles(e::Expression) = e.oracles
+oracles(e::Expression) = hasfield(typeof(e), :oracles) ? e.oracles : Oracles()
 
 """
     associations(::Expression)
@@ -194,8 +207,7 @@ julia> e = Rⁿ()
 julia> associations(e)
 ```
 """
-associations(::Expression) = Associations()
-associations(e::InnerProductSpace) = e.associations
+associations(e::Expression) = hasfield(typeof(e), :associations) ? e.associations : Associations()
 
 # types of expressions
 """
@@ -209,7 +221,7 @@ julia> x = Rⁿ()
 julia> isvariable(x)
 ```
 """
-isvariable(e::Expression) = e.value isa Missing
+isvariable(e::Expression) = hasfield(typeof(e), :value) && e.value isa Missing
 
 """
     iszero(e::Expression)
@@ -229,7 +241,7 @@ julia> iszero(x)
 ```
 
 """
-iszero(e::Expression) = e.value isa Zero
+iszero(e::Expression) = hasfield(typeof(e), :value) && e.value isa Zero
 iszero(w::Wrapper) = iszero(unwrap(w))
 
 """
@@ -243,7 +255,10 @@ julia> x = Rⁿ()
 julia> hasdecomposition(e)
 ```
 """
-hasdecomposition(e::Expression) = e.value isa Decomposition
+hasdecomposition(e::Expression) = hasfield(typeof(e), :value) && e.value isa Decomposition
+
+isoracle(::Expression) = false
+isoracle(::Oracle) = true
 
 """
     hasvalue(e)
@@ -259,7 +274,7 @@ julia> x = [Rⁿ(), Rⁿ()]
 julia> hasvalue(x)
 ```
 """
-hasvalue(e::Expression) = !isvariable(e) && !hasdecomposition(e)
+hasvalue(e::Expression) = !isvariable(e) && !hasdecomposition(e) && !isoracle(e)
 hasvalue(a::ArrayOrSet{Expression}) = all(hasvalue(e) for e ∈ a)
 
 """
@@ -436,7 +451,7 @@ end
 next(f::OracleOrWrapper) = f
 next(d::Dual) = d'.next'
 next(::Missing) = missing
-next(g::Gram) = next(vecs1(g)) ⊗ next(vecs2(g))
+next(::Gram) = missing #next(vecs1(g)) ⊗ next(vecs2(g))
 
 function next(x::Expression)
     if !ismissing(x.next)
@@ -504,7 +519,7 @@ weights(e::Expression) = weights(decomposition(e))
 
 
 size(::Expression) = (1,1)
-size(g::Gram) = size(evaluate(g))
+size(g::Gram) = (length(vecs1(g)), length(vecs2(g)))
 
 length(::Expression) = 1
 iterate(e::Expression) = iterate(e,1)

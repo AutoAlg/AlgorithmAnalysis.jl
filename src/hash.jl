@@ -20,6 +20,7 @@ hash(x::LinearDecomposition, h::UInt) = hash(weights(x), hash(:LinearDecompositi
 hash(c::Constraint, h::UInt) = hash(set(c), hash(expression(c), hash(:Constraint, h)))
 hash(c::Satisfied, ::UInt) = objectid(c)
 hash(c::Unsatisfied, ::UInt) = objectid(c)
+hash(g::Gram, h::UInt) = hash(vecs1(g), hash(vecs2(g), hash(constraints(g), hash(oracles(g), hash(:Gram, h)))))
 
 function hash(a::AbstractArray{<:Expression}, h::UInt)
     h = hash(size(a), hash(:AbstractArray, h))
@@ -39,7 +40,7 @@ isequal(::Expression, ::Expression) = false
 
 function isequal(x1::T, x2::T) where {T<:Expression}
     if !isdefined(x1, :value) || !isdefined(x2, :value)
-        false 
+        false
     elseif !ismissing(x1.value) && !ismissing(x2.value)
         isequal(x1.value, x2.value)
     elseif ismissing(x1.value) && ismissing(x2.value)
@@ -48,6 +49,8 @@ function isequal(x1::T, x2::T) where {T<:Expression}
         false
     end
 end
+
+isequal(g1::Gram, g2::Gram) = isequal(vecs1(g1), vecs1(g2)) && isequal(vecs2(g1), vecs2(g2))
 
 function isequal(x1::AbstractArray{<:Expression}, x2::Expression)
     length(x1) == 1 && isequal(x1[1], x2) ? true : false

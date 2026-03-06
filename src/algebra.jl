@@ -5,9 +5,24 @@
 +(::EmptyDecomposition{T}, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
 *(::Any, ::EmptyDecomposition{T}) where {T} = EmptyDecomposition{T}()
 
-+(x1::Gram, x2::Number) = iszero(x2) ? x1 : missing
++(x1::Gram, x2::Number) = iszero(x2) ? x1 : 
++(x1::Number, x2::Gram) = iszero(x1) ? x2 : missing
 
--(x1::Gram, x2::Gram) = issetequal(x1.vecs, x2.vecs) ? 0 : missing
+function +(x1::Gram, x2::Gram)
+    if field(x1) != field(x2)
+        error("Cannot add Gram matrices over different fields.")
+    end
+    if length(vecs1(x1)) != length(vecs1(x2)) || length(vecs2(x1)) != length(vecs2(x2))
+        error("Cannot add Gram matrices with different numbers of vectors.")
+    end
+    F = field(x1)
+    F[ x1[i,j] + x2[i,j] for i in 1:length(vecs1(x1)), j in 1:length(vecs2(x1)) ]
+end
+
+*(a::Number, g::Gram) = [ a*g[i,j] for i in 1:length(vecs1(g)), j in 1:length(vecs2(g)) ]
+
+-(g::Gram) = -1 * g
+-(x1::Gram, x2::Gram) = x1 + (-x2)
 
 function +(x1::LinearDecomposition{T}, x2::LinearDecomposition{T}) where {T}
     dict = mergewith(+, weights(x1), weights(x2))

@@ -1,4 +1,4 @@
-export Reference, References, Result, Results, KNOWN_RESULTS, markdown, verify
+export Reference, References, Result, Results, KNOWN_RESULTS, markdown, verify, test
 
 struct Reference
     doi::String
@@ -150,3 +150,5 @@ triple_momentum()
 """
     )
 )
+
+test() = [ verify(result) for result ∈ KNOWN_RESULTS ]

@@ -5,8 +5,8 @@ show(io::IO, ::EmptyDecomposition{T}) where {T} = print(io, "Empty decomposition
 
 function show(io::IO, x::LinearDecomposition)
     isempty(x) && return print(io, "  "^get(io, :indent, 0), "(empty)")
-    if !all(v isa Float64 for v ∈ values(weights(x)))
-        return print(io, "Linear decomposition with non-Float64 weights")
+    if !all(v isa Number for v ∈ values(weights(x)))
+        return print(io, "Linear decomposition with non-Number weights")
     end
     first = true
     for (key, value) ∈ weights(x)
@@ -57,7 +57,7 @@ function show(io::IO, e::Expression)
     elseif !isempty(label(e))
         print(io, label(e))
     else
-        print(io, description(e))
+        print(io, decomposition(e))
     end
 end
 
@@ -71,8 +71,16 @@ function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     # elseif hasvalue(e)
     #     print(io, value(e))
     else
-        print(io, "\n$(uppercasefirst(elementname(T))) in $(typeof(e))")
-        isdefined(e, :vecs) && print(io, "\n Value: $(e.vecs) ⊗ $(e.vecs)")
+        if e isa Gram
+            if e.vecs1 === e.vecs2
+                print(io, "Gram matrix of vectors $(e.vecs1)")
+            else
+                print(io, "Gram matrix of vectors $(e.vecs1) and $(e.vecs2)")
+            end
+        else
+            print(io, "\n$(uppercasefirst(elementname(T))) in $(typeof(e))")
+        end
+        # isdefined(e, :vecs) && print(io, "\n Value: $(e.vecs) ⊗ $(e.vecs)")
         !isempty(label(e)) && print(io, "\n  Label: ", label(e))
         hasvalue(e) && print(io, "\n  Value: ", value(e))
         hasdecomposition(e) && print(io, "\n  Decomposition: ", decomposition(e))
@@ -92,9 +100,9 @@ show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", las
 ############################################################################################
 # Constraints
 
-show(io::IO, c::Constraint) = print(io, expression(c), " ∈ ", set(c))
+# show(io::IO, c::Constraint) = print(io, expression(c), " ∈ ", set(c))
 
-function show(io::IO, c::ConeConstraint)
+function show(io::IO, c::Constraint)
     x = expression(c)
     K = cone(c)
     if K == UnrestrictedCone()
@@ -132,6 +140,7 @@ end
 description(::SingleValuedRelation) = "Single-valued relation"
 description(::MultiValuedRelation) = "Multi-valued relation"
 description(::ConstantRelation) = "Constant relation"
+description(::SmoothStronglyConvexFunction) = "Smooth strongly convex function"
 
 function show(io::IO, r::Relation)
     print(io, "\n$(description(r)) on $(domain(r)) x $(codomain(r))")
@@ -166,7 +175,8 @@ function show(io::IO, ::MIME"text/plain", o::Oracle)
     print(io, "\nOracle")
     print(io, "\n  Description: $(description(o))")
     print(io, "\n  Label: $(label(o))")
-    print(io, "\n  Properties: $(properties(o))")
+    print(io, "\n  Constraints: $(constraints(o)...)")
+    # print(io, "\n  Properties: $(properties(o))")
     !isempty(associations(o)) && print(io, "\n  Associations: ", join(associations(o),", "))
     # print(io, "\n  Associations: ")
     # if isempty(associations(o))

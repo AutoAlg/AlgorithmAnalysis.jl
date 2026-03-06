@@ -1,6 +1,7 @@
 ## Constraints
 
 ```@docs
+AbstractConstraint
 Constraint
 ConstraintSet
 ```
@@ -31,7 +32,6 @@ PositiveSemidefiniteCone
 PositiveOrthant
 ZeroSet
 UnrestrictedCone
-ConeConstraint
 cone
 ==
 ≤

@@ -1,10 +1,34 @@
 
 
+"""
+    Constraint
+
+A `Constraint` represents a condition that an `Expression` must satisfy with respect to a specified `ConstraintSet`. It encapsulates the relationship between an expression and the constraints imposed on it.
+"""
+struct Constraint <: AbstractConstraint
+    x::Expression
+    s::ConstraintSet
+    
+    function Constraint(x::Expression, s::ConstraintSet)
+        if !hasvalue(x)
+            this = new(x, s)
+            add_constraint!(x, this)
+            this
+        else
+            check(x,s) ? Satisfied() : Unsatisfied()
+        end
+    end
+end
+
+∈(x::Expression, s::ConstraintSet) = Constraint(x, s)
+∈(w::Wrapper, s::ConstraintSet) = unwrap(w) ∈ s
+
 ############################################################################################
 # Add constraint
 
 "Add a constraint to all variables in an expression."
 function add_constraint!(x::Expression, c::Constraint)
+    push!(constraints(x), c)
     map(v -> push!(constraints(v), c), collect(variables(x)))
     for o in oracles(variables(x))
         inputs, outputs = inputs_outputs(o)
@@ -24,18 +48,19 @@ end
 ############################################################################################
 # Constraint
 
-function ∈(x::Expression, s::ConstraintSet)
-    error("∈ not implemented for expression $(typeof(x)) and set $(typeof(s)).")
-end
-expression(c::Constraint) = error("expression not implemented for constraint $(typeof(c)).")
-set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
+# function ∈(x::Expression, s::ConstraintSet)
+#     error("∈ not implemented for expression $(typeof(x)) and set $(typeof(s)).")
+# end
+# expression(c::Constraint) = error("expression not implemented for constraint $(typeof(c)).")
+# set(c::Constraint) = error("set not implemented for constraint $(typeof(c)).")
 
 size(c::Constraint) = size(expression(c))
 
 variables(c::Constraint) = variables(expression(c))
 
+
 """
-    Satisfied <: Constraint
+    Satisfied <: AbstractConstraint
 
 Represents a constraint that is considered satisfied. This type is used to indicate that a particular constraint condition holds true.
 
@@ -46,10 +71,10 @@ julia> c = Satisfied()
 Satisfied()
 ```
 """
-struct Satisfied <: Constraint end
+struct Satisfied <: AbstractConstraint end
 
 """
-    Unsatisfied <: Constraint
+    Unsatisfied <: AbstractConstraint
 
 Represents a constraint that is considered unsatisfied. This type is used to indicate that a particular constraint condition does not hold true.
 
@@ -60,7 +85,7 @@ julia> c = Unsatisfied()
 Unsatisfied()
 ```
 """
-struct Unsatisfied <: Constraint end
+struct Unsatisfied <: AbstractConstraint end
 
 expression(::Satisfied) = Expressions()
 expression(::Unsatisfied) = Expressions()
@@ -106,7 +131,7 @@ A cone representing the unrestricted set, used to indicate that a variable is no
 struct UnrestrictedCone <: Cone end
 
 """
-    ConeConstraint{K<:Cone} <: Constraint
+    Constraint{K<:Cone} <: Constraint
 
 A constraint that associates an expression with a cone `K` to enforce cone-specific properties.
 
@@ -114,31 +139,31 @@ A constraint that associates an expression with a cone `K` to enforce cone-speci
 - `x::Expression`: The expression to which the constraint is applied.
 
 # Constructor Behavior
-When constructing a `ConeConstraint` with an expression `x`:
-- **If** `x` does not already have an associated value (i.e. `!hasvalue(x)` is `true`), a new `ConeConstraint` is created, registered via `add_constraint!(x, this)`, and returned.
+When constructing a `Constraint` with an expression `x`:
+- **If** `x` does not already have an associated value (i.e. `!hasvalue(x)` is `true`), a new `Constraint` is created, registered via `add_constraint!(x, this)`, and returned.
 - **Otherwise**, the function checks if `x` satisfies the constraint for cone `K` using `check(x, K)`. It returns `Satisfied()` if the check passes, or `Unsatisfied()` if it fails.
 
 # Example
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> c = ConeConstraint{PositiveOrthant}(x0)
+julia> c = Constraint{PositiveOrthant}(x0)
 ```
 """
-struct ConeConstraint <: Constraint
-    x::Expression
-    K::Cone
+# struct Constraint <: AbstractConstraint
+#     x::Expression
+#     K::Cone
     
-    function ConeConstraint(x::Expression, K::Cone)
-        if !hasvalue(x)
-            this = new(x, K)
-            add_constraint!(x, this)
-            this
-        else
-            check(x,K) ? Satisfied() : Unsatisfied()
-        end
-    end
-end
+#     function Constraint(x::Expression, K::Cone)
+#         if !hasvalue(x)
+#             this = new(x, K)
+#             add_constraint!(x, this)
+#             this
+#         else
+#             check(x,K) ? Satisfied() : Unsatisfied()
+#         end
+#     end
+# end
 
 """
     ∈(x::Expression, ::K) where {K<:Cone}
@@ -149,13 +174,13 @@ Creates a cone constraint for an expression `x` using the cone type `K`.
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> x ∈ PositiveOrthant   # Returns a ConeConstraint(x, PositiveOrthant())
+julia> x ∈ PositiveOrthant   # Returns a Constraint(x, PositiveOrthant())
 ```
 """
-∈(x::Expression, K::Cone) = ConeConstraint(x, K)
+∈(x::Expression, K::Cone) = Constraint(x, K)
 
 """
-    expression(c::ConeConstraint)
+    expression(c::Constraint)
 
 Extracts and returns the underlying expression `x` stored in a cone constraint `c`.
 
@@ -163,14 +188,14 @@ Extracts and returns the underlying expression `x` stored in a cone constraint `
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> c = ConeConstraint(x0, PositiveOrthant())
+julia> c = Constraint(x0, PositiveOrthant())
 julia> expression(c)   # Returns the expression associated with the constraint
 ```
 """
-expression(c::ConeConstraint) = c.x
+expression(c::Constraint) = c.x
 
 """
-    set(::ConeConstraint{K}) where {K<:Cone}
+    set(::Constraint{K}) where {K<:Cone}
 
 Returns the cone type `K` associated with the given cone constraint. This function allows you to query the cone that the constraint is enforcing.
 
@@ -178,14 +203,14 @@ Returns the cone type `K` associated with the given cone constraint. This functi
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> c = ConeConstraint(x0, PositiveOrthant())
+julia> c = Constraint(x0, PositiveOrthant())
 julia> set(c)   # Returns PositiveOrthant()
 ```
 """
-set(c::ConeConstraint) = c.K
+set(c::Constraint) = c.s
 
 """
-    cone(c::ConeConstraint)
+    cone(c::Constraint)
 
 Alias for `set(c)`. Returns the cone type associated with the cone constraint `c`.
 
@@ -193,11 +218,11 @@ Alias for `set(c)`. Returns the cone type associated with the cone constraint `c
 
 ```julia-repl
 julia> x0 = Rⁿ()
-julia> c = ConeConstraint(x0, PositiveOrthant())
+julia> c = Constraint(x0, PositiveOrthant())
 julia> cone(c)   # Returns PositiveOrthant()
 ```
 """
-cone(c::ConeConstraint) = set(c)
+cone(c::Constraint) = set(c)
 
 """
     ==(lhs::Expression, rhs::Expression)
@@ -214,9 +239,9 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x == y   # Returns Equality(x - y)
 ```
 """
-==(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, ZeroSet())
-==(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, ZeroSet())
-==(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, ZeroSet())
+==(lhs::Expression, rhs::Expression) = Constraint(lhs-rhs, ZeroSet())
+==(lhs::Expression, rhs) = Constraint(lhs-rhs, ZeroSet())
+==(lhs, rhs::Expression) = Constraint(lhs-rhs, ZeroSet())
 
 """
     ≤(lhs::Expression, rhs::Expression)
@@ -234,9 +259,9 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x ≤ y   # Returns Positive(y - x)
 ```
 """
-≤(lhs::Expression, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveOrthant())
-≤(lhs::Expression, rhs) = ConeConstraint(rhs-lhs, PositiveOrthant())
-≤(lhs, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveOrthant())
+≤(lhs::Expression, rhs::Expression) = Constraint(rhs-lhs, PositiveOrthant())
+≤(lhs::Expression, rhs) = Constraint(rhs-lhs, PositiveOrthant())
+≤(lhs, rhs::Expression) = Constraint(rhs-lhs, PositiveOrthant())
 
 """
     ≥(lhs::Expression, rhs::Expression)
@@ -254,9 +279,9 @@ julia> x, y = Rⁿ(), Rⁿ()
 julia> x ≥ y   # Returns Positive(x - y)
 ```
 """
-≥(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveOrthant())
-≥(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, PositiveOrthant())
-≥(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveOrthant())
+≥(lhs::Expression, rhs::Expression) = Constraint(lhs-rhs, PositiveOrthant())
+≥(lhs::Expression, rhs) = Constraint(lhs-rhs, PositiveOrthant())
+≥(lhs, rhs::Expression) = Constraint(lhs-rhs, PositiveOrthant())
 
 """
     ⪯(lhs::Expression, rhs::Expression)
@@ -273,14 +298,14 @@ julia> A, B = Rⁿ(), Rⁿ()
 julia> A ⪯ B   # Returns Semidefinite(B - A)
 ```
 """
-⪯(lhs::Expression, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveSemidefiniteCone())
-⪯(lhs::Expression, rhs) = ConeConstraint(rhs-lhs, PositiveSemidefiniteCone())
-⪯(lhs, rhs::Expression) = ConeConstraint(rhs-lhs, PositiveSemidefiniteCone())
+⪯(lhs::Expression, rhs::Expression) = Constraint(rhs-lhs, PositiveSemidefiniteCone())
+⪯(lhs::Expression, rhs) = Constraint(rhs-lhs, PositiveSemidefiniteCone())
+⪯(lhs, rhs::Expression) = Constraint(rhs-lhs, PositiveSemidefiniteCone())
 
 """
-    ⪰(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
-    ⪰(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
-    ⪰(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
+    ⪰(lhs::Expression, rhs::Expression) = Constraint(lhs-rhs, PositiveSemidefiniteCone())
+    ⪰(lhs::Expression, rhs) = Constraint(lhs-rhs, PositiveSemidefiniteCone())
+    ⪰(lhs, rhs::Expression) = Constraint(lhs-rhs, PositiveSemidefiniteCone())
 
 Defines a positive semidefinite constraint on the difference between two expressions.
 
@@ -291,9 +316,9 @@ julia> A, B = Rⁿ(), Rⁿ()
 julia> A ⪯ B   # Returns Semidefinite(B - A)
 ```
 """
-⪰(lhs::Expression, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
-⪰(lhs::Expression, rhs) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
-⪰(lhs, rhs::Expression) = ConeConstraint(lhs-rhs, PositiveSemidefiniteCone())
+⪰(lhs::Expression, rhs::Expression) = Constraint(lhs-rhs, PositiveSemidefiniteCone())
+⪰(lhs::Expression, rhs) = Constraint(lhs-rhs, PositiveSemidefiniteCone())
+⪰(lhs, rhs::Expression) = Constraint(lhs-rhs, PositiveSemidefiniteCone())
 
 
 ############################################################################################
@@ -366,6 +391,7 @@ check(x, ::ZeroSet) = hasvalue(x) && evaluate(x) == 0
 check(x, ::PositiveOrthant) = hasvalue(x) && evaluate(x) ≥ 0
 check(x, ::PositiveSemidefiniteCone) = hasvalue(x) && evaluate(x) ⪰ 0
 
+check(::Oracle, ::ConstraintSet) = false
 
 ############################################################################################
 # Prune
@@ -412,7 +438,7 @@ end
 #     filtered = Constraints()
 #     for c in s
 #         if expression(c) isa Gram
-#             push!(filtered, ConeConstraint{cone(c)}(evaluate(expression(c))))
+#             push!(filtered, Constraint{cone(c)}(evaluate(expression(c))))
 #         else
 #             push!(filtered, c)
 #         end

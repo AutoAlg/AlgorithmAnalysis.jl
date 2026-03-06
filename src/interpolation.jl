@@ -1,112 +1,130 @@
 
-############################################################################################
+###########################################################
 # Properties
 
-abstract type AbstractQuadraticConstraint <: Property{AbstractOperator} end
-abstract type AbstractPointwiseQuadraticConstraint <: AbstractQuadraticConstraint end
-abstract type AbstractIncrementalQuadraticConstraint <: AbstractQuadraticConstraint end
+export SmoothStronglyConvex
 
-abstract type AbstractLinearQuadraticConstraint <: Property{AbstractLocallyLipschitzFunctional} end
-abstract type AbstractTwoPointLinearQuadraticConstraint <: AbstractLinearQuadraticConstraint end
-
-# ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
-"""
-    PointwiseQuadraticConstraint(M, x, y)
-
-A generic pointwise quadratic constraint.
-"""
-struct PointwiseQuadraticConstraint <: AbstractPointwiseQuadraticConstraint
-    M::Matrix{Real}
-    x::VectorSpace
-    y::VectorSpace
+struct SmoothStronglyConvex <: ConstraintSet
+    a::Real
+    b::Real
 end
 
-"""
-    IncrementalQuadraticConstraint(M)
+# function interpolate(objs::Objects, o::Oracle, p::SmoothStronglyConvex)
+#     a, b = p.a, p.b
+#     union!(objs, Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2b*(gᵢ-gⱼ)^2 + a/(2*(1-a/b))*(xᵢ-xⱼ-1/b*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) ))
 
-A generic incremental quadratic constraint.
-"""
-struct IncrementalQuadraticConstraint <: AbstractIncrementalQuadraticConstraint
-    M::Matrix{Real}
-end
+#     setdiff!(objs, Set([o, o', o ∈ p]))
 
-# """
-#     PointwiseLinearQuadraticConstraint(M, m, x, y, f)
-
-# A generic pointwise linear--quadratic constraint.
-# """
-# struct PointwiseLinearQuadraticConstraint <: AbstractPointwiseLinearQuadraticConstraint
-#     M::Matrix{Real}
-#     m::Vector{Real}
-#     x::VectorSpace
-#     y::VectorSpace
-#     f::Field
+#     objs
 # end
 
-"""
-    TwoPointLinearQuadraticConstraint(M, m)
-
-A generic incremental linear--quadratic constraint.
-"""
-struct TwoPointLinearQuadraticConstraint <: AbstractTwoPointLinearQuadraticConstraint
-    M::Matrix{Real}
-    m::Vector{Real}
-end
-
-"""
-    SlopeRestricted(a,b)
-
-A slope-restricted constraint.
-"""
-struct SlopeRestricted <: AbstractIncrementalQuadraticConstraint
-    a::Real
-    b::Real
-end
-
-"""
-SectorBounded(a,b)
-
-A sector-bounded constraint.
-"""
-struct SectorBounded <: AbstractPointwiseQuadraticConstraint
-    a::Real
-    b::Real
-    x::VectorSpace
-    y::VectorSpace
-end
-
-# ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
-"""
-    Monotone
 
 
-"""
-struct Monotone{a,b} <: Property{AbstractOperator} end
-struct Comonotone{a,b} <: Property{AbstractOperator} end                       # a ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖yi-yj‖²
-struct WeaklyMonotone{a,b,xs,ys} <: Property{AbstractOperator} end             # a ‖x -xs‖² ≤ (x -xs)'*(y -ys) ≤ b ‖x -xs‖²
-struct WeaklyComonotone{a,b,xs,ys} <: Property{AbstractOperator} end           # a ‖y -ys‖² ≤ (x -xs)'*(y -ys) ≤ b ‖y -ys‖²
+# abstract type AbstractQuadraticConstraint <: Property{AbstractOperator} end
+# abstract type AbstractPointwiseQuadraticConstraint <: AbstractQuadraticConstraint end
+# abstract type AbstractIncrementalQuadraticConstraint <: AbstractQuadraticConstraint end
 
-"""
-    RelativelyBounded(a,b,x,y)
+# abstract type AbstractLinearQuadraticConstraint <: Property{AbstractLocallyLipschitzFunctional} end
+# abstract type AbstractTwoPointLinearQuadraticConstraint <: AbstractLinearQuadraticConstraint end
 
-The property that an operator is relatively bounded.
+# # ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
+# """
+#     PointwiseQuadraticConstraint(M, x, y)
 
-``a^2\\,\\|x_i-x_j\\|^2 \\leq \\|y_i-y_j\\|^2 \\leq b^2\\,\\|x_i-x_j\\|^2``
-"""
-struct RelativelyBounded <: Property{AbstractOperator} # a² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ b² ‖xi-xj‖²
-    a::Real
-    b::Real
-    x::Union{NormedVectorSpace, Missing}
-    y::Union{NormedVectorSpace, Missing}
+# A generic pointwise quadratic constraint.
+# """
+# struct PointwiseQuadraticConstraint <: AbstractPointwiseQuadraticConstraint
+#     M::Matrix{Real}
+#     x::VectorSpace
+#     y::VectorSpace
+# end
+
+# """
+#     IncrementalQuadraticConstraint(M)
+
+# A generic incremental quadratic constraint.
+# """
+# struct IncrementalQuadraticConstraint <: AbstractIncrementalQuadraticConstraint
+#     M::Matrix{Real}
+# end
+
+# # """
+# #     PointwiseLinearQuadraticConstraint(M, m, x, y, f)
+
+# # A generic pointwise linear--quadratic constraint.
+# # """
+# # struct PointwiseLinearQuadraticConstraint <: AbstractPointwiseLinearQuadraticConstraint
+# #     M::Matrix{Real}
+# #     m::Vector{Real}
+# #     x::VectorSpace
+# #     y::VectorSpace
+# #     f::Field
+# # end
+
+# """
+#     TwoPointLinearQuadraticConstraint(M, m)
+
+# A generic incremental linear--quadratic constraint.
+# """
+# struct TwoPointLinearQuadraticConstraint <: AbstractTwoPointLinearQuadraticConstraint
+#     M::Matrix{Real}
+#     m::Vector{Real}
+# end
+
+# """
+#     SlopeRestricted(a,b)
+
+# A slope-restricted constraint.
+# """
+# struct SlopeRestricted <: AbstractIncrementalQuadraticConstraint
+#     a::Real
+#     b::Real
+# end
+
+# """
+# SectorBounded(a,b)
+
+# A sector-bounded constraint.
+# """
+# struct SectorBounded <: AbstractPointwiseQuadraticConstraint
+#     a::Real
+#     b::Real
+#     x::VectorSpace
+#     y::VectorSpace
+# end
+
+# # ax ‖xi-xj‖² + ay ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ bx ‖xi-xj‖² + by ‖yi-yj‖²
+# """
+#     Monotone
+
+
+# """
+# struct Monotone{a,b} <: Property{AbstractOperator} end
+# struct Comonotone{a,b} <: Property{AbstractOperator} end                       # a ‖yi-yj‖² ≤ (xi-xj)'*(yi-yj) ≤ b ‖yi-yj‖²
+# struct WeaklyMonotone{a,b,xs,ys} <: Property{AbstractOperator} end             # a ‖x -xs‖² ≤ (x -xs)'*(y -ys) ≤ b ‖x -xs‖²
+# struct WeaklyComonotone{a,b,xs,ys} <: Property{AbstractOperator} end           # a ‖y -ys‖² ≤ (x -xs)'*(y -ys) ≤ b ‖y -ys‖²
+
+# """
+#     RelativelyBounded(a,b,x,y)
+
+# The property that an operator is relatively bounded.
+
+# ``a^2\\,\\|x_i-x_j\\|^2 \\leq \\|y_i-y_j\\|^2 \\leq b^2\\,\\|x_i-x_j\\|^2``
+# """
+# struct RelativelyBounded <: Property{AbstractOperator} # a² ‖xi-xj‖² ≤ ‖yi-yj‖² ≤ b² ‖xi-xj‖²
+#     a::Real
+#     b::Real
+#     x::Union{NormedVectorSpace, Missing}
+#     y::Union{NormedVectorSpace, Missing}
     
-    RelativelyBounded(a,b,x=missing,y=missing) = new(a,b,x,y)
-end
+#     RelativelyBounded(a,b,x=missing,y=missing) = new(a,b,x,y)
+# end
 
-struct Bounded{b} <: Property{NormedVectorSpace} end                            # ‖xi-xj‖² ≤ b²
-# struct Cobounded{b} <: Property{NormedVectorSpace} end                          # ‖yi-yj‖² ≤ b²
-struct WeaklyBounded{b,xs} <: Property{NormedVectorSpace} end                   # ‖x -xs‖² ≤ b²
-# struct WeaklyCobounded{b,ys} <: Property{NormedVectorSpace} end                 # ‖y -ys‖² ≤ b²
-struct Convex <: Property{VectorSpace} end
+# struct Bounded{b} <: Property{NormedVectorSpace} end                            # ‖xi-xj‖² ≤ b²
+# # struct Cobounded{b} <: Property{NormedVectorSpace} end                          # ‖yi-yj‖² ≤ b²
+# struct WeaklyBounded{b,xs} <: Property{NormedVectorSpace} end                   # ‖x -xs‖² ≤ b²
+# # struct WeaklyCobounded{b,ys} <: Property{NormedVectorSpace} end                 # ‖y -ys‖² ≤ b²
+# struct Convex <: Property{VectorSpace} end
 
 "Linearity property. Applies to AbstractLinearMap oracles."
 struct Linear <: Property{AbstractLinearMap} end                       # X ⊗ V = Y ⊗ U (or x'*v = y'*u for (x,y) ∈ r and (u,v) ∈ r')
@@ -114,258 +132,262 @@ struct Symmetric <: Property{AbstractSymmetricLinearMap} end           # X ⊗ Y
 struct SkewSymmetric <: Property{AbstractSkewSymmetricLinearMap} end   # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
 struct MaxSingularValue{b} <: Property{AbstractLinearMap} end          # Y ⊗ Y ⪯ b² (X ⊗ X) and V ⊗ V ⪯ b² (U ⊗ U)
 
-struct Eigenvalues{a,b} <: Property{AbstractSymmetricLinearMap} end    # (Y-aX) ⊗ (bX-Y) ⪰ 0
+# struct Eigenvalues{a,b} <: Property{AbstractSymmetricLinearMap} end    # (Y-aX) ⊗ (bX-Y) ⪰ 0
 
-# struct Nonexpansive{v} <: OperatorProperty end              # Lipschitz{1} and v² ≤ (x-y)'*v
+# # struct Nonexpansive{v} <: OperatorProperty end              # Lipschitz{1} and v² ≤ (x-y)'*v
 
-# Lipschitz continuous  = RelativelyBounded{0,L}
-# Strongly monotone     = Monotone{μ,∞}
-# One-sided Lipschitz   = Monotone{-∞,L}
-# Cocoercive            = Comonotone{β,∞}
-# Negatively comonotone = Comonotone{-ρ,∞}
+# # Lipschitz continuous  = RelativelyBounded{0,L}
+# # Strongly monotone     = Monotone{μ,∞}
+# # One-sided Lipschitz   = Monotone{-∞,L}
+# # Cocoercive            = Comonotone{β,∞}
+# # Negatively comonotone = Comonotone{-ρ,∞}
 
-# function properties
+# # function properties
 
-# fi-fj ≥ gj'*(xi-xj) + 1/2L (gi-gj)² + μ/(2(1-μ/L)) (xi-xj-1/L (gi-gj))²
-"""
-    SmoothStronglyConvex(a,b)
+# # fi-fj ≥ gj'*(xi-xj) + 1/2L (gi-gj)² + μ/(2(1-μ/L)) (xi-xj-1/L (gi-gj))²
+# """
+#     SmoothStronglyConvex(a,b)
 
-Property of a locally Lipschitz functional that is `b`-smooth and `a`-strongly convex.
+# Property of a locally Lipschitz functional that is `b`-smooth and `a`-strongly convex.
 
-``f_i-f_j \\geq \\langle g_j,x_i-x_j\\rangle + \\frac{1}{2b} \\|g_i-g_j\\|^2 + \\frac{a}{2(1-a/b)} \\|x_i-x_j-\\frac{1}{b} (g_i-g_j)\\|^2``
-"""
-struct SmoothStronglyConvex <: AbstractTwoPointLinearQuadraticConstraint
-    a::Real
-    b::Real
-end
-
-# fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
-struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end
-
-# fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
-struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end
-
-
-"""
-    reference(p)
-
-Reference point of a pointwise constraint.
-"""
-reference(p::AbstractPointwiseQuadraticConstraint) = (p.x, p.y)
-
-"""
-    quadraticform(p)
-
-Quadratic form of a quadratic constraint.
-"""
-quadraticform(p::PointwiseQuadraticConstraint) = p.M
-quadraticform(p::IncrementalQuadraticConstraint) = p.M
-quadraticform(p::SlopeRestricted) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
-quadraticform(p::SectorBounded) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
-
-"""
-    linearquadraticform(p)
-
-Linear--quadratic form of a constraint.
-"""
-linearquadraticform(p::TwoPointLinearQuadraticConstraint) = (p.m, p.M)
-linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
-# linearquadraticform(p::SmoothStronglyConvex) = ([0; 0], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
-
-
-############################################################################################
-# Subsets
-
-# ∈(s::Subset{<:T}, p::Property{T}) where {T} = push!(s.properties, p)
-
-
-############################################################################################
-# Constraints
-
-"""
-    constraints(o::Oracle)
-    constraints(o::Oracle, p::Property)
-    constraints(e::Expression)
-
-Return the constraints information of an input depending on its type:
-- **Oracle**
-Return all constraints for an oracle, or the constraints for an oracle given a property.
-- **Expression**
-Return a list of constraints the expression `e` is in.
-
-# Examples
-```julia-repl
-julia> x = Rⁿ()
-julia> constraints(x)
-```
-"""
-function constraints end
-
-constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
-
-function constraints(o::OracleOrWrapper)
-    cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
-    cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
-    cons1 ∪ cons2
-end
-
-# function constraints(o::OracleOrWrapper, checked)
-#     if o ∈ checked
-#         return Constraints()
-#     else
-#         push!(checked, o)
-#         cons = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
-#         # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
-#         for a in values(associations(o))
-#             union!(cons, constraints(a, checked))
-#         end
-#         cons
-#     end
+# ``f_i-f_j \\geq \\langle g_j,x_i-x_j\\rangle + \\frac{1}{2b} \\|g_i-g_j\\|^2 + \\frac{a}{2(1-a/b)} \\|x_i-x_j-\\frac{1}{b} (g_i-g_j)\\|^2``
+# """
+# struct SmoothStronglyConvex <: AbstractTwoPointLinearQuadraticConstraint
+#     a::Real
+#     b::Real
 # end
-# constraints(o::OracleOrWrapper) = constraints(o, Set())
 
-# Operators
+# # fs-f ≥ g'*(xs-x) + 1/2L (gs-g)² + μ/(2(1-μ/L)) (xs-x-1/L (gs-g))²
+# struct WeakCurvature{μ,L,xs,fs,gs} <: Property{AbstractSubdifferentiableFunctional} end
 
-function constraints(o::AbstractOperator, p::AbstractPointwiseQuadraticConstraint)
-    xs, ys = reference(p)
-    Constraints( 0 ≤ [x-xs; y-ys]'*quadraticform(p)*[x-xs; y-ys] for (x,y) ∈ o )
-end
+# # fi-fj ≥ gj'*(xi-xj) + 1/2L gj²
+# struct QuadraticGrowth{μ} <: Property{AbstractSubdifferentiableFunctional} end
 
-function constraints(o::AbstractOperator, p::AbstractIncrementalQuadraticConstraint)
-    Constraints( 0 ≤ [xᵢ-xⱼ; yᵢ-yⱼ]'*quadraticform(p)*[xᵢ-xⱼ; yᵢ-yⱼ] for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
-end
 
-triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
+# """
+#     reference(p)
 
-# function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractPointwiseLinearQuadraticConstraint)
+# Reference point of a pointwise constraint.
+# """
+# reference(p::AbstractPointwiseQuadraticConstraint) = (p.x, p.y)
+
+# """
+#     quadraticform(p)
+
+# Quadratic form of a quadratic constraint.
+# """
+# quadraticform(p::PointwiseQuadraticConstraint) = p.M
+# quadraticform(p::IncrementalQuadraticConstraint) = p.M
+# quadraticform(p::SlopeRestricted) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+# quadraticform(p::SectorBounded) = [-2*p.a 1+p.a/p.b; 1+p.a/p.b -2/p.b]
+
+# """
+#     linearquadraticform(p)
+
+# Linear--quadratic form of a constraint.
+# """
+# linearquadraticform(p::TwoPointLinearQuadraticConstraint) = (p.m, p.M)
+# linearquadraticform(p::SmoothStronglyConvex) = ((1-p.a/p.b)*[1; -1], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
+# # linearquadraticform(p::SmoothStronglyConvex) = ([0; 0], 0.5*[-p.a p.a p.a/p.b -1; p.a -p.a -p.a/p.b 1; p.a/p.b -p.a/p.b -1/p.b 1/p.b; -1 1 1/p.b -1/p.b])
+
+
+# ############################################################################################
+# # Subsets
+
+# # ∈(s::Subset{<:T}, p::Property{T}) where {T} = push!(s.properties, p)
+
+
+# ############################################################################################
+# # Constraints
+
+# """
+#     constraints(o::Oracle)
+#     constraints(o::Oracle, p::Property)
+#     constraints(e::Expression)
+
+# Return the constraints information of an input depending on its type:
+# - **Oracle**
+# Return all constraints for an oracle, or the constraints for an oracle given a property.
+# - **Expression**
+# Return a list of constraints the expression `e` is in.
+
+# # Examples
+# ```julia-repl
+# julia> x = Rⁿ()
+# julia> constraints(x)
+# ```
+# """
+# function constraints end
+
+# # constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
+
+# # function constraints(o::OracleOrWrapper)
+# #     cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
+# #     cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+# #     cons1 ∪ cons2
+# # end
+
+# # constraints(::OracleOrWrapper) = Constraints()
+
+
+
+# # function constraints(o::OracleOrWrapper, checked)
+# #     if o ∈ checked
+# #         return Constraints()
+# #     else
+# #         push!(checked, o)
+# #         cons = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
+# #         # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+# #         for a in values(associations(o))
+# #             union!(cons, constraints(a, checked))
+# #         end
+# #         cons
+# #     end
+# # end
+# # constraints(o::OracleOrWrapper) = constraints(o, Set())
+
+# # Operators
+
+# function constraints(o::AbstractOperator, p::AbstractPointwiseQuadraticConstraint)
+#     xs, ys = reference(p)
+#     Constraints( 0 ≤ [x-xs; y-ys]'*quadraticform(p)*[x-xs; y-ys] for (x,y) ∈ o )
+# end
+
+# function constraints(o::AbstractOperator, p::AbstractIncrementalQuadraticConstraint)
+#     Constraints( 0 ≤ [xᵢ-xⱼ; yᵢ-yⱼ]'*quadraticform(p)*[xᵢ-xⱼ; yᵢ-yⱼ] for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
+# end
+
+# triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
+
+# # function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractPointwiseLinearQuadraticConstraint)
+# #     m, M = linearquadraticform(p)
+# #     xs, fs, gs = reference(p)
+# #     Constraints( 0 ≤ m'*[f; fs] + [x; xs; g; gs]'*M*[x; xs; g; gs] for (x,f,g) ∈ triplets(o) )
+# # end
+
+# function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractTwoPointLinearQuadraticConstraint)
 #     m, M = linearquadraticform(p)
-#     xs, fs, gs = reference(p)
-#     Constraints( 0 ≤ m'*[f; fs] + [x; xs; g; gs]'*M*[x; xs; g; gs] for (x,f,g) ∈ triplets(o) )
+#     Constraints( 0 ≤ m'*[fᵢ; fⱼ] + [xᵢ; xⱼ; gᵢ; gⱼ]'*M*[xᵢ; xⱼ; gᵢ; gⱼ] for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
 # end
 
-function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractTwoPointLinearQuadraticConstraint)
-    m, M = linearquadraticform(p)
-    Constraints( 0 ≤ m'*[fᵢ; fⱼ] + [xᵢ; xⱼ; gᵢ; gⱼ]'*M*[xᵢ; xⱼ; gᵢ; gⱼ] for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
-end
+# # function constraints(o::AbstractLocallyLipschitzFunctional, p::SmoothStronglyConvex)
+# #     a, b = p.a, p.b
+# #     if o isa AbstractSubdifferentiableFunctional && b < Inf
+# #         @warn "`SubdifferentiableFunctional` $o is constrained to be $b-smooth implying that it is differentiable. Use `DifferentiableFunctional` instead."
+# #     end
+# #     Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2b*(gᵢ-gⱼ)^2 + a/(2*(1-a/b))*(xᵢ-xⱼ-1/b*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
+# # end
 
-# function constraints(o::AbstractLocallyLipschitzFunctional, p::SmoothStronglyConvex)
+
+# function constraints(o::AbstractOperator, p::RelativelyBounded)
 #     a, b = p.a, p.b
-#     if o isa AbstractSubdifferentiableFunctional && b < Inf
-#         @warn "`SubdifferentiableFunctional` $o is constrained to be $b-smooth implying that it is differentiable. Use `DifferentiableFunctional` instead."
-#     end
-#     Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2b*(gᵢ-gⱼ)^2 + a/(2*(1-a/b))*(xᵢ-xⱼ-1/b*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(o), (xⱼ,fⱼ,gⱼ) ∈ triplets(o) )
-# end
-
-
-function constraints(o::AbstractOperator, p::RelativelyBounded)
-    a, b = p.a, p.b
-    if ismissing(p.x) && ismissing(p.y)
-        constraints(o, PointwiseQuadraticConstraint([]))
-        Constraints( a^2*(xi-xj)^2 ≤ (yi-yj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o ) ∪ Constraints( (yi-yj)^2 ≤ b^2*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
-    else
-        xs, ys = p.x, p.y
-        Constraints( a^2*(x-xs)^2 ≤ (y-ys)^2 for (x,y) ∈ o ) ∪ Constraints( (y-ys)^2 ≤ b^2*(x-xs)^2 for (x,y) ∈ o )
-    end
-end
-
-function constraints(r1::Relation{X,X}, r2::Relation{X,X}, ::Monotone{a,b}) where {X<:InnerProductSpace, a, b}
-    Constraints( 0 ≤ (xi-xj)'*(yi-yj-a*(xi-xj)) for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) ) ∪ Constraints( (xi-xj)'*(yi-yj) ≤ b*(xi-xj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) )
-end
-
-# Linear maps
-function constraints(o::AbstractLinearMap{X,Y}, ::Linear) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
-    Constraints( x'*v == y'*u for (x,y) ∈ o, (u,v) ∈ o' )
-end
-# Linear operators, L interpolable
-function constraints(o::AbstractLinearMap{X,Y}, ::Linear, L) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
-    # Constraints( y'*y - L^2*(x'*x) ⪯ 0 for (x,y) ∈ o)
-    # Constraints( v'*v - L^2*(u'*u) ⪯ 0 for (u,v) ∈ o')
-    x, y = inputs_outputs(o)
-    u, v = inputs_outputs(o')
-    Constraints([y⊗y - L^2*(x⊗x) ⪯ 0, v⊗v - L^2*(u⊗u) ⪯ 0])
-    # Constraints([v⊗v - L^2*(u⊗u) ⪯ 0])
-end
-
-function constraints(o::AbstractLinearMap{X,X}, ::Symmetric) where {X<:InnerProductSpace}
-    Constraints( xᵢ'*yⱼ == yᵢ'*xⱼ for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
-end
-
-function constraints(o::AbstractLinearMap{X,X}, ::SkewSymmetric) where {X<:InnerProductSpace}
-    Constraints( xᵢ'*yⱼ + yᵢ'*xⱼ == 0 for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
-end
-
-# Symmetric linear maps
-
-function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace, μ, L}
-    x, y = inputs_outputs(o)
-    Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
-end
-
-function allvecs(o::AbstractLinearFunctional)
-    vecs = inputs(o)
-    while true
-        vecs_new = inputs( filter( x -> x isa AbstractLinearFunctional, oracles(vecs) ) )
-        if vecs_new ⊆ vecs
-            break
-        end
-        union!( vecs, vecs_new )
-    end
-    vecs
-end
-
-function constraints(o::AbstractLinearFunctional, ::Linear)
-    vecs = collect(allvecs(o))
-    for v ∈ vecs, w ∈ vecs
-        if !ismissing(next(v)) && !ismissing(next(w))
-            update!( v'*w => next(v)'*next(w) )
-        end
-    end
-    Constraints([ vecs ⊗ vecs ⪰ 0 ])
-end
-
-function gram end
-# gram(o::Wrapper, p::Property) = gram(unwrap(o), p)
-# function gram(o::OracleOrWrapper, checked)
-#     if o ∈ checked
-#         return Set()
+#     if ismissing(p.x) && ismissing(p.y)
+#         constraints(o, PointwiseQuadraticConstraint([]))
+#         Constraints( a^2*(xi-xj)^2 ≤ (yi-yj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o ) ∪ Constraints( (yi-yj)^2 ≤ b^2*(xi-xj)^2 for (xi,yi) ∈ o, (xj,yj) ∈ o )
 #     else
-#         push!(checked, o)
-#         cons = mapreduce(p -> gram(o,p), ∪, properties(o); init=Set())
-#         # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
-#         for a in values(associations(o))
-#             union!(cons, gram(a, checked))
-#         end    
-#         cons
+#         xs, ys = p.x, p.y
+#         Constraints( a^2*(x-xs)^2 ≤ (y-ys)^2 for (x,y) ∈ o ) ∪ Constraints( (y-ys)^2 ≤ b^2*(x-xs)^2 for (x,y) ∈ o )
 #     end
 # end
-gram(o::OracleOrWrapper) = gram(unwrap(o))
-function gram(o::AbstractLinearFunctional)
-    vecs = collect(allvecs(o))
-    for v ∈ vecs, w ∈ vecs
-        if !ismissing(next(v)) && !ismissing(next(w))
-            update!( v'*w => next(v)'*next(w) )
-        end
-    end
-    Gram(vecs)
-end
 
-interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for $o"
-interpolate(w::Wrapper) = interpolate(unwrap(w))
+# function constraints(r1::Relation{X,X}, r2::Relation{X,X}, ::Monotone{a,b}) where {X<:InnerProductSpace, a, b}
+#     Constraints( 0 ≤ (xi-xj)'*(yi-yj-a*(xi-xj)) for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) ) ∪ Constraints( (xi-xj)'*(yi-yj) ≤ b*(xi-xj)^2 for (xi,yi) ∈ r1, (xj,yj) ∈ r2 if !isequal(xi,xj) )
+# end
 
-function interpolate(o::AbstractLinearFunctional)
-    vecs = collect(allvecs(o))
-    # factor Gram matrix to set the value of each vector
-    G = value(vecs ⊗ vecs)
-    E = la.eigen(G)
-    Λ = E.values
-    if any(Λ .≤ 0)
-        @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
-        Λ = abs.(Λ)
-    end
-    for i = 1:length(vecs)
-        value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
-    end
-end
+# # Linear maps
+# function constraints(o::AbstractLinearMap{X,Y}, ::Linear) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
+#     Constraints( x'*v == y'*u for (x,y) ∈ o, (u,v) ∈ o' )
+# end
+# # Linear operators, L interpolable
+# function constraints(o::AbstractLinearMap{X,Y}, ::Linear, L) where {F<:Field, X<:InnerProductSpace{F}, Y<:InnerProductSpace{F}}
+#     # Constraints( y'*y - L^2*(x'*x) ⪯ 0 for (x,y) ∈ o)
+#     # Constraints( v'*v - L^2*(u'*u) ⪯ 0 for (u,v) ∈ o')
+#     x, y = inputs_outputs(o)
+#     u, v = inputs_outputs(o')
+#     Constraints([y⊗y - L^2*(x⊗x) ⪯ 0, v⊗v - L^2*(u⊗u) ⪯ 0])
+#     # Constraints([v⊗v - L^2*(u⊗u) ⪯ 0])
+# end
+
+# function constraints(o::AbstractLinearMap{X,X}, ::Symmetric) where {X<:InnerProductSpace}
+#     Constraints( xᵢ'*yⱼ == yᵢ'*xⱼ for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
+# end
+
+# function constraints(o::AbstractLinearMap{X,X}, ::SkewSymmetric) where {X<:InnerProductSpace}
+#     Constraints( xᵢ'*yⱼ + yᵢ'*xⱼ == 0 for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
+# end
+
+# # Symmetric linear maps
+
+# function constraints(o::AbstractSymmetricLinearMap{X}, ::Eigenvalues{μ,L}) where {X<:InnerProductSpace, μ, L}
+#     x, y = inputs_outputs(o)
+#     Constraints([ (y-μ*x) ⊗ (L*x-y) ⪰ 0 ])
+# end
+
+# function allvecs(o::AbstractLinearFunctional)
+#     vecs = inputs(o)
+#     while true
+#         vecs_new = inputs( filter( x -> x isa AbstractLinearFunctional, oracles(vecs) ) )
+#         if vecs_new ⊆ vecs
+#             break
+#         end
+#         union!( vecs, vecs_new )
+#     end
+#     vecs
+# end
+
+# function constraints(o::AbstractLinearFunctional, ::Linear)
+#     vecs = collect(allvecs(o))
+#     for v ∈ vecs, w ∈ vecs
+#         if !ismissing(next(v)) && !ismissing(next(w))
+#             update!( v'*w => next(v)'*next(w) )
+#         end
+#     end
+#     Constraints([ vecs ⊗ vecs ⪰ 0 ])
+# end
+
+# function gram end
+# # gram(o::Wrapper, p::Property) = gram(unwrap(o), p)
+# # function gram(o::OracleOrWrapper, checked)
+# #     if o ∈ checked
+# #         return Set()
+# #     else
+# #         push!(checked, o)
+# #         cons = mapreduce(p -> gram(o,p), ∪, properties(o); init=Set())
+# #         # cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
+# #         for a in values(associations(o))
+# #             union!(cons, gram(a, checked))
+# #         end    
+# #         cons
+# #     end
+# # end
+# gram(o::OracleOrWrapper) = gram(unwrap(o))
+# function gram(o::AbstractLinearFunctional)
+#     vecs = collect(allvecs(o))
+#     for v ∈ vecs, w ∈ vecs
+#         if !ismissing(next(v)) && !ismissing(next(w))
+#             update!( v'*w => next(v)'*next(w) )
+#         end
+#     end
+#     Gram(vecs)
+# end
+
+# interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for $o"
+# interpolate(w::Wrapper) = interpolate(unwrap(w))
+
+# function interpolate(o::AbstractLinearFunctional)
+#     vecs = collect(allvecs(o))
+#     # factor Gram matrix to set the value of each vector
+#     G = value(vecs ⊗ vecs)
+#     E = la.eigen(G)
+#     Λ = E.values
+#     if any(Λ .≤ 0)
+#         @warn "Gram matrix is not positive semidefinite; eigenvalues are $Λ."
+#         Λ = abs.(Λ)
+#     end
+#     for i = 1:length(vecs)
+#         value!( vecs[i], sqrt.(Λ) .* E.vectors[i,:] )
+#     end
+# end
 
 
 # ConvexIndicator{D} = Curvature{0,∞} and BoundedRadius{∞,0} and BoundedDiameter{D,∞}

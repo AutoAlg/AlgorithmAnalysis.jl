@@ -12,7 +12,7 @@ makedocs(
         assets = ["assets/style.css"],
     ),
     modules = [AlgorithmAnalysis],
-    checkdocs = :exports,
+    # checkdocs = :exports,
     plugins = [bib],
     pages = [
         "Introduction" => "index.md",

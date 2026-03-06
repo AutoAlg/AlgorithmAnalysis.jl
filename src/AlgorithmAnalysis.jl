@@ -20,9 +20,9 @@ export isvariable, hasdecomposition, previous, previous!, next, next!, update, u
 export @field, @vectorspace, @normedvectorspace, @innerproductspace, @algorithm
 
 # constraint
-export expression, set, add_constraint!, Equality
+export AbstractConstraint, expression, set, add_constraint!, Equality
 export Cone, PositiveSemidefiniteCone, PositiveOrthant, ZeroSet, Positive, Semidefinite
-export ConeConstraint, Satisfied, Unsatisfied, prune!, check, dual, cone, UnrestrictedCone
+export Constraint, Satisfied, Unsatisfied, prune!, check, dual, cone, UnrestrictedCone
 export ⪯, ⪰, ⊆
 export Gram, evaluate, gram_to_constraint
 
@@ -48,6 +48,7 @@ export Operator, Map, LinearMap, SymmetricLinearMap, SkewSymmetricLinearMap
 export Functional, SubdifferentiableFunctional, DifferentiableFunctional
 export TwiceDifferentiableFunctional, QuadraticFunctional, ConstantMap
 export LinearFunctional, ZeroFunctional, DualInputFunctional
+export SmoothStronglyConvexFunction
 export get_oracle_input
 
 # wrappers
@@ -97,7 +98,9 @@ export maximize, certify, rate
 export stateupdate, getmatrix, getparams, solve, eye, grams
 export quadraticform, linearform, tr, optvar, optcon
 export optimization_variable_dictionary, isimplementable, multiplier
-export get_states_inputs, get_formulas, lift, neighbors, nodes, negative!
+export get_states_inputs, get_formulas, lift, neighbors, negative!, connected_components
+
+export bsmin, get_element
 
 ############################################################################################
 # Import
@@ -117,7 +120,7 @@ import AutoHashEquals
 import CodeTracking
 
 import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊆
-import Base: isempty, iszero, isequal
+import Base: isempty, iszero, isequal, getindex
 import Base: promote_rule, convert, show, zero, zeros, adjoint
 import Base: length, Generator, iterate, size, push!, inv, pairs
 
