@@ -4,7 +4,6 @@ authors = ["Bryan Van Scoy <bvanscoy@miamioh.edu>"]
 version = "1.0.0-DEV"
 
 [deps]
-AutoHashEquals = "15f4f7f2-30c1-5605-9d31-71845cf9641f"
 CodeTracking = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
 Convex = "f65535da-76fb-5f13-bab9-19810c17039a"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
@@ -21,7 +20,6 @@ SCS = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
 Zeros = "bd1ec220-6eb4-527a-9b49-e79c3db6233b"
 
 [compat]
-AutoHashEquals = "2.2.0"
 CodeTracking = "2.0.2"
 Convex = "0.15, 0.16"
 Documenter = "1"

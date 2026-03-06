@@ -114,7 +114,6 @@ import Zeros: Zero
 import MathOptInterface as MOI
 import HTTP
 import JSON
-import AutoHashEquals
 import CodeTracking
 
 import Base: +, -, *, /, ^, ==, ≤, ≥, ∈, ∘, ∩, ⊆
