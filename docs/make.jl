@@ -4,6 +4,34 @@ using AlgorithmAnalysis, Documenter, DocumenterCitations
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "references.bib"))
 
+const directory_to_dump_generated_markdown_files = joinpath(@__DIR__, "src", "results")
+mkpath(directory_to_dump_generated_markdown_files)
+
+const paths_of_generated_pages::Vector{String} = let
+    local files::Vector{ResultFile} = getAllResult()
+
+    map(files) do f
+        local diskFilepath::String = joinpath(directory_to_dump_generated_markdown_files, "$(f.file_name).md")
+        local new_contents::String = f.contents
+        
+        local should_write = true
+        if isfile(diskFilepath)
+            local old_contents = read(diskFilepath, String)
+            if old_contents == new_contents
+                should_write = false
+            end
+        end
+        
+        if should_write
+            open(diskFilepath, "w") do io
+                write(io, new_contents)
+            end
+        end
+        
+        "results/$(f.file_name).md"
+    end;
+end
+
 makedocs(
     sitename = "AlgorithmAnalysis",
     format = Documenter.HTML(
@@ -20,7 +48,7 @@ makedocs(
             "manual/code.md",
             "manual/analysis.md"
         ],
-        "Examples" => "examples/index.md",
+        "Results" => paths_of_generated_pages,
         "API" => [
             "Analysis" => "api/analysis.md",
             "Expressions" => "api/expressions.md",

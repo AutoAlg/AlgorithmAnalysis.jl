@@ -1,154 +1,155 @@
-export Reference, References, Result, Results, KNOWN_RESULTS, markdown, verify, test
+export Reference, ResultFile, getAllResult, TestFileDescriptor, TestHandle, @generate_test_handle, test
 
 struct Reference
     doi::String
     loc::Union{Nothing, String}
 end
 
-Reference(doi::String) = Reference(doi, nothing)
+Reference(doi::String)::Reference = Reference(doi, nothing)
 
-const References = Set{Reference}
-
-AutoHashEquals.@auto_hash_equals struct Result
+Base.@kwdef struct ReferenceMetadata
     title::String
-    statement::String
-    references::References
-    verification::String
+    author_names::Vector{String}
+    year::Int64
+    doi::String
 end
 
-const Results = Vector{Result}
-
-function verify(result::Result)
-    func = eval(Meta.parse("function ()\n$(result.verification)\nend"))
-    return Base.invokelatest(func)
-end
-
-function metadata(ref::Reference)
-    url = "https://api.crossref.org/works/$(ref.doi)"
-    resp = HTTP.get(url)
+function ReferenceMetadata(raw::Reference)::ReferenceMetadata 
+    local doiLookupURL::String = "https://api.crossref.org/works/$(raw.doi)";
+    
+    local resp::HTTP.Response = HTTP.get(doiLookupURL)
     if resp.status ≠ 200
         error("DOI lookup failed with status $(resp.status)")
     end
-    data = JSON.parse(String(resp.body))["message"]
-    title = get(data, "title", [""])[1]
-    authors = get(data, "author", [])
-    author_names = [ string(a["given"], " ", a["family"]) for a in authors ]
-    year = get(data, "issued", Dict())["date-parts"][1][1]
-    return (authors=author_names, title=title, year=year, doi=ref.doi)
-end
+    
+    local data = JSON.parse(String(resp.body))["message"]
 
-function get_function_source(f::Function)
-    mi = first(methods(f))  # get the first method instance
-    src = CodeTracking.definition(mi)
-    return src === nothing ? "Source not available." : src
-end
+    local title::String = get(data, "title", [""])[1]
+    local authors::Vector{Any} = get(data, "author", [])
+    local author_names::Vector{String} = [ string(a["given"], " ", a["family"]) for a in authors ]
+    local year::Int64 = get(data, "issued", Dict())["date-parts"][1][1]
 
-function show(io::IO, ::MIME"text/markdown", ref::Reference)
-    info = metadata(ref)
-    println(io, join(info.authors, ", ", " and "), ". *", info.title, "*. ", info.year, ". [doi:", info.doi, "](https://doi.org/$(info.doi))")
-end
-
-function show(io::IO, ::MIME"text/plain", references::References)
-    if !isempty(references)
-        println(io, "\nReferences:")
-        for reference in references
-            println(io, "- ", reference)
-        end
-    end
-end
-
-function show(io::IO, ::MIME"text/markdown", references::References)
-    if !isempty(references)
-        println(io, "\n**References:**")
-        for reference in references
-            print(io, "- ")
-            show(io, MIME"text/markdown"(), reference)
-        end
-    end
+    return ReferenceMetadata(title=title, author_names=author_names, year=year, doi=raw.doi)
 end
 
 function show(io::IO, ref::Reference)
-    info = metadata(ref)
-    print(io, join(info.authors, ", ", " and "), ". ", info.title, ". ", info.year, ".")
+    local metadata::ReferenceMetadata = ReferenceMetadata(ref);
+
+    println(io, join(metadata.author_names, ", ", " and "), ". *", metadata.title, "*. ", metadata.year, ". [doi:", metadata.doi, "](https://doi.org/$(metadata.doi))")
 end
 
-show(io::IO, result::Result) = println(io, "", result.title)
 
-function show(io::IO, ::MIME"text/markdown", result::Result)
-    println(io, "## ", result.title)
-    println(io, result.statement)
-    show(io, MIME"text/markdown"(), result.references)
-    println(io, """\n
-**Verification:**
-```julia
-$(result.verification)
-```
-""")
+Base.@kwdef struct TestHandle
+    function_name::String
+    function_pointer::Function
+    function_body::String
+    function_path::String
 end
 
-function show(io::IO, ::MIME"text/plain", result::Result)
-    println(io, result.title, "\n\n", result.statement, result.references)
-end
+macro generate_test_handle(func_def)
+    if !(func_def.head === :function || func_def.head === :(=))
+        error("@generate_test_handle must be used on a function definition with a name!")
+    end
 
-function show(io::IO, ::MIME"text/markdown", results::Results)
-    for result in results
-        show(io, MIME"text/markdown"(), result)
+    local functionNameSymbol::Symbol = func_def.args[1].args[1]
+
+    local sourceFilePath::String = String(__source__.file);
+
+    if __source__.file === nothing || sourceFilePath == "REPL"
+        error("bruh don't call this in the REPL")
+    end
+
+    local source_text::String = read(sourceFilePath, String)
+    
+    start_idx = 1
+    current_line = 1
+    while current_line < __source__.line && start_idx <= sizeof(source_text)
+        start_idx = nextind(source_text, findnext('\n', source_text, start_idx))
+        current_line += 1
+    end
+
+    expr, next_idx = Meta.parse(source_text, start_idx)
+    exact_macro_call_string = source_text[start_idx:prevind(source_text, next_idx)]
+
+    local body_string::String = replace(exact_macro_call_string, r"^.*?function[^\n]*\n" => "")
+    
+    body_string = replace(body_string, r"\s*end\s*$" => "")
+    
+    lines = split(body_string, '\n')
+    cleaned_lines = map(lines) do line
+        replace(line, r"^( {1,4}|\t)" => "")
+    end
+    final_body_string = join(cleaned_lines, "\n")
+    
+    final_body_string = String(strip(final_body_string, '\n'))
+
+    return quote
+        $(esc(func_def))
+        
+        TestHandle(
+            function_name = $(string(functionNameSymbol)), 
+            function_pointer = $(esc(functionNameSymbol)), 
+            function_body = $final_body_string::String,
+            function_path = $sourceFilePath::String
+        )
     end
 end
 
-function markdown(results::Results)
-    io = IOBuffer()
-    show(io, MIME"text/markdown"(), results)
-    return String(take!(io))
+
+
+Base.@kwdef struct TestFileDescriptor
+    file_contents::String
+    named_tests::Vector{Pair{String, TestHandle}}
+    references::Vector{Reference}
 end
 
-const KNOWN_RESULTS = Results()
+function getContentsOfResultFile(f::TestFileDescriptor)::String
+    local stringBuilder::IOBuffer = IOBuffer();
 
-push!(KNOWN_RESULTS,
-    Result(
-        "Gradient descent",
-        raw"""
-For gradient descent with stepsize ``\alpha`` applied to ``m``-strongly convex and ``L``-smooth functions, the distance to optimality converges at a rate of
-```math
-    \rho = 1-2\alpha mL/(L+m) \quad \text{if} \quad 0 < \alpha \leq \frac{2}{L+m}.
-```
-In particular, if ``\alpha = 2/(L+m)``, the rate is ``(\kappa-1)/(\kappa+1)`` where ``\kappa = L/m``.""",
-        References([
-            Reference("10.1007/978-3-319-91578-4", "Theorem 2.1.15")
-        ]),
-        """
-m = 1
-L = 10
-α = 2/(L+m)
-ρ = 1-2α*m*L/(L+m)
-@algorithm begin
-    f = DifferentiableFunctional{Rⁿ}()
-    xs = first_order_stationary_point(f)
-    f' ∈ SmoothStronglyConvex(m, L)
-    
-    x0 = Rⁿ()
-    x0 => x0 - α * f'(x0)
+    println(stringBuilder, f.file_contents) 
 
-    performance = (x0 - xs)^2
+    if (!isempty(f.named_tests))
+        println(stringBuilder, "## Tests")
+
+        for (name, test_case) in f.named_tests
+            println(stringBuilder, "### $(name)");
+            println(stringBuilder, "```julia\n$(test_case.function_body)\n``` ")
+        end
+    end
+
+    if (!isempty(f.references))
+        println(stringBuilder, "## References")
+
+        for r::Reference in f.references
+            println(stringBuilder, "- $(r)")
+        end
+    end
+
+    return String(take!(stringBuilder))
 end
 
-certify(performance, ρ)
 
-# gradient_descent(m, L, α=α, ρ=ρ, measure=DistanceToOptimality, n=1) &&
-# gradient_descent(m, L, α=α, ρ=ρ, measure=DistanceToStationarity, n=2) &&
-# abs( gradient_descent(m, L, α=α, measure=DistanceToStationarity, n=2) - ρ ) < 1e-3
-"""
-    ),
-    Result(
-        "Triple momentum",
-        "For the triple momentum method applied to L-smooth and m-strongly convex functions, the distance to optimality converges at a rate of 1-1/√κ where κ = L/m.",
-        References([
-            Reference("10.1109/LCSYS.2017.2722406")
-        ]),
-        """
-triple_momentum()
-"""
-    )
-)
+Base.@kwdef struct ResultFile
+    file_name::String
+    contents::String
+    test_cases::Vector{Pair{String, TestHandle}}
+end
+
+function getAllResult()::Vector{ResultFile}
+    local resultFiles::Vector{String} = filter(isfile, readdir(joinpath(@__DIR__, "results"), join=true))
+
+    return map(resultFiles) do f
+        local fileExecutionModule = Module()
+
+        Core.eval(fileExecutionModule, :(using AlgorithmAnalysis)) 
+        local desc::TestFileDescriptor = Base.include(fileExecutionModule, f)
+
+        ResultFile(
+            file_name = splitext(basename(f))[1], 
+            contents = getContentsOfResultFile(desc),
+            test_cases = desc.named_tests
+        )
+    end
+end
 
 test() = [ verify(result) for result ∈ KNOWN_RESULTS ]
