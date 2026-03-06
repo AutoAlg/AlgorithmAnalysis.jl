@@ -9,6 +9,7 @@ triple_momentum
 heavy_ball
 bsmin
 get_element
-description
-ConeConstraint
+Object
+AbstractConstraint
+SmoothStronglyConvexFunction
 ```

@@ -114,7 +114,6 @@ import Zeros: Zero
 import MathOptInterface as MOI
 import HTTP
 import JSON
-import Markdown
 import AutoHashEquals
 import CodeTracking
 

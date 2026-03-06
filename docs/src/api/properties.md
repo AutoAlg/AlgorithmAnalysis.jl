@@ -1,15 +1,4 @@
 ```@docs
 Property
 Linear
-RelativelyBounded
-Monotone
-SmoothStronglyConvex
-PointwiseQuadraticConstraint
-IncrementalQuadraticConstraint
-TwoPointLinearQuadraticConstraint
-SlopeRestricted
-SectorBounded
-quadraticform
-linearquadraticform
-reference
 ```
