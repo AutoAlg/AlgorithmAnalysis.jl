@@ -110,7 +110,6 @@ import SCS
 import MosekTools
 import LinearAlgebra as la
 import InteractiveUtils
-import AbstractTrees
 import Zeros: Zero
 import MathOptInterface as MOI
 import HTTP

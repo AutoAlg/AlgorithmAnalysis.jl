@@ -1,7 +1,6 @@
 ## Constraints
 
 ```@docs
-AbstractConstraint
 Constraint
 ConstraintSet
 ```
