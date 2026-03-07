@@ -1,7 +1,7 @@
 name = "AlgorithmAnalysis"
 uuid = "baa24b6d-515a-48bb-b1d2-0fdd27c035f8"
-authors = ["Bryan Van Scoy <bvanscoy@miamioh.edu>"]
 version = "1.0.0-DEV"
+authors = ["Bryan Van Scoy <bvanscoy@miamioh.edu>"]
 
 [deps]
 CodeTracking = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
@@ -24,7 +24,7 @@ CodeTracking = "2.0.2"
 Convex = "0.15, 0.16"
 Documenter = "1"
 HTTP = "1.10.19"
-JSON = "0.21.4"
+JSON = "0.21.4, 1"
 JuMP = "1"
 LiveServer = "1.5.0"
 MacroTools = "0.5"
