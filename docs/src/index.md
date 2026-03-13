@@ -35,10 +35,10 @@ rate(performance)
 
 ## Documentation structure
 
+- **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques
+
 - **Manual:** describes the data structures used by AlgorithmAnalysis.jl
 
 - **Examples:** illustrate the analyses on a variety of algorithms and problem classes
 
 - **API:** a comprehensive list of all public objects exported by AlgorithmAnalysis.jl
-
-- **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques

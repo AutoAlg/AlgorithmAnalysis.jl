@@ -11,7 +11,7 @@
 *.fls
 *.out
 docs/build/
-docs/src/*.md
+docs/src/results/*.md
 build
 .vscode/*
 checks.json
