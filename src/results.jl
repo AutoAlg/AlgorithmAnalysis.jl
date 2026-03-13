@@ -1,5 +1,9 @@
 export Reference, ResultFile, getAllResult, TestFileDescriptor, TestHandle, @generate_test_handle, test
 
+"""
+A structure representing a reference that will be linked to at the bottom of a
+documentation file.
+"""
 struct Reference
     doi::String
     loc::Union{Nothing, String}
@@ -96,12 +100,21 @@ macro generate_test_handle(func_def)
 end
 
 
+"""
+The output file type of a combined testing and documentation file. Must be the
+last expression in the file
 
+# Fields
+- `file_contents::String`: The contents of a shown documentation file, must start with the name of the page.
+- `named_tests::Vector{Pair{String, TestHandle}}`: The executable tests that will be executable as tests and shown in the documentation.
+- `references::Vector{Reference}`: A list of [Reference](@ref) objects that should be paired along with the generated documentation.
+"""
 Base.@kwdef struct TestFileDescriptor
     file_contents::String
     named_tests::Vector{Pair{String, TestHandle}}
     references::Vector{Reference}
 end
+
 
 function getContentsOfResultFile(f::TestFileDescriptor)::String
     local stringBuilder::IOBuffer = IOBuffer();
@@ -129,6 +142,10 @@ function getContentsOfResultFile(f::TestFileDescriptor)::String
 end
 
 
+"""
+A Structure representing a file that can be interpreted for documentation
+or testing purposes
+""" 
 Base.@kwdef struct ResultFile
     file_name::String
     contents::String

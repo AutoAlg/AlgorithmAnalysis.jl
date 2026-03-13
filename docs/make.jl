@@ -1,8 +1,12 @@
 push!(LOAD_PATH,"../src/")
 
-using AlgorithmAnalysis, Documenter, DocumenterCitations
+using AlgorithmAnalysis, Documenter, DocumenterCitations, DocumenterInterLinks, DocStringExtensions
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "references.bib"))
+
+links = InterLinks(
+    "JuliaBaseDocumentation" => "https://docs.julialang.org/en/v1/"
+)
 
 const directory_to_dump_generated_markdown_files = joinpath(@__DIR__, "src", "results")
 mkpath(directory_to_dump_generated_markdown_files)
@@ -38,17 +42,18 @@ makedocs(
         edit_link = "master",
         prettyurls = false,
         assets = ["assets/style.css"],
+        collapselevel = 1,
     ),
     modules = [AlgorithmAnalysis],
-    # checkdocs = :exports,
-    plugins = [bib],
+    checkdocs = :exports,
+    plugins = [bib, links],
     pages = [
         "Introduction" => "index.md",
+        "Developer Guide" => "developers/index.md",
         "Manual" => [
             "manual/code.md",
             "manual/analysis.md"
         ],
-        "Results" => paths_of_generated_pages,
         "API" => [
             "Analysis" => "api/analysis.md",
             "Expressions" => "api/expressions.md",
@@ -61,7 +66,7 @@ makedocs(
             "Performance Measures" => "api/performance.md",
             "Miscellaneous" => "api/miscellaneous.md",
         ],
-        "Developer Guide" => "developers/index.md"
+        "Results" => paths_of_generated_pages,
     ]
 )
 

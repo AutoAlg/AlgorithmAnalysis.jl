@@ -7,9 +7,7 @@ stateupdate
 negative!
 triple_momentum
 heavy_ball
-bsmin
-get_element
-Object
-AbstractConstraint
-SmoothStronglyConvexFunction
+TestFileDescriptor
+ResultFile
+Reference
 ```

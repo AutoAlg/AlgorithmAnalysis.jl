@@ -11,7 +11,8 @@
 *.fls
 *.out
 docs/build/
-docs/src/*.md
+docs/src/results/*.md
+docs/Manifest.toml
 build
 .vscode/*
 checks.json
