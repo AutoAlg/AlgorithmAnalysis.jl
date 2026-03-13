@@ -39,6 +39,6 @@ rate(performance)
 
 - **Manual:** describes the data structures used by AlgorithmAnalysis.jl
 
-- **Examples:** illustrate the analyses on a variety of algorithms and problem classes
-
 - **API:** a comprehensive list of all public objects exported by AlgorithmAnalysis.jl
+
+- **Results:** illustrate the analyses on a variety of algorithms and problem classes

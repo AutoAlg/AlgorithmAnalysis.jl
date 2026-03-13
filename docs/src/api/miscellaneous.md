@@ -10,4 +10,8 @@ heavy_ball
 TestFileDescriptor
 ResultFile
 Reference
+Object
+bsmin
+get_element
+AbstractConstraint
 ```

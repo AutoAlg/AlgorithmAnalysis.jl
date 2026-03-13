@@ -62,7 +62,6 @@ makedocs(
             "Relations" => "api/relation.md",
             "Constraints" => "api/constraints.md",
             "Wrappers" => "api/wrappers.md",
-            "Properties" => "api/properties.md",
             "Performance Measures" => "api/performance.md",
             "Miscellaneous" => "api/miscellaneous.md",
         ],
