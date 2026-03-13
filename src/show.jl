@@ -149,23 +149,6 @@ end
 
 
 ############################################################################################
-# Properties
-
-function show(io::IO, P::Properties)
-    if isempty(P)
-        print(io, "Empty set of properties")
-    else
-        first = true
-        for p ∈ P
-            first ? (print(io, p); first = false) : print(io, ", ", p)
-        end
-    end
-end
-
-show(io::IO, p::SmoothStronglyConvex) = print(io, "$(p.b)-smooth, $(p.a)-strongly convex")
-
-
-############################################################################################
 # Oracles
 
 show(io::IO, o::Oracle) = print(io, label(o))
@@ -176,16 +159,7 @@ function show(io::IO, ::MIME"text/plain", o::Oracle)
     print(io, "\n  Description: $(description(o))")
     print(io, "\n  Label: $(label(o))")
     print(io, "\n  Constraints: $(constraints(o)...)")
-    # print(io, "\n  Properties: $(properties(o))")
     !isempty(associations(o)) && print(io, "\n  Associations: ", join(associations(o),", "))
-    # print(io, "\n  Associations: ")
-    # if isempty(associations(o))
-    #     print(io, "No associations")
-    # else
-    #     for a ∈ associations(o)
-    #         print(io, "\n    $(first(a)) => $(last(a))")
-    #     end
-    # end
 end
 
 show(io::IO, mime::MIME"text/plain", w::Wrapper) = show(io, mime, unwrap(w))

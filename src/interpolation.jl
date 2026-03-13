@@ -2,12 +2,12 @@
 ###########################################################
 # Properties
 
-export SmoothStronglyConvex
+# export SmoothStronglyConvex
 
-struct SmoothStronglyConvex <: ConstraintSet
-    a::Real
-    b::Real
-end
+# struct SmoothStronglyConvex <: ConstraintSet
+#     a::Real
+#     b::Real
+# end
 
 # function interpolate(objs::Objects, o::Oracle, p::SmoothStronglyConvex)
 #     a, b = p.a, p.b
@@ -126,11 +126,11 @@ end
 # # struct WeaklyCobounded{b,ys} <: Property{NormedVectorSpace} end                 # ‖y -ys‖² ≤ b²
 # struct Convex <: Property{VectorSpace} end
 
-"Linearity property. Applies to AbstractLinearMap oracles."
-struct Linear <: Property{AbstractLinearMap} end                       # X ⊗ V = Y ⊗ U (or x'*v = y'*u for (x,y) ∈ r and (u,v) ∈ r')
-struct Symmetric <: Property{AbstractSymmetricLinearMap} end           # X ⊗ Y = Y ⊗ X and U ⊗ V = V ⊗ U (or xi'*yj == yi'*xj for (xi,yi) and (xj,yj) ∈ r ∪ r')
-struct SkewSymmetric <: Property{AbstractSkewSymmetricLinearMap} end   # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
-struct MaxSingularValue{b} <: Property{AbstractLinearMap} end          # Y ⊗ Y ⪯ b² (X ⊗ X) and V ⊗ V ⪯ b² (U ⊗ U)
+# "Linearity property. Applies to AbstractLinearMap oracles."
+# struct Linear <: Property{AbstractLinearMap} end                       # X ⊗ V = Y ⊗ U (or x'*v = y'*u for (x,y) ∈ r and (u,v) ∈ r')
+# struct Symmetric <: Property{AbstractSymmetricLinearMap} end           # X ⊗ Y = Y ⊗ X and U ⊗ V = V ⊗ U (or xi'*yj == yi'*xj for (xi,yi) and (xj,yj) ∈ r ∪ r')
+# struct SkewSymmetric <: Property{AbstractSkewSymmetricLinearMap} end   # X ⊗ V = 0 and Y ⊗ U = 0 and X ⊗ Y + Y ⊗ X = 0 and U ⊗ V + V ⊗ U = 0
+# struct MaxSingularValue{b} <: Property{AbstractLinearMap} end          # Y ⊗ Y ⪯ b² (X ⊗ X) and V ⊗ V ⪯ b² (U ⊗ U)
 
 # struct Eigenvalues{a,b} <: Property{AbstractSymmetricLinearMap} end    # (Y-aX) ⊗ (bX-Y) ⪰ 0
 

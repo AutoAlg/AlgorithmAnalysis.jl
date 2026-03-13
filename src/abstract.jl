@@ -133,17 +133,6 @@ abstract type AbstractLinearDecomposition{T} <: Decomposition{T} end
 
 
 ############################################################################################
-# Properties of oracles
-
-"""
-    Property{T}
-
-Property of objects of type `T`.
-"""
-abstract type Property{T} end
-
-
-############################################################################################
 # Constants
 
 # A set of oracles
@@ -151,9 +140,6 @@ const Oracles = Set{Oracle}
 
 # A set of constraints
 const Constraints = Set{AbstractConstraint}
-
-# A set of properties
-const Properties = Set{Property}
 
 # An oracle or a wrapper of an oracle
 const OracleOrWrapper = Union{Oracle, Wrapper}

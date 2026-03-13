@@ -7,10 +7,9 @@ An operator is a multi-valued function, so each element of `X` maps to a subset 
 """
 mutable struct Operator{X,Y} <: AbstractOperator{X,Y}
     label::String
-    properties::Properties
     relation::MultiValuedRelation{X,Y}
     
-    Operator{X,Y}() where {X,Y} = new{X,Y}("Operator{$X,$Y}", Properties(), MultiValuedRelation{X,Y}())
+    Operator{X,Y}() where {X,Y} = new{X,Y}("Operator{$X,$Y}", MultiValuedRelation{X,Y}())
 end
 
 """
@@ -22,11 +21,10 @@ A map is a single-valued function, so each element of `X` maps to a single eleme
 """
 mutable struct Map{X,Y} <: AbstractFunction{X,Y}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,Y}
     associations::Associations
     
-    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", Properties(), SingleValuedRelation{X,Y}(), Associations())
+    Map{X,Y}() where {X,Y} = new{X,Y}("Map{$X,$Y}", SingleValuedRelation{X,Y}(), Associations())
 end
 
 """
@@ -38,10 +36,9 @@ For a constant map, there is a unique element of `Y` such that any element of `X
 """
 mutable struct ConstantMap{X,Y} <: AbstractFunction{X,Y}
     label::String
-    properties::Properties
     relation::ConstantRelation{X,Y}
     
-    ConstantMap{X,Y}(value = missing) where {X,Y} = new{X,Y}("ConstantMap{$X,$Y}", Properties(), ConstantRelation{X,Y}(value))
+    ConstantMap{X,Y}(value = missing) where {X,Y} = new{X,Y}("ConstantMap{$X,$Y}", ConstantRelation{X,Y}(value))
 end
 
 """
@@ -49,11 +46,10 @@ end
 """
 mutable struct LinearMap{X,Y} <: AbstractLinearMap{X,Y}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,Y}
     associations::Associations
     
-    LinearMap{X,Y}() where {X,Y} = new{X,Y}("LinearMap{$X,$Y}", Properties([Linear()]), SingleValuedRelation{X,Y}(), Dict(Transpose => Map{Y,X}()))
+    LinearMap{X,Y}() where {X,Y} = new{X,Y}("LinearMap{$X,$Y}", SingleValuedRelation{X,Y}(), Dict(Transpose => Map{Y,X}()))
 end
 
 """
@@ -61,10 +57,9 @@ end
 """
 mutable struct SymmetricLinearMap{X} <: AbstractSymmetricLinearMap{X}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,X}
     
-    SymmetricLinearMap{X}() where {X} = new{X}("SymmetricLinearMap{$X}", Properties([Symmetric()]), SingleValuedRelation{X,X}())
+    SymmetricLinearMap{X}() where {X} = new{X}("SymmetricLinearMap{$X}", SingleValuedRelation{X,X}())
 end
 
 """
@@ -72,10 +67,9 @@ end
 """
 mutable struct SkewSymmetricLinearMap{X} <: AbstractSkewSymmetricLinearMap{X}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,X}
     
-    SkewSymmetricLinearMap{X}() where {X} = new{X}("SkewSymmetricLinearMap{$X}", Properties([SkewSymmetric()]), SingleValuedRelation{X,X}())
+    SkewSymmetricLinearMap{X}() where {X} = new{X}("SkewSymmetricLinearMap{$X}", SingleValuedRelation{X,X}())
 end
 
 """
@@ -83,10 +77,9 @@ end
 """
 mutable struct Functional{X} <: AbstractFunctional{X}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,<:Field}
     
-    Functional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("Functional{$X}", Properties(), SingleValuedRelation{X,F}())
+    Functional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("Functional{$X}", SingleValuedRelation{X,F}())
 end
 
 """
@@ -94,11 +87,10 @@ end
 """
 mutable struct SubdifferentiableFunctional{X} <: AbstractSubdifferentiableFunctional{X}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    SubdifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("SubdifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Subdifferential => Operator{X,X}()))
+    SubdifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("SubdifferentiableFunctional{$X}", SingleValuedRelation{X,F}(), Dict(Subdifferential => Operator{X,X}()))
 end
 
 """
@@ -115,7 +107,6 @@ mutable struct DifferentiableFunctional{X} <: AbstractDifferentiableFunctional{X
         push!(unwrap(f').associations, GradientOf => f)
         f
     end
-    # DifferentiableFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("DifferentiableFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()))
 end
 
 """
@@ -153,11 +144,10 @@ end
 """
 mutable struct QuadraticFunctional{X} <: AbstractTwiceDifferentiableFunctional{X}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,<:Field}
     associations::Associations
     
-    QuadraticFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("QuadraticFunctional{$X}", Properties(), SingleValuedRelation{X,F}(), Dict(Gradient => LinearMap{X,X}(), Hessian => SymmetricLinearMap{X}()))
+    QuadraticFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("QuadraticFunctional{$X}", SingleValuedRelation{X,F}(), Dict(Gradient => LinearMap{X,X}(), Hessian => SymmetricLinearMap{X}()))
 end
 
 """
@@ -165,11 +155,10 @@ end
 """
 mutable struct LinearFunctional{X} <: AbstractLinearFunctional{X}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,<:Field}
 
     function LinearFunctional{X}() where {F<:Field, X<:VectorSpace{F}}
-        f = new{X}("LinearFunctional{$X}", Properties([Linear()]), SingleValuedRelation{X,F}())
+        f = new{X}("LinearFunctional{$X}", SingleValuedRelation{X,F}())
         # push!(unwrap(f').associations, TransposeOf => f) # new
         f #new
     end
@@ -180,10 +169,9 @@ end
 """
 mutable struct ZeroFunctional{X} <: AbstractLinearFunctional{X}
     label::String
-    properties::Properties
     relation::SingleValuedRelation{X,<:Field}
 
-    ZeroFunctional{X}() where {X} = new{X}("ZeroFunctional{$X}", Properties())  # [Linear()]
+    ZeroFunctional{X}() where {F<:Field, X<:VectorSpace{F}} = new{X}("ZeroFunctional{$X}", SingleValuedRelation{X,F}())
 end
 
 
@@ -426,26 +414,6 @@ function *(o::Dual{X}, x::X) where {F<:Field, X<:VectorSpace{F}}
         y
     end
 end
-
-
-############################################################################################
-# Properties
-
-properties(o::OracleOrWrapper) = unwrap(o).properties
-
-"""
-    ∈(o::OracleOrWrapper, property::Property)
-    ∈(o::OracleOrWrapper, properties::Properties)
-Push a property or set of properties onto an Oracle.
-
-# Examples
-```julia-repl
-f = DifferentiableFunctional{Rⁿ}()
-f ∈ SmoothStronglyConvex(1, 10) # Push the property of being 1 smooth 10 strongly convex onto Oracle `f`
-```
-"""
-# ∈(o::OracleOrWrapper, property::Property) = push!(properties(o), property)
-# ∈(o::OracleOrWrapper, properties::Properties) = map(property -> o ∈ property, properties)
 
 
 ############################################################################################

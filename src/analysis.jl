@@ -118,7 +118,7 @@ function info(orcs::Oracles)
     end
 end
 
-isimplementable(e::Expression) = e isa R
+isimplementable(e::Expression) = e isa R || e isa Gram
 isimplementable(c::Constraint) = isimplementable(expression(c))
 isimplementable(X::Union{AbstractArray,Set,Generator}) = all( isimplementable(x) for x ∈ X )
 
