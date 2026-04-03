@@ -41,10 +41,10 @@ isequal(::Expression, ::Expression) = false
 function isequal(x1::T, x2::T) where {T<:Expression}
     if !isdefined(x1, :value) || !isdefined(x2, :value)
         false
-    elseif !ismissing(x1.value) && !ismissing(x2.value)
-        isequal(x1.value, x2.value)
-    elseif ismissing(x1.value) && ismissing(x2.value)
-        x1 ≡ x2
+    elseif !isvariable(x1) && !isvariable(x2)
+        isequal(value(x1), value(x2))
+    elseif isvariable(x1) && isvariable(x2)
+        x1.value == x2.value
     else
         false
     end

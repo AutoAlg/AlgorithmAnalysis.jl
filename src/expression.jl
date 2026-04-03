@@ -136,7 +136,7 @@ end
 
 # label
 function (::Type{T})(label::String = "Variable{$T}") where {T<:AbstractVectorSpace}
-    T(label, missing, Constraints(), Oracles(), missing)
+    T(label, UUIDs.uuid1(Random.RandomDevice()), Constraints(), Oracles(), missing)
 end
 
 # value
@@ -221,7 +221,7 @@ julia> x = Rⁿ()
 julia> isvariable(x)
 ```
 """
-isvariable(e::Expression) = hasfield(typeof(e), :value) && e.value isa Missing
+isvariable(e::Expression) = hasfield(typeof(e), :value) && e.value isa UUIDs.UUID
 
 """
     iszero(e::Expression)

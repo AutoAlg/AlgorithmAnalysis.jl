@@ -1,4 +1,6 @@
 
+export trueeq
+const trueeq = deepcopy(Base.:(==))
 
 """
     Constraint

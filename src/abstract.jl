@@ -164,8 +164,9 @@ const State{T} = Union{T, Missing}
 # An object of type T or a wrapper of that type
 const OrWrapper{T} = Union{T, Wrapper{<:T}}
 
-const ScalarValue{T} = Union{Number,Decomposition{T},Missing}
-const VectorValue{T} = Union{Vector,Zero,Decomposition{T},Missing}
+# UUID is the unique id of a variable
+const ScalarValue{T} = Union{Number,Decomposition{T},UUIDs.UUID}
+const VectorValue{T} = Union{Vector,Zero,Decomposition{T},UUIDs.UUID}
 
 const ArrayOrSet{T} = Union{AbstractArray{<:T}, AbstractSet{<:T}}
 
