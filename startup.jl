@@ -110,6 +110,3 @@ end
 
 @algorithm x1 = Rⁿ()
 x2 = deepcopy(x1)
-
-# this breaks!
-# deepcopy(x0)
