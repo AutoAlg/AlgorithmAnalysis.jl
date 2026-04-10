@@ -51,12 +51,6 @@ export LinearFunctional, ZeroFunctional, DualInputFunctional
 export SmoothStronglyConvexFunction
 export get_oracle_input
 
-# wrappers
-export Wrapper, unwrap
-export Dual
-export Transpose, AbstractDifferential, AbstractSubdifferential, TransposeOf
-export Subdifferential, Gradient, Hessian, GradientOf
-
 # decompositions
 export Decomposition, EmptyDecomposition, LinearDecomposition
 
@@ -85,7 +79,7 @@ export Bounded, Cobounded, WeaklyBounded, WeaklyCobounded, Convex
 export Linear, Symmetric, SkewSymmetric, Eigenvalues, MaxSingularValue
 export Monotonicity, RelativeBoundedness, Boundedness
 export propertyof, properties
-export Co, Weakly, PropertyOrWrapper
+export Co, Weakly
 
 # solve
 export lift, project, variables, constraints, variables_constraints
@@ -101,6 +95,8 @@ export optimization_variable_dictionary, isimplementable, multiplier
 export get_states_inputs, get_formulas, lift, neighbors, negative!, connected_components
 
 export bsmin, get_element
+
+export Association, Dual, DualOf, Transpose, Subdifferential, Gradient, GradientOf, Hessian
 
 ############################################################################################
 # Import
@@ -129,7 +125,6 @@ import LinearAlgebra: dot, ⋅
 # Include
 
 include("abstract.jl")
-include("wrapper.jl")
 include("decomposition.jl")
 include("expression.jl")
 include("constraint.jl")

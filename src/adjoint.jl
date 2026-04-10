@@ -35,30 +35,42 @@ function adjoint(o::Oracle)
     error("Oracle type $(typeof(o)) does not have an associated operator o'. To specify a related operator, specialize `adjoint` for this oracle type.")
 end
 
-adjoint(o::AbstractLinearMap) = Transpose{typeof(o)}(o)
-adjoint(o::Transpose{<:AbstractLinearMap}) = o.parent
-adjoint(o::AbstractSymmetricLinearMap) = o
-adjoint(o::AbstractSkewSymmetricLinearMap) = LinearDecomposition{typeof(o)}(Dict(o => -1))
-adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
-adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
+# adjoint(o::AbstractLinearMap) = Transpose{typeof(o)}(o)
+# adjoint(o::Transpose{<:AbstractLinearMap}) = o.parent
+# adjoint(o::AbstractSymmetricLinearMap) = o
+# adjoint(o::AbstractSkewSymmetricLinearMap) = LinearDecomposition{typeof(o)}(Dict(o => -1))
+# adjoint(o::AbstractSubdifferentiableFunctional) = Subdifferential{typeof(o)}(o)
+# adjoint(o::AbstractDifferentiableFunctional) = Gradient{typeof(o)}(o)
 
-function adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional})
-    Hessian{typeof(o.parent)}(o.parent)
-end
+# function adjoint(o::Gradient{<:AbstractTwiceDifferentiableFunctional})
+#     Hessian{typeof(o.parent)}(o.parent)
+# end
+
+adjoint(f::SmoothStronglyConvexFunction) = f.associations[Gradient]
 
 function adjoint(x::LinearDecomposition)
     mapreduce( p -> last(p) * first(p)', +, weights(x); init=Zero() )
 end
 
-adjoint(o::Dual{<:InnerProductSpace}) = o.parent
+# adjoint(o::Dual{<:InnerProductSpace}) = o.parent
 adjoint(::ZeroFunctional{X}) where {X} = X(Zero())
 adjoint(a::Field) = a
 
 function adjoint(x::X) where {X<:InnerProductSpace}
     if iszero(x)
         ZeroFunctional{X}()
-    else
-        Dual{typeof(x)}(x)
+    elseif isdefined(x, :associations) && haskey(x.associations, Dual)
+        x.associations[Dual]
+    elseif value(x) isa LinearDecomposition
+        mapreduce(p -> last(p) * first(p)', +, weights(value(x)))
+    end
+end
+
+function adjoint(x::LinearFunctional)
+    if isdefined(x, :associations) && haskey(x.associations, DualOf)
+        x.associations[DualOf]
+    elseif !ismissing(x.value)
+        mapreduce(p -> last(p) * first(p)', +, weights(x.value))
     end
 end
 

@@ -1,7 +1,3 @@
-
-export trueeq
-const trueeq = deepcopy(Base.:(==))
-
 """
     Constraint
 
@@ -17,14 +13,12 @@ struct Constraint <: AbstractConstraint
             add_constraint!(x, this)
             this
         else
-            @show value(x)
             check(x,s) ? Satisfied() : Unsatisfied()
         end
     end
 end
 
 ∈(x::Expression, s::ConstraintSet) = Constraint(x, s)
-∈(w::Wrapper, s::ConstraintSet) = unwrap(w) ∈ s
 
 ############################################################################################
 # Add constraint

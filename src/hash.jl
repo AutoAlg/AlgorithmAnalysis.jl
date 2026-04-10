@@ -9,7 +9,7 @@ function hash end
 
 
 function Base.hash(e::Oracle, h::UInt)
-    hash(objectid(unwrap(e)), h)   
+    hash(objectid(e), h)   
 end
 
 function hash(e::Expression, h::UInt)
@@ -77,10 +77,6 @@ end
 function isequal(a1::AbstractArray{T}, a2::AbstractArray{T}) where {T<:Expression}
     isequal(size(a1), size(a2)) && all( isequal(a1[i],a2[i]) for i ∈ eachindex(a1) )
 end
-
-isequal(x::T, y::Wrapper{T}) where {T} = isequal(x, unwrap(y))
-isequal(x::Wrapper{T}, y::T) where {T} = isequal(unwrap(x), y)
-isequal(x::Wrapper{T}, y::Wrapper{T}) where T = isequal(unwrap(x), unwrap(y))
 
 function isequal(lhs::Constraint, rhs::Constraint)
     isequal( set(lhs), set(rhs) ) && isequal( expression(lhs), expression(rhs) )

@@ -89,8 +89,17 @@ macro innerproductspace(ex::Expr)
             associations::Associations
 
             function $(esc(ex.args[1]))(label::String, value::VectorValue, constraints::Constraints, oracles::Oracles, next::State)
-                associations = Dict(Dual => LinearFunctional{$(esc(ex.args[1]))}())
-                new(label, value, constraints, oracles, next, associations)
+
+                if value isa LinearDecomposition
+                    associations = Dict()
+                else
+                    associations = Dict(Dual => LinearFunctional{$(esc(ex.args[1]))}())
+                end
+                e = new(label, value, constraints, oracles, next, associations)
+                if !(e' isa ZeroFunctional)
+                    push!(e'.associations, DualOf => e)
+                end
+                e
             end
         end
     end
@@ -242,7 +251,6 @@ julia> iszero(x)
 
 """
 iszero(e::Expression) = hasfield(typeof(e), :value) && e.value isa Zero
-iszero(w::Wrapper) = iszero(unwrap(w))
 
 """
     hasdecomposition(e)
@@ -388,7 +396,6 @@ next!(x::T, y::State{T}) where {T<:Expression} = x.next = y
 """
     next(f::AbstractFunction)
     next(f::Oracle)
-    next(f::Wrapper{<:Oracle})
     next(d:: Dual{})
     next(e::Expression)
     next(a::AbstractArray{<:Expression})
@@ -449,8 +456,8 @@ function next(f::AbstractFunction)
     end
 end
 
-next(f::OracleOrWrapper) = f
-next(d::Dual) = d'.next'
+next(f::Oracle) = f
+# next(d::Dual) = d'.next'
 next(::Missing) = missing
 next(::Gram) = missing #next(vecs1(g)) ⊗ next(vecs2(g))
 

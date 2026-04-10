@@ -49,7 +49,7 @@ function +(e1::T, e2::T) where {T<:AbstractVectorSpace}
         T( value(e1) + value(e2) )
     else
         decomp = selfdecomp(e1) + selfdecomp(e2)
-        isempty(decomp) ? T(Zero()) : T(decomp)
+        isempty(decomp) ? zero(T) : T(decomp)
     end
 end
 
@@ -66,7 +66,7 @@ end
 /(e::AbstractVectorSpace, a::Any) = (1/a)*e
 
 # Squared norm of a vector in a normed vector space
-function ^(v::OrWrapper{NormedVectorSpace}, n::Int)
+function ^(v::NormedVectorSpace, n::Int)
     if n == 2
         squarednorm(v)
     else
@@ -74,7 +74,7 @@ function ^(v::OrWrapper{NormedVectorSpace}, n::Int)
     end
 end
 
-squarednorm(v::OrWrapper{InnerProductSpace}) = v'*v
+squarednorm(v::InnerProductSpace) = v'*v
 
 """
     x ⊗ y
@@ -89,3 +89,25 @@ julia> G = x ⊗ y
 ```
 """
 ⊗(x1::Vector{V}, x2::Vector{V}) where {V<:InnerProductSpace} = Gram(x1,x2)
+
+
+
+function +(e1::T, e2::T) where {T<:AbstractLinearFunctional}
+    if iszero(e1)
+        e2
+    elseif iszero(e2)
+        e1
+    elseif hasvalue(e1) && hasvalue(e2)
+        T( value(e1) + value(e2) )
+    else
+        decomp = selfdecomp(e1) + selfdecomp(e2)
+        isempty(decomp) ? zero(T) : T(decomp)
+    end
+end
+
+function *(a::DecompositionValue, e::T) where {T<:AbstractLinearFunctional}
+    hasvalue(e) ? T( a*value(e) ) : T( a*selfdecomp(e) )
+end
+
+-(e1::AbstractLinearFunctional, ::ZeroFunctional) = e1
+-(e::AbstractLinearFunctional) = -1*e

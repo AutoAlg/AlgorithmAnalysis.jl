@@ -8,12 +8,18 @@ L = 10
 α = 2/(L+m)
 
 @algorithm begin
+    x = Rⁿ()
+    y = Rⁿ()
+end
+
+@algorithm begin
     f = SmoothStronglyConvexFunction{Rⁿ}(m, L)
     xs = first_order_stationary_point(f)
     fs = f(xs)
     
     x0 = Rⁿ()
-    x1 = x0 - α * f'(x0)
+    g0 = f'(x0)
+    x1 = x0 - α * g0
     x0 => x1
 
     performance = (x0 - xs)^2
@@ -35,7 +41,7 @@ function smoothstronglyconvexinterpolation(objs::Objects)
 
         union!(objs, new_cons)
 
-        setdiff!(objs, Set([f, unwrap(f')]))
+        setdiff!(objs, Set([f, f']))
     end
     
     objs
@@ -110,6 +116,3 @@ function interpolation_search(xs::Objects)
     end
     error("Path not found")
 end
-
-@algorithm x1 = Rⁿ()
-x2 = deepcopy(x1)

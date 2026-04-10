@@ -83,7 +83,7 @@ function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
         # isdefined(e, :vecs) && print(io, "\n Value: $(e.vecs) ⊗ $(e.vecs)")
         !isempty(label(e)) && print(io, "\n  Label: ", label(e))
         hasvalue(e) && print(io, "\n  Value: ", value(e))
-        hasdecomposition(e) && print(io, "\n  Decomposition: ", decomposition(e))
+        # hasdecomposition(e) && print(io, "\n  Decomposition: ", decomposition(e))
         !isempty(constraints(e)) && print(io, "\n  Constraints: ", join(constraints(e), ", "))
         !isempty(oracles(e)) && print(io, "\n  Oracles: ", join(oracles(e), ", "))
         !ismissing(next(e)) && print(io, "\n  Next: ", next(e))
@@ -91,7 +91,7 @@ function show(io::IO, ::MIME"text/plain", e::T) where {T<:Expression}
     end
 end
 
-show(io::IO, p::Pair{Type{<:Wrapper}, Oracle}) = print(io, first(p), " => ", last(p))
+show(io::IO, p::Pair{Type{<:Association}, Expression}) = print(io, first(p), " => ", last(p))
 
 # Associations
 # show(io::IO, a::Associations) = print(io, a...)
@@ -152,14 +152,12 @@ end
 # Oracles
 
 show(io::IO, o::Oracle) = print(io, label(o))
-show(io::IO, w::Wrapper) = show(io, unwrap(w))
 
 function show(io::IO, ::MIME"text/plain", o::Oracle)
     print(io, "\nOracle")
     print(io, "\n  Description: $(description(o))")
-    print(io, "\n  Label: $(label(o))")
-    print(io, "\n  Constraints: $(constraints(o)...)")
+    !isempty(label(o)) && print(io, "\n  Label: $(label(o))")
+    !isempty(constraints(o)) && print(io, "\n  Constraints: $(constraints(o)...)")
     !isempty(associations(o)) && print(io, "\n  Associations: ", join(associations(o),", "))
+    isdefined(o, :value) && !ismissing(o.value) && print(io, "\n  Value: ", o.value)
 end
-
-show(io::IO, mime::MIME"text/plain", w::Wrapper) = show(io, mime, unwrap(w))

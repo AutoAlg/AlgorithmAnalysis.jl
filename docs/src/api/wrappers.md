@@ -1,5 +1,4 @@
 ```@docs
-Wrapper
 Decomposition
 EmptyDecomposition
 LinearDecomposition
@@ -13,5 +12,4 @@ Hessian
 isempty
 # linear
 # constant
-unwrap
 ```

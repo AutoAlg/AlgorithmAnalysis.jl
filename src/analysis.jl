@@ -1,10 +1,10 @@
-function variables(o::OracleOrWrapper)
+function variables(o::Oracle)
     vars = variables(inputs(o) ∪ outputs(o))
     for a ∈ associations(o)
         if first(a) ≠ GradientOf
-            union!(vars, variables(unwrap(last(a))))
+            union!(vars, variables(last(a)))
         else
-            push!(vars, unwrap(last(a)))
+            push!(vars, last(a))
         end
     end
     vars
@@ -28,7 +28,6 @@ end
 
 neighbors(x::Expression) = variables(x) ∪ constraints(x) ∪ oracles(x)
 neighbors(x::Constraint) = variables(x)
-neighbors(w::Wrapper) = neighbors(unwrap(w))
 
 # Get all objects in the graph using graph search
 function connected_components(x::Object; verbose=false)

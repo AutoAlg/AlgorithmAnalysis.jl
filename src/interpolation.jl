@@ -219,19 +219,19 @@
 # """
 # function constraints end
 
-# # constraints(o::Wrapper, p::Property) = constraints(unwrap(o), p)
+# # constraints(o::Wrapper, p::Property) = constraints(o, p)
 
-# # function constraints(o::OracleOrWrapper)
+# # function constraints(o::Oracle)
 # #     cons1 = mapreduce(p -> constraints(o,p), ∪, properties(o); init=Constraints())
 # #     cons2 = mapreduce(constraints, ∪, values(associations(o)); init=Constraints())
 # #     cons1 ∪ cons2
 # # end
 
-# # constraints(::OracleOrWrapper) = Constraints()
+# # constraints(::Oracle) = Constraints()
 
 
 
-# # function constraints(o::OracleOrWrapper, checked)
+# # function constraints(o::Oracle, checked)
 # #     if o ∈ checked
 # #         return Constraints()
 # #     else
@@ -244,7 +244,7 @@
 # #         cons
 # #     end
 # # end
-# # constraints(o::OracleOrWrapper) = constraints(o, Set())
+# # constraints(o::Oracle) = constraints(o, Set())
 
 # # Operators
 
@@ -348,8 +348,8 @@ end
 # end
 
 # function gram end
-# # gram(o::Wrapper, p::Property) = gram(unwrap(o), p)
-# # function gram(o::OracleOrWrapper, checked)
+# # gram(o::Wrapper, p::Property) = gram(o, p)
+# # function gram(o::Oracle, checked)
 # #     if o ∈ checked
 # #         return Set()
 # #     else
@@ -362,7 +362,7 @@ end
 # #         cons
 # #     end
 # # end
-# gram(o::OracleOrWrapper) = gram(unwrap(o))
+# gram(o::Oracle) = gram(o)
 # function gram(o::AbstractLinearFunctional)
 #     vecs = collect(allvecs(o))
 #     for v ∈ vecs, w ∈ vecs
@@ -374,7 +374,6 @@ end
 # end
 
 # interpolate(o::Oracle) = @warn "Interpolating oracle not implemented for $o"
-# interpolate(w::Wrapper) = interpolate(unwrap(w))
 
 # function interpolate(o::AbstractLinearFunctional)
 #     vecs = collect(allvecs(o))

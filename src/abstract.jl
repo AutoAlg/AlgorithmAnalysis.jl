@@ -93,15 +93,6 @@ Some concrete oracles are [`LinearMap`](@ref), [`Functional`](@ref), etc.
 abstract type Oracle <: Expression end
 
 """
-    Wrapper{T}
-
-Wrapper for an object of type `T`.
-
-Every concrete subtype must have a field `parent::T` that stores the object being wrapped.
-"""
-abstract type Wrapper{T} end
-
-"""
     Decomposition{T}
 
 Decomposition of an object of type `T` in terms of other objects.
@@ -133,6 +124,18 @@ abstract type AbstractLinearDecomposition{T} <: Decomposition{T} end
 
 
 ############################################################################################
+# Associations
+
+abstract type Association end
+abstract type Dual <: Association end
+abstract type DualOf <: Association end
+abstract type Transpose <: Association end
+abstract type Subdifferential <: Association end
+abstract type Gradient <: Association end
+abstract type GradientOf <: Association end
+abstract type Hessian <: Association end
+
+############################################################################################
 # Constants
 
 # A set of oracles
@@ -141,28 +144,17 @@ const Oracles = Set{Oracle}
 # A set of constraints
 const Constraints = Set{AbstractConstraint}
 
-# An oracle or a wrapper of an oracle
-const OracleOrWrapper = Union{Oracle, Wrapper}
-
 # A dictionary of associations between wrappers and oracles
-const Associations = Dict{Type{<:Wrapper}, Oracle}
+const Associations = Dict{Type{<:Association}, Expression}
 
 # A vector or a decomposition of vectors
 const VectorExpression = Union{AbstractVectorSpace, Decomposition{<:AbstractVectorSpace}}
-
-# A vector or a wrapper of a vector
-const VectorOrWrapper = Union{AbstractVectorSpace, Wrapper{<:AbstractVectorSpace}}
-
-const VectorWrapperDecomposition = Union{AbstractVectorSpace, Decomposition{<:AbstractVectorSpace}, Wrapper{<:AbstractVectorSpace}, Decomposition{<:Wrapper{<:AbstractVectorSpace}}}
 
 # A set of expressions
 const Expressions = Set{Expression}
 
 # The type of a next or previous state of type T
 const State{T} = Union{T, Missing}
-
-# An object of type T or a wrapper of that type
-const OrWrapper{T} = Union{T, Wrapper{<:T}}
 
 # UUID is the unique id of a variable
 const ScalarValue{T} = Union{Number,Decomposition{T},UUIDs.UUID}

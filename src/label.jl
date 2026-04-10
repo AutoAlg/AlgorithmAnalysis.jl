@@ -38,7 +38,6 @@ julia> label(y)        # "f(x)"
 function label! end
 
 label(x::Union{Expression,Oracle}) = x.label
-label(w::Wrapper) = label(unwrap(w))
 
 
 ############################################################################################
@@ -50,19 +49,17 @@ label!(e::Expression, label::String) = (e.label=label; nothing)
 
 function label!(x::InnerProductSpace, label::String)
     x.label = label
-    label!(x.associations[Dual],label*"'")
+    haskey(x.associations, Dual) && label!(x.associations[Dual],label*"'")
     nothing
 end
 
 ############################################################################################
 # Oracles
 
-# label!(o::Oracle, label::String) = (o.label=label; map(p -> label!(last(p), defaultlabel(first(p), label)), collect(associations(o))); nothing)
 function label!(o::Oracle, label::String)
     o.label = label
     for a ∈ associations(o)
         if hasmethod(defaultlabel, (Type{first(a)}, String))
-        # if applicable(defaultlabel, first(a), label)
             label!(last(a), defaultlabel(first(a), label))
         end
     end
@@ -106,16 +103,16 @@ defaultlabel(::Type{Transpose}, label::String) = label * "*"
 defaultlabel(::Type{Subdifferential}, label::String) = "∂" * label
 defaultlabel(::Type{Gradient}, label::String) = "∇" * label
 defaultlabel(::Type{Hessian}, label::String) = "∇²" * label
-
 defaultlabel(o::AbstractOperator, x) = "$(label(o))($(label(x)))"
 defaultlabel(o::ConstantMap, ::Any) = label(o)
 
 function defaultlabel(o::AbstractLinearFunctional{X}, x::X) where {X<:InnerProductSpace}
-    "⟨"*label(x)*","*label(o)*"⟩"
-end
-
-function defaultlabel(w::Dual{X}, x::X) where {X}
-    isequal(w', x) ? "|"*label(x)*"|²" : "⟨"*label(x)*","*label(w')*"⟩"
+    if haskey(associations(o), DualOf)
+        y = o.associations[DualOf]
+        isequal(y, x) ? "|"*label(x)*"|²" : "⟨"*label(y)*","*label(x)*"⟩"
+    else
+        "⟨"*label(x)*","*label(o)*"⟩"
+    end
 end
 
 ############################################################################################
