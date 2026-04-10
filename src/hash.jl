@@ -43,7 +43,16 @@ isequal(::Expression, ::Expression) = false
 
 function isequal(x1::T, x2::T) where {T<:Expression}
     if !isdefined(x1, :value) || !isdefined(x2, :value)
-        false
+        # false
+        for field in fieldnames(T)
+            val1 = getfield(x1, field)
+            val2 = getfield(x2, field)
+            
+            if !isequal(val1, val2)
+                return false
+            end
+        end
+        true
     elseif !isvariable(x1) && !isvariable(x2)
         isequal(value(x1), value(x2))
     elseif isvariable(x1) && isvariable(x2)
@@ -52,6 +61,8 @@ function isequal(x1::T, x2::T) where {T<:Expression}
         false
     end
 end
+
+isequal(f1::SmoothStronglyConvexFunction, f2::SmoothStronglyConvexFunction) = f1.id == f2.id
 
 isequal(g1::Gram, g2::Gram) = isequal(vecs1(g1), vecs1(g2)) && isequal(vecs2(g1), vecs2(g2))
 
@@ -69,6 +80,7 @@ end
 
 isequal(x::T, y::Wrapper{T}) where {T} = isequal(x, unwrap(y))
 isequal(x::Wrapper{T}, y::T) where {T} = isequal(unwrap(x), y)
+isequal(x::Wrapper{T}, y::Wrapper{T}) where T = isequal(unwrap(x), unwrap(y))
 
 function isequal(lhs::Constraint, rhs::Constraint)
     isequal( set(lhs), set(rhs) ) && isequal( expression(lhs), expression(rhs) )

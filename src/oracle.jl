@@ -113,6 +113,7 @@ end
     SmoothStronglyConvexFunction{X}
 """
 mutable struct SmoothStronglyConvexFunction{X} <: AbstractDifferentiableFunctional{X}
+    id::UUIDs.UUID
     label::String
     constraints::Constraints
     relation::SingleValuedRelation{X,<:Field}
@@ -121,7 +122,7 @@ mutable struct SmoothStronglyConvexFunction{X} <: AbstractDifferentiableFunction
     smoothness::Number
     
     function SmoothStronglyConvexFunction{X}(m::Number, L::Number) where {F<:Field, X<:VectorSpace{F}}
-        f = new{X}("SmoothStronglyConvexFunction{$X}", Constraints(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()), m, L)
+        f = new{X}(UUIDs.uuid1(Random.RandomDevice()), "SmoothStronglyConvexFunction{$X}", Constraints(), SingleValuedRelation{X,F}(), Dict(Gradient => Map{X,X}()), m, L)
         push!(unwrap(f').associations, GradientOf => f)
         f
     end

@@ -17,6 +17,7 @@ struct Constraint <: AbstractConstraint
             add_constraint!(x, this)
             this
         else
+            @show value(x)
             check(x,s) ? Satisfied() : Unsatisfied()
         end
     end
@@ -389,9 +390,9 @@ function check end
 
 check(c::Constraint) = check(expression(c), set(c))
 
-check(x, ::ZeroSet) = hasvalue(x) && evaluate(x) == 0
-check(x, ::PositiveOrthant) = hasvalue(x) && evaluate(x) ≥ 0
-check(x, ::PositiveSemidefiniteCone) = hasvalue(x) && evaluate(x) ⪰ 0
+check(x, ::ZeroSet) = hasvalue(x) && !hasdecomposition(x) && evaluate(x) == 0
+check(x, ::PositiveOrthant) = hasvalue(x) && !hasdecomposition(x) && evaluate(x) ≥ 0
+check(x, ::PositiveSemidefiniteCone) = hasvalue(x) && !hasdecomposition(x) && evaluate(x) ⪰ 0
 
 check(::Oracle, ::ConstraintSet) = false
 

@@ -257,7 +257,9 @@
 #     Constraints( 0 ≤ [xᵢ-xⱼ; yᵢ-yⱼ]'*quadraticform(p)*[xᵢ-xⱼ; yᵢ-yⱼ] for (xᵢ,yᵢ) ∈ o, (xⱼ,yⱼ) ∈ o )
 # end
 
-# triplets(o::AbstractLocallyLipschitzFunctional) = Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
+function triplets(o::AbstractLocallyLipschitzFunctional)
+  Set( (x,o(x),o'(x)) for (x,y) ∈ o ) ∪ Set( (x,o(x),o'(x)) for (x,_) ∈ o' )
+end
 
 # # function constraints(o::AbstractLocallyLipschitzFunctional, p::AbstractPointwiseLinearQuadraticConstraint)
 # #     m, M = linearquadraticform(p)

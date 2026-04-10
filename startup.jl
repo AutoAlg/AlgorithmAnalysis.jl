@@ -21,7 +21,6 @@ end
 
 objs = connected_components(performance)
 
-
 function smoothstronglyconvexinterpolation(objs::Objects)
     
     objs = deepcopy(objs)
@@ -32,13 +31,17 @@ function smoothstronglyconvexinterpolation(objs::Objects)
         m = f.strong_convexity
         L = f.smoothness
 
-        union!(objs, Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2L*(gᵢ-gⱼ)^2 + m/(2*(1-m/L))*(xᵢ-xⱼ-1/L*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(f), (xⱼ,fⱼ,gⱼ) ∈ triplets(f) ))
+        new_cons = Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2L*(gᵢ-gⱼ)^2 + m/(2*(1-m/L))*(xᵢ-xⱼ-1/L*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(f), (xⱼ,fⱼ,gⱼ) ∈ triplets(f) )
 
-        setdiff!(objs, Set([f, f']))
+        union!(objs, new_cons)
+
+        setdiff!(objs, Set([f, unwrap(f')]))
     end
     
     objs
 end
+
+new_objs = smoothstronglyconvexinterpolation(objs)
 
 function gramtransformation(objs::Objects)
     
