@@ -7,7 +7,10 @@ Hash of an expression. Custom types must provide specialized methods for this fu
 """
 function hash end
 
-hash(e::Oracle, h::UInt) = hash(relation(e), h)
+
+function Base.hash(e::Oracle, h::UInt)
+    hash(objectid(unwrap(e)), h)   
+end
 
 function hash(e::Expression, h::UInt)
     if !ismissing(e.value)
