@@ -283,7 +283,7 @@ julia> hasvalue(x)
 ```
 """
 # hasvalue(e::Expression) = !isvariable(e) && !hasdecomposition(e) && !isoracle(e)
-hasvalue(e::Expression) = hasfield(typeof(e), :value) && !(e.value isa UUIDs.UUID)
+hasvalue(e::Expression) = hasfield(typeof(e), :value) && !(e.value isa UUIDs.UUID) && !ismissing(e.value)
 hasvalue(a::ArrayOrSet{Expression}) = all(hasvalue(e) for e ∈ a)
 
 """

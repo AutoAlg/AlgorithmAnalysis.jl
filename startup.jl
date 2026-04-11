@@ -8,11 +8,6 @@ L = 10
 α = 2/(L+m)
 
 @algorithm begin
-    x = Rⁿ()
-    y = Rⁿ()
-end
-
-@algorithm begin
     f = SmoothStronglyConvexFunction{Rⁿ}(m, L)
     xs = first_order_stationary_point(f)
     fs = f(xs)
@@ -37,17 +32,24 @@ function smoothstronglyconvexinterpolation(objs::Objects)
         m = f.strong_convexity
         L = f.smoothness
 
-        new_cons = Constraints( fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2L*(gᵢ-gⱼ)^2 + m/(2*(1-m/L))*(xᵢ-xⱼ-1/L*(gᵢ-gⱼ))^2 for (xᵢ,fᵢ,gᵢ) ∈ triplets(f), (xⱼ,fⱼ,gⱼ) ∈ triplets(f) )
-
-        union!(objs, new_cons)
-
-        setdiff!(objs, Set([f, f']))
+        for (xᵢ,fᵢ,gᵢ) ∈ triplets(f), (xⱼ,fⱼ,gⱼ) ∈ triplets(f)
+            fᵢ-fⱼ ≥ gⱼ'*(xᵢ-xⱼ) + 1/2L*(gᵢ-gⱼ)^2 + m/(2*(1-m/L))*(xᵢ-xⱼ-1/L*(gᵢ-gⱼ))^2
+        end
     end
     
+    objs = connected_components(objs)
+
+    for f ∈ fs
+        setdiff!(objs, Set([f, f']))
+    end
+
     objs
 end
 
 new_objs = smoothstronglyconvexinterpolation(objs)
+
+objs = collect(objs)
+new_objs = collect(new_objs)
 
 function gramtransformation(objs::Objects)
     

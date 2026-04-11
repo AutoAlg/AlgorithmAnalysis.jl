@@ -287,6 +287,11 @@ function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:Vector
     # if x is zero, then return the scalar zero
     if iszero(o) || iszero(x)
         return zero(F)
+
+    # if o is a linear decomposition, sample each of its components
+    elseif hasvalue(o) && value(o) isa LinearDecomposition
+        return mapreduce(p -> last(p) * (first(p) * x), +, weights(value(o)))
+
     # else if x is a variable, sample it directly
     elseif isvariable(x)
         y = sample(relation(o), x)
@@ -300,6 +305,7 @@ function sample(o::AbstractLinearFunctional{X}, x::X) where {F<:Field, X<:Vector
         # end
         push!(x.oracles, o)
         push!(y.oracles, o)
+        
     # otherwise, sample each element of the decomposition
     else
         y = zero(F)

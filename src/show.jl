@@ -151,7 +151,7 @@ end
 ############################################################################################
 # Oracles
 
-show(io::IO, o::Oracle) = print(io, label(o))
+# show(io::IO, o::Oracle) = print(io, label(o))
 
 function show(io::IO, ::MIME"text/plain", o::Oracle)
     print(io, "\nOracle")

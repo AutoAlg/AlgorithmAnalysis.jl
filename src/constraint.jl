@@ -8,7 +8,7 @@ struct Constraint <: AbstractConstraint
     s::ConstraintSet
     
     function Constraint(x::Expression, s::ConstraintSet)
-        if !hasvalue(x)
+        if !isvariable(x)
             this = new(x, s)
             add_constraint!(x, this)
             this

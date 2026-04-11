@@ -53,6 +53,8 @@ function connected_components(x::Object; verbose=false)
     visited
 end
 
+connected_components(xs::Set{<:Object}) = mapreduce(connected_components, ∪, xs)
+
 """
     variables_constraints
 

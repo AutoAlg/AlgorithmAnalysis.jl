@@ -101,6 +101,7 @@ function +(e1::T, e2::T) where {T<:AbstractLinearFunctional}
         T( value(e1) + value(e2) )
     else
         decomp = selfdecomp(e1) + selfdecomp(e2)
+        @show decomp
         isempty(decomp) ? zero(T) : T(decomp)
     end
 end
