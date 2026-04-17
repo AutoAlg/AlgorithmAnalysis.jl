@@ -7,18 +7,7 @@ Hash of an expression. Custom types must provide specialized methods for this fu
 """
 function hash end
 
-
-function Base.hash(e::Oracle, h::UInt)
-    hash(objectid(e), h)   
-end
-
-function hash(e::Expression, h::UInt)
-    if !ismissing(e.value)
-        hash(e.value, hash(:Expression, h))
-    else
-        hash(objectid(e), h)
-    end
-end
+hash(e::Expression, h::UInt) = hash(objectid(e), h)
 hash(x::LinearDecomposition, h::UInt) = hash(weights(x), hash(:LinearDecomposition, h))
 hash(c::Constraint, h::UInt) = hash(set(c), hash(expression(c), hash(:Constraint, h)))
 hash(c::Satisfied, ::UInt) = objectid(c)

@@ -22,6 +22,8 @@ function oracles(X::Union{AbstractArray,Set,Generator})
     mapreduce(oracles, ∪, X; init=Oracles())
 end
 
+oracles(::Constraint) = Oracles()
+
 
 ############################################################################################
 # Neighbors

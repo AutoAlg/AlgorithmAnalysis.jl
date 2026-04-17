@@ -43,13 +43,15 @@ function smoothstronglyconvexinterpolation(objs::Objects)
         setdiff!(objs, Set([f, f']))
     end
 
+    # need to remove all connections to f and f', not just remove them from the set
+    for obj ∈ objs
+        setdiff!(oracles(obj), Set([f, f']))
+    end
+
     objs
 end
 
 new_objs = smoothstronglyconvexinterpolation(objs)
-
-objs = collect(objs)
-new_objs = collect(new_objs)
 
 function gramtransformation(objs::Objects)
     
