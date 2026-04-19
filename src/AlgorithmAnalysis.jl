@@ -142,5 +142,6 @@ include("algebra.jl")
 include("reals.jl")
 include("analysis.jl")
 include("results.jl")
+include("new_algorithm_state.jl")
 
 end
