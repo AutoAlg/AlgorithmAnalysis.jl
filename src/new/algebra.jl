@@ -1,6 +1,5 @@
 import Base: +, -, *
 
-
 _to_dict(v::ConcretelyValuedVariable{S}, scale::Float64=1.0) where {S} = Dict{ConcretelyValuedVariable{S}, Float64}(v => scale)
 _to_dict(d::LinearDecomposition{S}, scale::Float64=1.0) where {S} = Dict{ConcretelyValuedVariable{S}, Float64}(k => v * scale for (k, v) in d.terms)
 

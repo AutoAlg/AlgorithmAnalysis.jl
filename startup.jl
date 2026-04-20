@@ -11,6 +11,7 @@ ctx = AlgorithmContext()
 with(ALGORITHM_CONTEXT => ctx) do
     f, ∇f = SSC(3, 10)
     set_name!(f, "f")
+    set_name!(∇f, "∇f")
     
     x0 = NewRⁿ()
     set_name!(x0, "x0")
@@ -20,8 +21,6 @@ with(ALGORITHM_CONTEXT => ctx) do
     
     transition = (x0 => x1)
     set_name!(transition, "step")
-end
 
-with(ALGORITHM_CONTEXT => ctx) do
-    print_algorithm(ctx)
+    print(ctx)
 end

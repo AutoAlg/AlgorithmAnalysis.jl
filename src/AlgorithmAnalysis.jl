@@ -161,7 +161,7 @@ export LinearDecomposition
 
 include("new/linear_decomposition.jl")
 
-export SSC, SSCFunction, GradientOf, SSCGradient
+export SSC, SSCFunction, SSCGradientOf, SSCGradient
 
 include("new/ssc.jl")
 
@@ -170,8 +170,6 @@ include("new/algebra.jl")
 export StateTransition
 
 include("new/state_transition.jl")
-
-export print_algorithm
 
 include("new/show.jl")
 
