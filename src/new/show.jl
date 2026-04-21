@@ -1,5 +1,7 @@
 import Base: show
 
+# --- Base AST Printing ---
+
 function show(io::IO, expr::NewExpression)
     ctx = ALGORITHM_CONTEXT[]
     if ctx !== nothing
@@ -12,12 +14,10 @@ function show(io::IO, expr::NewExpression)
     _show_structural(io, expr)
 end
 
-_show_structural(io::IO, v::Variable{RealSpace}) = print(io, "R_$(v.id._node_id)")
-_show_structural(io::IO, v::Variable{RealVectorSpace}) = print(io, "Rⁿ_$(v.id._node_id)")
+_show_structural(io::IO, v::NewR) = print(io, "R_$(v.id._node_id)")
+_show_structural(io::IO, v::NewRⁿ) = print(io, "Rⁿ_$(v.id._node_id)")
 _show_structural(io::IO, f::SSCFunction) = print(io, "SSC_$(f.id._node_id)(m=$(f.m), L=$(f.L))")
-_show_structural(io::IO, ∇::SSCGradient) = print(io, "∇SSC_$(∇.function_of._node_id)")
-
-
+_show_structural(io::IO, nabla::SSCGradient) = print(io, "∇SSC_$(nabla.function_of._node_id)")
 
 function _show_structural(io::IO, g::SSCGradientOf)
     ctx = ALGORITHM_CONTEXT[]
@@ -29,7 +29,6 @@ function _show_structural(io::IO, g::SSCGradientOf)
     nabla = ctx._expressions[g.∇_id]
     x = ctx._expressions[g.x_id]
     
-    # We no longer hardcode "∇". We just print the operator!
     show(io, nabla)
     print(io, "(")
     show(io, x)
@@ -42,13 +41,16 @@ function _show_structural(io::IO, d::LinearDecomposition)
         return
     end
 
-    sorted_terms = sort(collect(d.terms), by = p -> p.first.id._node_id)
+    ctx = ALGORITHM_CONTEXT[]
+    sorted_terms = sort(collect(d.terms), by = p -> p.first._node_id)
     
     first_term = true
-    for (v, coeff) in sorted_terms
+    for (id, coeff) in sorted_terms
         if coeff == 0.0
             continue
         end
+
+        v = ctx === nothing ? "ID_$(id._node_id)" : ctx._expressions[id]
 
         if first_term
             if coeff == 1.0
@@ -108,13 +110,37 @@ function _clean_type_name(expr)
     return s
 end
 
-# Central formatting function that writes to any IO stream
+# Helper to cleanly print UInt32 arrays without the type tags
+function _format_id_array(ids::Vector{UInt32})
+    isempty(ids) && return "[]"
+    return "[" * join(Int.(sort(ids)), ", ") * "]"
+end
+
+# Helper to dynamically build the "Used By" edges for the compiler trace
+function _build_dependents_map(ctx::AlgorithmContext)
+    dependents = Dict{ExpressionID, Vector{ExpressionID}}()
+    
+    for id in keys(ctx._expressions)
+        dependents[id] = ExpressionID[]
+    end
+    
+    for (id, expr) in ctx._expressions
+        for dep_id in dependencies(expr)
+            if haskey(dependents, dep_id)
+                push!(dependents[dep_id], id)
+            end
+        end
+    end
+    return dependents
+end
+
 function print_algorithm(io::IO, ctx::AlgorithmContext)
     sorted_exprs = sort(collect(ctx._expressions), by = pair -> pair.first._node_id)
+    dependents_map = _build_dependents_map(ctx)
     
     # --- Mathematical Pseudocode View ---
     println(io, "Algorithm State")
-    println(io, "────────────────────────────────────────────────────────────")
+    println(io, "────────────────────────────────────────────────────────────────────────────")
     
     oracles, vars, transitions = String[], String[], String[]
     
@@ -127,11 +153,11 @@ function print_algorithm(io::IO, ctx::AlgorithmContext)
             push!(oracles, "  $(rpad(display_name, 6)) = $structure")
         elseif expr isa StateTransition
             push!(transitions, "  $(rpad(display_name, 6)) : $structure")
-        elseif expr isa Variable
-            space_symbol = expr isa Variable{RealVectorSpace} ? "Rⁿ" : "R"
+        elseif expr isa NewR || expr isa NewRⁿ
+            space_symbol = expr isa NewRⁿ ? "Rⁿ" : "R"
             push!(vars, "  $(rpad(display_name, 6)) ∈ $space_symbol")
         else
-            # Skip ALL unnamed intermediate evaluated expressions (GradientOf, LinearDecomposition, etc.)
+            # Skip ALL unnamed intermediate evaluated expressions in the pseudocode view
             if name === nothing
                 continue
             end
@@ -152,31 +178,39 @@ function print_algorithm(io::IO, ctx::AlgorithmContext)
         println(io)
     end
 
+    
     # --- Aligned Compiler Trace ---
     println(io, "Compiler Trace")
-    println(io, "────────────────────────────────────────────────────────────")
-    println(io, rpad("[ID]", 6), rpad("Name", 8), rpad("Type", 22), "Structure")
-    println(io, "-"^60)
+    println(io, "─────────────────────────────────────────────────────────────────────────────────────────")
+    # Widened the columns to fit the arrays perfectly
+    println(io, rpad("[ID]", 6), rpad("Name", 8), rpad("Type", 22), rpad("Depends On", 16), rpad("Used By", 16), "Structure")
+    println(io, "-"^89)
     
     for (id, expr) in sorted_exprs
         name = get(ctx._expression_names, id, "_")
         clean_type = _clean_type_name(expr)
         structure = sprint((io_s, e) -> _show_structural(io_s, e), expr)
         
+        # 1. Depends On (Backward Edges)
+        dep_ids = UInt32[d._node_id for d in dependencies(expr)]
+        depends_on_str = _format_id_array(dep_ids)
+        
+        # 2. Used By (Forward Edges)
+        used_by_ids = UInt32[d._node_id for d in dependents_map[id]]
+        used_by_str = _format_id_array(used_by_ids)
+        
         id_str = lpad(string(id._node_id), 2)
         
         print(io, "[", id_str, "]  ")
         print(io, rpad(name, 8))
         print(io, rpad(clean_type, 20), "| ")
+        print(io, rpad(depends_on_str, 14), "| ")
+        print(io, rpad(used_by_str, 14), "| ")
         println(io, structure)
     end
+    
 end
 
-# Default to stdout if no IO stream is provided
 print_algorithm(ctx::AlgorithmContext) = print_algorithm(stdout, ctx)
-
-# Overload for REPL display (e.g., when a cell evaluates to `ctx`)
 show(io::IO, ::MIME"text/plain", ctx::AlgorithmContext) = print_algorithm(io, ctx)
-
-# Overload for `print(ctx)`, `println(ctx)`, and string interpolation `"$ctx"`
 show(io::IO, ctx::AlgorithmContext) = print_algorithm(io, ctx)

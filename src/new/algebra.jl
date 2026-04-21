@@ -1,12 +1,13 @@
-import Base: +, -, *
+import Base: +, -, *, =>
 
-_to_dict(v::ConcretelyValuedVariable{S}, scale::Float64=1.0) where {S} = Dict{ConcretelyValuedVariable{S}, Float64}(v => scale)
-_to_dict(d::LinearDecomposition{S}, scale::Float64=1.0) where {S} = Dict{ConcretelyValuedVariable{S}, Float64}(k => v * scale for (k, v) in d.terms)
+_to_dict(v::ConcretelyValuedVariable, scale::Float64=1.0) = Dict{ExpressionID, Float64}(v.id => scale)
 
-function _merge_terms(a::Dict{ConcretelyValuedVariable{S}, Float64}, b::Dict{ConcretelyValuedVariable{S}, Float64}, b_scale::Float64=1.0) where {S}
+_to_dict(d::LinearDecomposition, scale::Float64=1.0) = Dict{ExpressionID, Float64}(id => v * scale for (id, v) in d.terms)
+
+function _merge_terms(a::Dict{ExpressionID, Float64}, b::Dict{ExpressionID, Float64}, b_scale::Float64=1.0)
     res = copy(a)
-    for (k, v) in b
-        res[k] = get(res, k, 0.0) + v * b_scale
+    for (id, val) in b
+        res[id] = get(res, id, 0.0) + val * b_scale
     end
     return res
 end

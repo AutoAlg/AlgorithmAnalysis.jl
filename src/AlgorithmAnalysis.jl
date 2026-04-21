@@ -171,6 +171,12 @@ export StateTransition
 
 include("new/state_transition.jl")
 
+
+export dependencies
+
+include("new/dependencies.jl")
+
 include("new/show.jl")
+
 
 end
