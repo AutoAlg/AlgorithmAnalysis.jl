@@ -9,14 +9,14 @@ original_context::AlgorithmContext = AlgorithmContext()
 step_size::Float64 = 0.05
 
 with_context(original_context) do
-    g, ∇g = SSC(3, 10)
-    set_name!(g, "g")
-    set_name!(∇g, "∇g")
+    f, ∇f = SSC(3, 10)
+    set_name!(f, "f")
+    set_name!(∇f, "∇f")
     
     x0 = NewRⁿ()
     set_name!(x0, "x0")
 
-    x1 = x0 - step_size * ∇g(x0)
+    x1 = x0 - step_size * ∇f(x0)
     set_name!(x1, "x1")
     
     transition = (x0 => x1)

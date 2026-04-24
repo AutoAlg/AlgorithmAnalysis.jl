@@ -9,7 +9,11 @@ struct SSCGradient <: NewOracle
     id::ExpressionID
     function_of::ExpressionID
 end    
-SSCGradient(f::SSCFunction) = register!(SSCGradient(allocate_id(), f.id))
+function SSCGradient(f::SSCFunction) 
+    ensure_expressions_are_bound_to_current_context(f)
+
+    register!(SSCGradient(allocate_id(), f.id))
+end
 
 struct SSCGradientOf{S} <: ConcretelyValuedVariable{S}
     id::ExpressionID
@@ -24,4 +28,5 @@ function SSCGradientOf(∇::SSCGradient, x::AbstractVariable{RealVectorSpace})
 end
 
 (∇::SSCGradient)(x::AbstractVariable{RealVectorSpace}) = SSCGradientOf(∇, x)
+# TODO: should this be a two way link with a two allocate_id calls followed by two register calls? 
 SSC(m::Real, L::Real) = (f = SSCFunction(m, L); (f, SSCGradient(f)))

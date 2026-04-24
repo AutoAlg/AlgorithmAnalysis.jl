@@ -2,8 +2,9 @@ import Base: show
 
 const TRACE_COLUMN_WIDTHS = (id = 6, name = 12, type = 37, depends_on = 16, used_by = 16)
 
-_name_of(identifier::ExpressionID, context::AlgorithmContext)::String = get(context._expression_names, identifier, "v$(identifier._node_id)")
+_name_of(identifier::ExpressionID, context::AlgorithmContext)::String = get(context._expression_names, identifier, "Unnamed Variable @ $(identifier._node_id)")
 
+# TODO: I'm not a fan of how this is separate...
 _format_structure(variable::NewR, context::AlgorithmContext)::String = "NewR()"
 _format_structure(variable::NewRⁿ, context::AlgorithmContext)::String = "NewRⁿ()"
 _format_structure(oracle::SSCFunction, context::AlgorithmContext)::String = "SSC(m=$(oracle.m), L=$(oracle.L))"
