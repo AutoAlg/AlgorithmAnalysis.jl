@@ -147,9 +147,9 @@ module AlgorithmAnalysis
 
 export ExpressionID, NewExpression, AlgorithmContext, allocate_id, is_bound_to
 export ==, hash, ALGORITHM_CONTEXT, get_algorithm_context, register!, set_name!
-export try_get_name 
+export try_get_name, deepcopy_internal, clone
 
-include("new/algorithm_state.jl")
+include("new/algorithm_context.jl")
 
 
 export AbstractSpace, RealSpace, RealVectorSpace, AbstractVariable, NewOracle
@@ -176,7 +176,11 @@ export dependencies
 
 include("new/dependencies.jl")
 
-include("new/show.jl")
+export compute_forward_edges, compute_reachable_expressions, eliminate_unreachable_expressions
 
+include("new/algorithm_context_pruning.jl")
+
+
+include("new/show.jl")
 
 end

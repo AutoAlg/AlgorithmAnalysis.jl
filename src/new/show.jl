@@ -1,216 +1,196 @@
 import Base: show
 
-# --- Base AST Printing ---
-
-function show(io::IO, expr::NewExpression)
-    ctx = ALGORITHM_CONTEXT[]
-    if ctx !== nothing
-        name = try_get_name(expr.id, ctx)
-        if name !== nothing
-            print(io, name)
-            return
+function _format_nested(io::IO, abstract_expression::NewExpression, algorithm_context::Union{AlgorithmContext, Nothing})::Nothing
+    if algorithm_context !== nothing
+        expression_name::Union{String, Nothing} = get(algorithm_context._expression_names, abstract_expression.id, nothing)
+        if expression_name !== nothing
+            print(io, expression_name)
+            return nothing
         end
     end
-    _show_structural(io, expr)
+    _show_structural(io, abstract_expression, algorithm_context)
+    return nothing
 end
 
-_show_structural(io::IO, v::NewR) = print(io, "R_$(v.id._node_id)")
-_show_structural(io::IO, v::NewRⁿ) = print(io, "Rⁿ_$(v.id._node_id)")
-_show_structural(io::IO, f::SSCFunction) = print(io, "SSC_$(f.id._node_id)(m=$(f.m), L=$(f.L))")
-_show_structural(io::IO, nabla::SSCGradient) = print(io, "∇SSC_$(nabla.function_of._node_id)")
 
-function _show_structural(io::IO, g::SSCGradientOf)
-    ctx = ALGORITHM_CONTEXT[]
+function show(io::IO, abstract_expression::NewExpression)::Nothing
+    _format_nested(io, abstract_expression, ALGORITHM_CONTEXT[])
+    return nothing
+end
+
+_show_structural(io::IO, real_variable::NewR, ctx::Union{AlgorithmContext, Nothing})::Nothing = (print(io, "R_$(real_variable.id._node_id)"); nothing)
+_show_structural(io::IO, vector_variable::NewRⁿ, ctx::Union{AlgorithmContext, Nothing})::Nothing = (print(io, "Rⁿ_$(vector_variable.id._node_id)"); nothing)
+_show_structural(io::IO, ssc_function::SSCFunction, ctx::Union{AlgorithmContext, Nothing})::Nothing = (print(io, "SSC_$(ssc_function.id._node_id)(m=$(ssc_function.m), L=$(ssc_function.L))"); nothing)
+_show_structural(io::IO, ssc_gradient::SSCGradient, ctx::Union{AlgorithmContext, Nothing})::Nothing = (print(io, "∇SSC_$(ssc_gradient.function_of._node_id)"); nothing)
+
+function _show_structural(io::IO, evaluated_gradient::SSCGradientOf, ctx::Union{AlgorithmContext, Nothing})::Nothing
     if ctx === nothing
-        print(io, "Oracle_$(g.∇_id._node_id)(x_$(g.x_id._node_id))")
-        return
+        print(io, "Oracle_$(evaluated_gradient.∇_id._node_id)(x_$(evaluated_gradient.x_id._node_id))")
+        return nothing
     end
     
-    nabla = ctx._expressions[g.∇_id]
-    x = ctx._expressions[g.x_id]
-    
-    show(io, nabla)
+    _format_nested(io, ctx._expressions[evaluated_gradient.∇_id], ctx)
     print(io, "(")
-    show(io, x)
+    _format_nested(io, ctx._expressions[evaluated_gradient.x_id], ctx)
     print(io, ")")
+    return nothing
 end
 
-function _show_structural(io::IO, d::LinearDecomposition)
-    if isempty(d.terms)
+function _format_identifier_reference(io::IO, expression_identifier::ExpressionID, ctx::Union{AlgorithmContext, Nothing})::Nothing
+    if ctx === nothing || !haskey(ctx._expressions, expression_identifier)
+        print(io, "ID_$(expression_identifier._node_id)")
+        return nothing
+    end
+    _format_nested(io, ctx._expressions[expression_identifier], ctx)
+    return nothing
+end
+
+function _show_structural(io::IO, linear_decomposition::LinearDecomposition, ctx::Union{AlgorithmContext, Nothing})::Nothing
+    if isempty(linear_decomposition.terms)
         print(io, "0")
-        return
+        return nothing
     end
 
-    ctx = ALGORITHM_CONTEXT[]
-    sorted_terms = sort(collect(d.terms), by = p -> p.first._node_id)
+    sorted_decomposition_terms::Vector{Pair{ExpressionID, Float64}} = sort(collect(linear_decomposition.terms), by = term_pair -> term_pair.first._node_id)
     
-    first_term = true
-    for (id, coeff) in sorted_terms
-        if coeff == 0.0
+    is_first_term::Bool = true
+    for (expression_identifier, coefficient_value) in sorted_decomposition_terms
+        if coefficient_value == 0.0
             continue
         end
 
-        v = ctx === nothing ? "ID_$(id._node_id)" : ctx._expressions[id]
-
-        if first_term
-            if coeff == 1.0
-                show(io, v)
-            elseif coeff == -1.0
+        if is_first_term
+            if coefficient_value == 1.0
+                _format_identifier_reference(io, expression_identifier, ctx)
+            elseif coefficient_value == -1.0
                 print(io, "-")
-                show(io, v)
+                _format_identifier_reference(io, expression_identifier, ctx)
             else
-                print(io, coeff, " * ")
-                show(io, v)
+                print(io, coefficient_value, " * ")
+                _format_identifier_reference(io, expression_identifier, ctx)
             end
-            first_term = false
+            is_first_term = false
         else
-            if coeff == 1.0
+            if coefficient_value == 1.0
                 print(io, " + ")
-                show(io, v)
-            elseif coeff == -1.0
+                _format_identifier_reference(io, expression_identifier, ctx)
+            elseif coefficient_value == -1.0
                 print(io, " - ")
-                show(io, v)
-            elseif coeff > 0.0
-                print(io, " + ", coeff, " * ")
-                show(io, v)
+                _format_identifier_reference(io, expression_identifier, ctx)
+            elseif coefficient_value > 0.0
+                print(io, " + ", coefficient_value, " * ")
+                _format_identifier_reference(io, expression_identifier, ctx)
             else
-                print(io, " - ", -coeff, " * ")
-                show(io, v)
+                print(io, " - ", -coefficient_value, " * ")
+                _format_identifier_reference(io, expression_identifier, ctx)
             end
         end
     end
     
-    if first_term
+    if is_first_term
         print(io, "0")
     end
+    return nothing
 end
 
-function _show_structural(io::IO, t::StateTransition)
-    ctx = ALGORITHM_CONTEXT[]
+function _show_structural(io::IO, state_transition::StateTransition, ctx::Union{AlgorithmContext, Nothing})::Nothing
     if ctx === nothing
-        print(io, "StateTransition($(t.current_id._node_id) => $(t.next_id._node_id))")
-        return
+        print(io, "StateTransition($(state_transition.current_id._node_id) => $(state_transition.next_id._node_id))")
+        return nothing
     end
     
-    current_var = ctx._expressions[t.current_id]
-    next_var = ctx._expressions[t.next_id]
-    
-    show(io, current_var)
+    _format_nested(io, ctx._expressions[state_transition.current_id], ctx)
     print(io, " => ")
-    show(io, next_var)
+    _format_nested(io, ctx._expressions[state_transition.next_id], ctx)
+    return nothing
 end
 
-# --- Full Context Printing ---
-
-function _clean_type_name(expr)
-    s = string(typeof(expr))
-    s = replace(s, "{RealSpace}" => "")
-    s = replace(s, "{RealVectorSpace}" => "")
-    s = replace(s, r"Main\..*\." => "") 
-    return s
+function _clean_type_name(abstract_expression::NewExpression)::String
+    raw_type_string::String = string(typeof(abstract_expression))
+    raw_type_string = replace(raw_type_string, "{RealSpace}" => "")
+    raw_type_string = replace(raw_type_string, "{RealVectorSpace}" => "")
+    raw_type_string = replace(raw_type_string, r"Main\..*\." => "") 
+    return raw_type_string
 end
 
-# Helper to cleanly print UInt32 arrays without the type tags
-function _format_id_array(ids::Vector{UInt32})
-    isempty(ids) && return "[]"
-    return "[" * join(Int.(sort(ids)), ", ") * "]"
+function _format_identifier_array(identifier_array::Vector{UInt32})::String
+    isempty(identifier_array) && return "[]"
+    return "[" * join(Int.(sort(identifier_array)), ", ") * "]"
 end
 
-# Helper to dynamically build the "Used By" edges for the compiler trace
-function _build_dependents_map(ctx::AlgorithmContext)
-    dependents = Dict{ExpressionID, Vector{ExpressionID}}()
+function print_algorithm(io::IO, algorithm_context::AlgorithmContext)::Nothing
+    sorted_expressions::Vector{Pair{ExpressionID, NewExpression}} = sort(collect(algorithm_context._expressions), by = expression_pair -> expression_pair.first._node_id)
     
-    for id in keys(ctx._expressions)
-        dependents[id] = ExpressionID[]
-    end
+    forward_edges::Dict{ExpressionID, Vector{ExpressionID}} = compute_forward_edges(algorithm_context)
     
-    for (id, expr) in ctx._expressions
-        for dep_id in dependencies(expr)
-            if haskey(dependents, dep_id)
-                push!(dependents[dep_id], id)
-            end
-        end
-    end
-    return dependents
-end
-
-function print_algorithm(io::IO, ctx::AlgorithmContext)
-    sorted_exprs = sort(collect(ctx._expressions), by = pair -> pair.first._node_id)
-    dependents_map = _build_dependents_map(ctx)
-    
-    # --- Mathematical Pseudocode View ---
     println(io, "Algorithm State")
     println(io, "────────────────────────────────────────────────────────────────────────────")
     
-    oracles, vars, transitions = String[], String[], String[]
+    oracle_strings::Vector{String} = String[]
+    variable_strings::Vector{String} = String[]
+    transition_strings::Vector{String} = String[]
     
-    for (id, expr) in sorted_exprs
-        name = get(ctx._expression_names, id, nothing)
-        display_name = name === nothing ? "v$(id._node_id)" : name
-        structure = sprint((io_s, e) -> _show_structural(io_s, e), expr)
+    for (expression_identifier, abstract_expression) in sorted_expressions
+        expression_name::Union{String, Nothing} = get(algorithm_context._expression_names, expression_identifier, nothing)
+        display_name::String = expression_name === nothing ? "v$(expression_identifier._node_id)" : expression_name
+        structure_string::String = sprint((io_stream, expression_node) -> _show_structural(io_stream, expression_node, algorithm_context), abstract_expression)
         
-        if expr isa NewOracle
-            push!(oracles, "  $(rpad(display_name, 6)) = $structure")
-        elseif expr isa StateTransition
-            push!(transitions, "  $(rpad(display_name, 6)) : $structure")
-        elseif expr isa NewR || expr isa NewRⁿ
-            space_symbol = expr isa NewRⁿ ? "Rⁿ" : "R"
-            push!(vars, "  $(rpad(display_name, 6)) ∈ $space_symbol")
+        if abstract_expression isa NewOracle
+            push!(oracle_strings, "  $(rpad(display_name, 6)) = $structure_string")
+        elseif abstract_expression isa StateTransition
+            push!(transition_strings, "  $(rpad(display_name, 6)) : $structure_string")
+        elseif abstract_expression isa NewR || abstract_expression isa NewRⁿ
+            space_symbol::String = abstract_expression isa NewRⁿ ? "Rⁿ" : "R"
+            push!(variable_strings, "  $(rpad(display_name, 6)) ∈ $space_symbol")
         else
-            # Skip ALL unnamed intermediate evaluated expressions in the pseudocode view
-            if name === nothing
+            if expression_name === nothing
                 continue
             end
-            push!(vars, "  $(rpad(display_name, 6)) = $structure")
+            push!(variable_strings, "  $(rpad(display_name, 6)) = $structure_string")
         end
     end
     
-    if !isempty(oracles)
-        println(io, "Oracles:\n", join(oracles, "\n"))
+    if !isempty(oracle_strings)
+        println(io, "Oracles:\n", join(oracle_strings, "\n"))
         println(io)
     end
-    if !isempty(vars)
-        println(io, "Variables:\n", join(vars, "\n"))
+    if !isempty(variable_strings)
+        println(io, "Variables:\n", join(variable_strings, "\n"))
         println(io)
     end
-    if !isempty(transitions)
-        println(io, "Transitions:\n", join(transitions, "\n"))
+    if !isempty(transition_strings)
+        println(io, "Transitions:\n", join(transition_strings, "\n"))
         println(io)
     end
 
-    
-    # --- Aligned Compiler Trace ---
     println(io, "Compiler Trace")
     println(io, "─────────────────────────────────────────────────────────────────────────────────────────")
-    # Widened the columns to fit the arrays perfectly
     println(io, rpad("[ID]", 6), rpad("Name", 8), rpad("Type", 22), rpad("Depends On", 16), rpad("Used By", 16), "Structure")
     println(io, "-"^89)
     
-    for (id, expr) in sorted_exprs
-        name = get(ctx._expression_names, id, "_")
-        clean_type = _clean_type_name(expr)
-        structure = sprint((io_s, e) -> _show_structural(io_s, e), expr)
+    for (expression_identifier, abstract_expression) in sorted_expressions
+        expression_name_trace::String = get(algorithm_context._expression_names, expression_identifier, "_")
+        clean_type_string::String = _clean_type_name(abstract_expression)
+        trace_structure_string::String = sprint((io_stream, expression_node) -> _show_structural(io_stream, expression_node, algorithm_context), abstract_expression)
         
-        # 1. Depends On (Backward Edges)
-        dep_ids = UInt32[d._node_id for d in dependencies(expr)]
-        depends_on_str = _format_id_array(dep_ids)
+        dependency_identifiers::Vector{UInt32} = UInt32[dependency_node._node_id for dependency_node in dependencies(abstract_expression)]
+        depends_on_formatted::String = _format_identifier_array(dependency_identifiers)
         
-        # 2. Used By (Forward Edges)
-        used_by_ids = UInt32[d._node_id for d in dependents_map[id]]
-        used_by_str = _format_id_array(used_by_ids)
+        used_by_identifiers::Vector{UInt32} = UInt32[dependent_node._node_id for dependent_node in forward_edges[expression_identifier]]
+        used_by_formatted::String = _format_identifier_array(used_by_identifiers)
         
-        id_str = lpad(string(id._node_id), 2)
+        identifier_string::String = lpad(string(expression_identifier._node_id), 2)
         
-        print(io, "[", id_str, "]  ")
-        print(io, rpad(name, 8))
-        print(io, rpad(clean_type, 20), "| ")
-        print(io, rpad(depends_on_str, 14), "| ")
-        print(io, rpad(used_by_str, 14), "| ")
-        println(io, structure)
+        print(io, "[", identifier_string, "]  ")
+        print(io, rpad(expression_name_trace, 8))
+        print(io, rpad(clean_type_string, 20), "| ")
+        print(io, rpad(depends_on_formatted, 14), "| ")
+        print(io, rpad(used_by_formatted, 14), "| ")
+        println(io, trace_structure_string)
     end
-    
+    return nothing
 end
 
-print_algorithm(ctx::AlgorithmContext) = print_algorithm(stdout, ctx)
-show(io::IO, ::MIME"text/plain", ctx::AlgorithmContext) = print_algorithm(io, ctx)
-show(io::IO, ctx::AlgorithmContext) = print_algorithm(io, ctx)
+print_algorithm(algorithm_context::AlgorithmContext)::Nothing = print_algorithm(stdout, algorithm_context)
+show(io::IO, ::MIME"text/plain", algorithm_context::AlgorithmContext)::Nothing = print_algorithm(io, algorithm_context)
+show(io::IO, algorithm_context::AlgorithmContext)::Nothing = print_algorithm(io, algorithm_context)

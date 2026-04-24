@@ -16,3 +16,4 @@ docs/Manifest.toml
 build
 .vscode/*
 checks.json
+scratch.md

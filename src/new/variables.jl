@@ -12,8 +12,9 @@ abstract type ConcretelyValuedVariable{S} <: AbstractVariable{S} end
 
 struct Variable{S <: AbstractSpace} <: ConcretelyValuedVariable{S}
     id::ExpressionID
-    Variable{S}() where {S <: AbstractSpace} = register!(new{S}(allocate_id()))
 end
+Variable{S}() where {S <: AbstractSpace} = register!(Variable{S}(allocate_id()))
+
 
 const NewR  = Variable{RealSpace}
 const NewRⁿ = Variable{RealVectorSpace}
