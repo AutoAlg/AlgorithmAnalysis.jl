@@ -11,6 +11,18 @@ function linearly_merge_decomposition_dictionaries(left_terms::Dict{ExpressionID
     for (expression_id, coefficient_value) in right_terms
         merged_terms[expression_id] = get(merged_terms, expression_id, 0.0) + coefficient_value
     end
+
+    maybe_current_context = try_get_algorithm_context();
+
+    if isnothing(maybe_current_context)
+        error("All algebraic operations must happen under a context")
+    end
+    
+    for e_id in keys(merged_terms)
+        if !is_bound_to(e_id, maybe_current_context)
+            error("discovered algebraic operand that is not part of the current context!");
+        end
+    end
     
     return merged_terms
 end

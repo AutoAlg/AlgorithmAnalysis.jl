@@ -6,10 +6,7 @@ struct StateTransition{S} <: NewExpression
     next_id::ExpressionID
 end
 function StateTransition(current::AbstractVariable{S}, next_var::AbstractVariable{S}) where {S}        
-    if !is_bound_to_current_context(current.id) || !is_bound_to_current_context(next_var.id)
-        error("Cross-state transition is forbidden")
-    end
-    
+    ensure_expressions_are_bound_to_current_context(current, next_var); 
     register!(StateTransition{S}(allocate_id(), current.id, next_var.id))
 end
 

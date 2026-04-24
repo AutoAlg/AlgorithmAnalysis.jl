@@ -42,7 +42,7 @@ function compute_reachable_expressions(algorithm_context::AlgorithmContext)::Set
 end
 
 function eliminate_unreachable_expressions!(algorithm_context::AlgorithmContext)::Nothing
-    if ALGORITHM_CONTEXT[] !== nothing
+    if try_get_algorithm_context() !== nothing
         error("Compiler passes must be evaluated without an active ALGORITHM_CONTEXT.")
     end
 

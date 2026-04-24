@@ -18,9 +18,7 @@ struct SSCGradientOf{S} <: ConcretelyValuedVariable{S}
 end
 
 function SSCGradientOf(∇::SSCGradient, x::AbstractVariable{RealVectorSpace})
-    if !is_bound_to_current_context(∇.id) || !is_bound_to_current_context(x.id)
-        error("Cross-state evaluation is forbidden")
-    end
+    ensure_expressions_are_bound_to_current_context(∇, x);
     
     register!(SSCGradientOf{RealVectorSpace}(allocate_id(), ∇.id, x.id))
 end

@@ -146,8 +146,9 @@ module AlgorithmAnalysis
 
 
 export ExpressionID, NewExpression, AlgorithmContext, allocate_id, is_bound_to
-export ==, hash, ALGORITHM_CONTEXT, get_algorithm_context, register!, set_name!
-export try_get_name, deepcopy_internal, clone
+export ensure_expressions_are_bound_to_current_context
+export ==, hash, try_get_algorithm_context, get_algorithm_context, with_context
+export register!, set_name!, try_get_name, deepcopy_internal, clone
 
 include("new/algorithm_context.jl")
 

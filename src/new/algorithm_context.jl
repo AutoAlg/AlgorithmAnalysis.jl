@@ -34,17 +34,24 @@ Base.hash(e::NewExpression, h::UInt)::UInt = hash(e.id, h)
 
 
 
-
-
 const ALGORITHM_CONTEXT = ScopedValue{Union{AlgorithmContext, Nothing}}(nothing)
 
+function try_get_algorithm_context()::Union{AlgorithmContext, Nothing}
+    return ALGORITHM_CONTEXT[]
+end
+
 function get_algorithm_context()::AlgorithmContext
-    algorithm_context::Union{AlgorithmContext, Nothing} = ALGORITHM_CONTEXT[]
+    algorithm_context::Union{AlgorithmContext, Nothing} = try_get_algorithm_context()
     if algorithm_context === nothing
-        error("No active AlgorithmContext. Evaluation must occur within a `with(ALGORITHM_CONTEXT => ctx)` block.")
+        error("No active AlgorithmContext. Evaluation must occur within a `with_context(ctx)` block.")
     end
     return algorithm_context
 end
+
+function with_context(execution_block::Function, target_context::AlgorithmContext)
+    return with(execution_block, ALGORITHM_CONTEXT => target_context)
+end
+
 
 function allocate_id(ctx::AlgorithmContext = get_algorithm_context())::ExpressionID
     id = ctx._next_valid_node_id
@@ -54,7 +61,16 @@ function allocate_id(ctx::AlgorithmContext = get_algorithm_context())::Expressio
     return ExpressionID(ctx._state_id, id)
 end
 
-is_bound_to_current_context(id::ExpressionID) = is_bound_to(id, get_algorithm_context())
+function ensure_expressions_are_bound_to_current_context(expressions::NewExpression...)::Nothing
+    active_context::AlgorithmContext = get_algorithm_context()
+    for abstract_expression in expressions
+        if !is_bound_to(abstract_expression.id, active_context)
+            error("Cross-state validation failed. Node $(abstract_expression.id) is not bound to the active context.")
+        end
+    end
+    return nothing
+end
+
 
 function register!(expr::E, ctx::AlgorithmContext = get_algorithm_context())::E where {E <: NewExpression}
     if !hasfield(E, :id)
