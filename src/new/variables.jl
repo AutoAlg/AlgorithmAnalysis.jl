@@ -15,6 +15,5 @@ struct Variable{S <: AbstractSpace} <: ConcretelyValuedVariable{S}
 end
 Variable{S}() where {S <: AbstractSpace} = register!(Variable{S}(allocate_id()))
 
-
 const NewR  = Variable{RealSpace}
 const NewRⁿ = Variable{RealVectorSpace}

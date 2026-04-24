@@ -52,7 +52,7 @@ function print_algorithm(io::IO, context::AlgorithmContext)::Nothing
     forward_edges::Dict{ExpressionID, Vector{ExpressionID}} = compute_forward_edges(context)
     
     println(io, "Algorithm State")
-    println(io, "─"^76)
+    println(io, "─"^99)
     
     oracle_strings::Vector{String} = String[]
     variable_strings::Vector{String} = String[]
