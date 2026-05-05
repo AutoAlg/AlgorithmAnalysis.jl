@@ -20,10 +20,10 @@ mutable struct AlgorithmContext
     _next_valid_node_id::UInt32
 
     _expressions::Dict{ExpressionID, NewExpression}
-    _expression_names::Dict{ExpressionID, String}
+    _expression_aliases::Dict{ExpressionID, String}
 
     AlgorithmContext() = new(get_global_state_id(), UInt32(0), Dict{ExpressionID, NewExpression}(), Dict{ExpressionID, String}())
-    AlgorithmContext(state_id::UInt32, next_id::UInt32, expressions::Dict{ExpressionID, NewExpression}, names::Dict{ExpressionID, String}) = new(state_id, next_id, expressions, names)
+    AlgorithmContext(state_id::UInt32, next_id::UInt32, expressions::Dict{ExpressionID, NewExpression}, aliases::Dict{ExpressionID, String}) = new(state_id, next_id, expressions, aliases)
 end
 
 
@@ -86,23 +86,22 @@ function register!(expr::E, ctx::AlgorithmContext = get_algorithm_context())::E 
     return expr
 end
 
-function set_name!(expr::E, name::String, ctx::AlgorithmContext = get_algorithm_context())::Nothing where {E <: NewExpression}
+
+function set_alias!(target_expression::E, alias::String, context::AlgorithmContext = get_algorithm_context())::Nothing where {E <: NewExpression}
     if !hasfield(E, :id)
-        error("All subtypes of NewExpression must have a field id!")
+        error("all subtypes of NewExpression must have a field id")
     end
 
-    if haskey(ctx._expression_names, expr.id)
-        error("Cannot doubly name $(expr.id) | Previous name is $(ctx._expression_names[expr.id]) and desired new name is $(name)")
+    if haskey(context._expression_aliases, target_expression.id)
+        error("cannot doubly alias $(target_expression.id). previous alias is $(context._expression_aliases[target_expression.id]) and desired new alias is $(alias)")
     end
 
-    ctx._expression_names[expr.id] = name
+    context._expression_aliases[target_expression.id] = alias
 
     return nothing
 end
 
-try_get_name(id::ExpressionID, ctx::AlgorithmContext = get_algorithm_context())::Union{String, Nothing} = get(ctx._expression_names, id, nothing)
-
-
+try_get_alias(identifier::ExpressionID, context::AlgorithmContext = get_algorithm_context())::Union{String, Nothing} = get(context._expression_aliases, identifier, nothing)
 
 
 # TODO: i'm not happy with this, this should really be an explicit interface and require the use of an extra inner constructor.
@@ -154,17 +153,17 @@ function clone(source_context::AlgorithmContext)::AlgorithmContext
     target_next_node_id::UInt32 = source_context._next_valid_node_id
     
     target_expressions::Dict{ExpressionID, NewExpression} = Dict{ExpressionID, NewExpression}()
-    target_names::Dict{ExpressionID, String} = Dict{ExpressionID, String}()
+    target_aliases::Dict{ExpressionID, String} = Dict{ExpressionID, String}()
     
     for (source_identifier, abstract_expression) in source_context._expressions
         target_identifier::ExpressionID = _deep_translate_ids(source_identifier, target_state_id)
         target_expressions[target_identifier] = _deep_translate_ids(abstract_expression, target_state_id)
     end
     
-    for (source_identifier, expression_name) in source_context._expression_names
+    for (source_identifier, expression_alias) in source_context._expression_aliases
         target_identifier::ExpressionID = _deep_translate_ids(source_identifier, target_state_id)
-        target_names[target_identifier] = expression_name
+        target_aliases[target_identifier] = expression_alias
     end
     
-    return AlgorithmContext(target_state_id, target_next_node_id, target_expressions, target_names)
+    return AlgorithmContext(target_state_id, target_next_node_id, target_expressions, target_aliases)
 end

@@ -30,7 +30,7 @@ function compute_reachable_expressions(algorithm_context::AlgorithmContext)::Set
     reachable_expressions::Set{ExpressionID} = Set{ExpressionID}()
     
     for (expression_identifier, abstract_expression) in algorithm_context._expressions
-        is_explicitly_named::Bool = haskey(algorithm_context._expression_names, expression_identifier) # TODO: this works, but I'm not sure it's entierly correct
+        is_explicitly_named::Bool = haskey(algorithm_context._expression_aliases, expression_identifier) # TODO: this works, but I'm not sure it's entierly correct
         is_terminal_transition::Bool = abstract_expression isa StateTransition # TODO: make this more explicit
         
         if is_explicitly_named || is_terminal_transition

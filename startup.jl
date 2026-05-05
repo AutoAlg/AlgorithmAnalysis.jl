@@ -10,17 +10,17 @@ step_size::Float64 = 0.05
 
 with_context(original_context) do
     f, ∇f = SSC(3, 10)
-    set_name!(f, "f")
-    set_name!(∇f, "∇f")
+    set_alias!(f, "f")
+    set_alias!(∇f, "∇f")
     
     x0 = NewRⁿ()
-    set_name!(x0, "x0")
+    set_alias!(x0, "x0")
 
     x1 = x0 - step_size * ∇f(x0)
-    set_name!(x1, "x1")
+    set_alias!(x1, "x1")
     
     transition = (x0 => x1)
-    set_name!(transition, "step")
+    set_alias!(transition, "step")
 end
 
 print(original_context)
