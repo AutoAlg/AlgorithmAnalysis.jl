@@ -1,6 +1,6 @@
 import Base: show, print
 
-const TRACE_COLUMN_WIDTHS = (id = 5, alias = 12, type = 50, ssa_labeled = 28, ssa_raw = 24)
+const TRACE_COLUMN_WIDTHS = (id = 5, alias = 14, type = 50, ssa_labeled = 28, ssa_raw = 24)
 
 function _try_derive_alias(identifier::ExpressionID, context::AlgorithmContext)::Union{String, Nothing}
     haskey(context._expression_aliases, identifier) && return context._expression_aliases[identifier]
