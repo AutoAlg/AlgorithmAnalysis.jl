@@ -6,7 +6,7 @@ struct RealSpace <: AbstractSpace end
 struct RealVectorSpace <: AbstractSpace end
 
 abstract type AbstractVariable{S <: AbstractSpace} <: NewExpression end
-abstract type NewOracle     <: NewExpression end # TODO: should an oracle hold it's types i.e an Oracle{AbstractSpace, AbstractSpace}?
+abstract type NewOracle{Domain <: AbstractSpace, CoDomain <: AbstractSpace} <: NewExpression end
 
 # TODO: is a better name for this SingularlyValuedVariable?
 abstract type ConcretelyValuedVariable{S} <: AbstractVariable{S} end

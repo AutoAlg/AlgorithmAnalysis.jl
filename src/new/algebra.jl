@@ -1,7 +1,12 @@
 import Base: +, -, *, =>
 
+struct NewZero{S <: AbstractSpace} <: ConcretelyValuedVariable{S}
+    id::ExpressionID
+end
+
 as_decomposition_dict(concretely_valued_variable::ConcretelyValuedVariable)::Dict{ExpressionID, Float64} = Dict{ExpressionID, Float64}(concretely_valued_variable.id => 1.0)
 as_decomposition_dict(linear_decomposition::LinearDecomposition)::Dict{ExpressionID, Float64} = deepcopy(linear_decomposition.terms)
+as_decomposition_dict(zero_variable::NewZero)::Dict{ExpressionID, Float64} = Dict{ExpressionID, Float64}()
 
 scale_decomposition_dict(decomposition_dict::Dict{ExpressionID, Float64}, scale_factor::Float64)::Dict{ExpressionID, Float64} = Dict{ExpressionID, Float64}(expression_id => term_coefficient * scale_factor for (expression_id, term_coefficient) in decomposition_dict)
 
@@ -9,18 +14,23 @@ function linearly_merge_decomposition_dictionaries(left_terms::Dict{ExpressionID
     merged_terms::Dict{ExpressionID, Float64} = copy(left_terms)
 
     for (expression_id, coefficient_value) in right_terms
-        merged_terms[expression_id] = get(merged_terms, expression_id, 0.0) + coefficient_value
+        new_coefficient::Float64 = get(merged_terms, expression_id, 0.0) + coefficient_value
+        if new_coefficient == 0.0
+            delete!(merged_terms, expression_id)
+        else
+            merged_terms[expression_id] = new_coefficient
+        end
     end
 
-    maybe_current_context = try_get_algorithm_context();
+    maybe_current_context::Union{AlgorithmContext, Nothing} = try_get_algorithm_context()
 
     if isnothing(maybe_current_context)
-        error("All algebraic operations must happen under a context")
+        error("all algebraic operations must happen under a context")
     end
     
     for e_id in keys(merged_terms)
         if !is_bound_to(e_id, maybe_current_context)
-            error("discovered algebraic operand that is not part of the current context!");
+            error("discovered algebraic operand that is not part of the current context")
         end
     end
     

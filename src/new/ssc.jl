@@ -1,11 +1,11 @@
-struct SSCFunction <: NewOracle
+struct SSCFunction <: NewOracle{RealVectorSpace, RealSpace}
     id::ExpressionID
     m::Float64
     L::Float64
 end
 SSCFunction(m::Real, L::Real) = register!(SSCFunction(allocate_id(), Float64(m), Float64(L)))
 
-struct SSCGradient <: NewOracle
+struct SSCGradient <: NewOracle{RealVectorSpace, RealVectorSpace}
     id::ExpressionID
     function_of::ExpressionID
 end    
