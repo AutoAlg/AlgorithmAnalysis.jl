@@ -96,6 +96,14 @@ function set_alias!(target_expression::E, alias::String, context::AlgorithmConte
         error("cannot doubly alias $(target_expression.id). previous alias is $(context._expression_aliases[target_expression.id]) and desired new alias is $(alias)")
     end
 
+    if length(alias) == 0
+        error("Don't assign a variable the alias of the empty string")
+    end
+
+    if alias[1] == '*'
+        error("Variable aliases cannot start with an asterisk")
+    end
+
     context._expression_aliases[target_expression.id] = alias
 
     return nothing

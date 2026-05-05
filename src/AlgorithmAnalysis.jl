@@ -162,7 +162,9 @@ export LinearDecomposition
 
 include("new/linear_decomposition.jl")
 
-export SSC, SSCFunction, SSCGradientOf, SSCGradient
+export SSC, SSCFunction, SSCGradient
+
+export OracleEvaluation
 
 include("new/ssc.jl")
 
