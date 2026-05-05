@@ -8,7 +8,7 @@ using Base.ScopedValues
 original_context::AlgorithmContext = AlgorithmContext()
 step_size::Float64 = 0.05
 
-with_context(original_context) do
+t = with_context(original_context) do
     f, ∇f = SSC(3, 10)
     set_alias!(f, "f")
     set_alias!(∇f, "∇f")
@@ -21,10 +21,12 @@ with_context(original_context) do
     
     transition = (x0 => x1)
     set_alias!(transition, "step")
+
+    transition
 end
 
 print(original_context)
 
-pruned_context::AlgorithmContext = eliminate_unreachable_expressions(original_context)
+pruned_context::AlgorithmContext = eliminate_unreachable_expressions(original_context, [t])
 
 print(pruned_context)
