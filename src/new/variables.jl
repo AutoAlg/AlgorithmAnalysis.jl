@@ -33,3 +33,27 @@ function OracleEvaluation(oracle::NewOracle{Domain, CoDomain}, input_variable::A
 end
 
 (oracle::NewOracle{Domain, CoDomain})(input_variable::AbstractVariable{Domain}) where {Domain <: AbstractSpace, CoDomain <: AbstractSpace} = OracleEvaluation(oracle, input_variable)
+
+
+struct DualSpace{S <: AbstractSpace} <: AbstractSpace end
+
+struct NewTranspose{S <: AbstractSpace} <: ConcretelyValuedVariable{DualSpace{S}}
+    id::ExpressionID
+    transposed_id::ExpressionID
+end
+
+function NewTranspose(variable::AbstractVariable{S}) where {S <: AbstractSpace}
+    ensure_expressions_are_bound_to_current_context(variable)
+    return register!(NewTranspose{S}(allocate_id(), variable.id))
+end
+
+struct NewInnerProduct{S <: AbstractSpace} <: ConcretelyValuedVariable{RealSpace}
+    id::ExpressionID
+    transpose_id::ExpressionID
+    variable_id::ExpressionID
+end
+
+function NewInnerProduct(transpose_variable::AbstractVariable{DualSpace{S}}, variable::AbstractVariable{S}) where {S <: AbstractSpace}
+    ensure_expressions_are_bound_to_current_context(transpose_variable, variable)
+    return register!(NewInnerProduct{S}(allocate_id(), transpose_variable.id, variable.id))
+end

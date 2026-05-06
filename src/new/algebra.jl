@@ -1,4 +1,4 @@
-import Base: +, -, *, =>
+import Base: +, -, *, =>, adjoint, ^
 
 struct NewZero{S <: AbstractSpace} <: ConcretelyValuedVariable{S}
     id::ExpressionID
@@ -63,3 +63,15 @@ end
 -(left_variable::ConcretelyValuedVariable{S}, right_decomposition::LinearDecomposition{S}) where {S <: AbstractSpace} = LinearDecomposition{S}(linearly_merge_decomposition_dictionaries(as_decomposition_dict(left_variable), scale_decomposition_dict(as_decomposition_dict(right_decomposition), -1.0)))
 -(left_decomposition::LinearDecomposition{S}, right_variable::ConcretelyValuedVariable{S}) where {S <: AbstractSpace} = LinearDecomposition{S}(linearly_merge_decomposition_dictionaries(as_decomposition_dict(left_decomposition), scale_decomposition_dict(as_decomposition_dict(right_variable), -1.0)))
 -(left_decomposition::LinearDecomposition{S}, right_decomposition::LinearDecomposition{S}) where {S <: AbstractSpace} = LinearDecomposition{S}(linearly_merge_decomposition_dictionaries(as_decomposition_dict(left_decomposition), scale_decomposition_dict(as_decomposition_dict(right_decomposition), -1.0)))
+
+adjoint(variable::AbstractVariable{S}) where {S <: AbstractSpace} = NewTranspose(variable)
+
+*(transpose_variable::AbstractVariable{DualSpace{S}}, variable::AbstractVariable{S}) where {S <: AbstractSpace} = NewInnerProduct(transpose_variable, variable)
+
+function ^(variable::AbstractVariable{S}, power::Int)::ConcretelyValuedVariable{RealSpace} where {S <: AbstractSpace}
+    if power != 2
+        error("non squares are unrepresentable")
+    end
+    
+    return variable'*variable
+end

@@ -1,6 +1,6 @@
 import Base: show, print
 
-const TRACE_COLUMN_WIDTHS = (id = 5, alias = 14, type = 50, ssa_labeled = 28, ssa_raw = 24)
+const TRACE_COLUMN_WIDTHS = (id = 5, alias = 28, type = 50, ssa_labeled = 72, ssa_raw = 24)
 
 function _try_derive_alias(identifier::ExpressionID, context::AlgorithmContext)::Union{String, Nothing}
     haskey(context._expression_aliases, identifier) && return context._expression_aliases[identifier]
@@ -31,6 +31,8 @@ _ssa_printer(oracle::SSCFunction, context::AlgorithmContext, use_aliases::Bool):
 _ssa_printer(gradient::SSCGradient, context::AlgorithmContext, use_aliases::Bool)::String = "SSCGradient($(_ssa_name(gradient.function_of, context, use_aliases)))"
 _ssa_printer(transition::StateTransition, context::AlgorithmContext, use_aliases::Bool)::String = "$(_ssa_name(transition.current_id, context, use_aliases)) => $(_ssa_name(transition.next_id, context, use_aliases))"
 _ssa_printer(evaluation::OracleEvaluation, context::AlgorithmContext, use_aliases::Bool)::String = "$(_ssa_name(evaluation.oracle_id, context, use_aliases))($(_ssa_name(evaluation.input_id, context, use_aliases)))"
+_ssa_printer(transpose::NewTranspose, context::AlgorithmContext, use_aliases::Bool)::String = "($(_ssa_name(transpose.transposed_id, context, use_aliases)))'"
+_ssa_printer(inner_product::NewInnerProduct, context::AlgorithmContext, use_aliases::Bool)::String = "$(_ssa_name(inner_product.transpose_id, context, use_aliases)) * $(_ssa_name(inner_product.variable_id, context, use_aliases))"
 
 function _ssa_printer(decomposition::LinearDecomposition, context::AlgorithmContext, use_aliases::Bool)::String
     isempty(decomposition.terms) && return "0"
