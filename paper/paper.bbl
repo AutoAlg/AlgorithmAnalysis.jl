@@ -1,0 +1,181 @@
+\begin{thebibliography}{10}
+
+\bibitem{mosek}
+MOSEK ApS.
+{\em The MOSEK optimization suite 9.2.49}, 2021.
+
+\bibitem{bhaya2006}
+Amit Bhaya and Eugenius Kaszkurewicz.
+{\em Control Perspectives on Numerical Algorithms and Matrix Problems}.
+Society for Industrial and Applied Mathematics, 2006.
+\href{http://dx.doi.org/10.1137/1.9780898718669}{doi:10.1137/1.9780898718669}.
+
+\bibitem{admm}
+Stephen Boyd, Neal Parikh, Eric Chu, Borja Peleato, and Jonathan Eckstein.
+{\em Distributed Optimization and Statistical Learning via the Alternating
+  Direction Method of Multipliers}, volume~3.
+Foundations and Trends in Machine Learning, 2010.
+\href{http://dx.doi.org/10.1561/2200000016}{doi:10.1561/2200000016}.
+
+\bibitem{boyd}
+Stephen Boyd and Lieven Vandenberghe.
+{\em Convex Optimization}.
+{Cambridge University Press}, 3 2004.
+
+\bibitem{colla-hendrickx2023}
+S\'{e}bastien Colla and Julien~M. Hendrickx.
+Automatic performance estimation for decentralized optimization.
+{\em IEEE Transactions on Automatic Control}, pages 1--15, 2023.
+\href{http://dx.doi.org/10.1109/TAC.2023.3251902}{doi:10.1109/TAC.2023.3251902}.
+
+\bibitem{rmm}
+Saman Cyrus, Bin Hu, Bryan Van~Scoy, and Laurent Lessard.
+{A robust accelerated optimization algorithm for strongly convex functions}.
+In {\em American Control Conference}, pages 1376--1381, 2018.
+\href{http://dx.doi.org/10.23919/ACC.2018.8430824}{doi:10.23919/ACC.2018.8430824}.
+
+\bibitem{deklerk-glineur-taylor2020}
+Etienne De~Klerk, Fran\c{c}ois Glineur, and Adrien~B. Taylor.
+Worst-case convergence analysis of inexact gradient and newton methods through
+  semidefinite programming performance estimation.
+{\em SIAM Journal on Optimization}, 30(3):2053--2082, 2020.
+\href{http://dx.doi.org/10.1137/19M1281368}{doi:10.1137/19M1281368}.
+
+\bibitem{drori-teboulle}
+Yoel Drori and Marc Teboulle.
+Performance of first-order methods for smooth convex minimization: a novel
+  approach.
+{\em Mathematical Programming}, 145:451--482, 2014.
+
+\bibitem{pep-original}
+Yoel Drori and Marc Teboulle.
+Performance of first-order methods for smooth convex minimization: {A} novel
+  approach.
+{\em Mathematical Programming}, 145(1):451--482, 2014.
+
+\bibitem{JuMP-review}
+Iain Dunning, Joey Huchette, and Miles Lubin.
+{JuMP}: A modeling language for mathematical optimization.
+{\em SIAM Review}, 59(2):295--320, 2017.
+\href{http://dx.doi.org/10.1137/15M1020575}{doi:10.1137/15M1020575}.
+
+\bibitem{cosmo}
+Michael Garstka, Mark Cannon, and Paul Goulart.
+{COSMO}: A conic operator splitting method for convex conic problems.
+{\em Journal of Optimization Theory and Applications}, 190(3):779--810, 2021.
+\href{http://dx.doi.org/10.1007/s10957-021-01896-x}{doi:10.1007/s10957-021-01896-x}.
+
+\bibitem{cvx2}
+Michael Grant and Stephen Boyd.
+Graph implementations for nonsmooth convex programs.
+In V.~Blondel, S.~Boyd, and H.~Kimura, editors, {\em Recent Advances in
+  Learning and Control}, Lecture Notes in Control and Information Sciences,
+  pages 95--110. Springer-Verlag Limited, 2008.
+\url{http://stanford.edu/~boyd/graph_dcp.html}.
+
+\bibitem{cvx1}
+Michael Grant and Stephen Boyd.
+{CVX}: Matlab software for disciplined convex programming, version 2.1.
+\url{http://cvxr.com/cvx}, March 2014.
+
+\bibitem{hu-lessard2017}
+Bin Hu and Laurent Lessard.
+Dissipativity theory for {N}esterov's accelerated method.
+In {\em Proceedings of the 34th International Conference on Machine Learning},
+  volume~70, pages 1549--1557, 2017.
+
+\bibitem{hu-syed2019}
+Bin Hu and Usman~Ahmed Syed.
+{\em Characterizing the Exact Behaviors of Temporal Difference Learning
+  Algorithms Using Markov Jump Linear System Theory}.
+Curran Associates Inc., Red Hook, NY, USA, 2019.
+
+\bibitem{lessard16}
+Laurent Lessard, Benjamin Recht, and Andrew Packard.
+Analysis and design of optimization algorithms via integral quadratic
+  constraints.
+{\em SIAM Journal on Optimization}, 26(1):57--95, 2016.
+\href{http://dx.doi.org/10.1137/15M1009597}{doi:10.1137/15M1009597}.
+
+\bibitem{lessard}
+Laurent Lessard, Benjamin Recht, and Andrew Packard.
+Analysis and design of optimization algorithms via integral quadratic
+  constraints.
+{\em SIAM Journal on Optimization}, 26(1):57--95, 2016.
+\href{http://dx.doi.org/10.1137/15M1009597}{doi:10.1137/15M1009597}.
+
+\bibitem{yalmip}
+J.~L\"{o}fberg.
+{YALMIP} : a toolbox for modeling and optimization in {MATLAB}.
+In {\em 2004 IEEE International Conference on Robotics and Automation}, pages
+  284--289, 2004.
+
+\bibitem{JuMP}
+Miles Lubin, Oscar Dowson, Joaquim {Dias Garcia}, Joey Huchette, Beno{\^i}t
+  Legat, and Juan~Pablo Vielma.
+{JuMP} 1.0: {R}ecent improvements to a modeling language for mathematical
+  optimization.
+{\em Mathematical Programming Computation}, 2023.
+\href{http://dx.doi.org/10.1007/s12532-023-00239-3}{doi:10.1007/s12532-023-00239-3}.
+
+\bibitem{iqc}
+A.~Megretski and A.~Rantzer.
+System analysis via integral quadratic constraints.
+{\em IEEE Transactions on Automatic Control}, 42(6):819--830, 1997.
+\href{http://dx.doi.org/10.1109/9.587335}{doi:10.1109/9.587335}.
+
+\bibitem{nemirovski-yudin}
+Arkadi Nemirovski and D.~Yudin.
+{\em Problem complexity and method efficiency in optimization}.
+Willey-Interscience, New York, 1983.
+
+\bibitem{nesterov-book}
+Yurii Nesterov.
+{\em Lectures on Convex Optimization}, volume 137.
+Springer Optimization and Its Applications, 2018.
+\href{http://dx.doi.org/10.1007/978-3-319-91578-4}{doi:10.1007/978-3-319-91578-4}.
+
+\bibitem{iqcadmm_ICML}
+Robert Nishihara, Laurent Lessard, Benjamin Recht, Andrew Packard, and
+  Michael~I. Jordan.
+A general analysis of the convergence of {ADMM}.
+In {\em International Conference on Machine Learning}, pages 343--352, 2015.
+
+\bibitem{numerical-optimization}
+Jorge Nocedal and Stephen~J. Wright.
+{\em Numerical Optimization}.
+Springer, New York, NY, USA, second edition, 2006.
+
+\bibitem{scs}
+Brendan O'Donoghue, Eric Chu, Neal Parikh, and Stephen Boyd.
+Conic optimization via operator splitting and homogeneous self-dual embedding.
+{\em Journal of Optimization Theory and Applications}, 169(3):1042--1068, 6
+  2016.
+
+\bibitem{robey-chamon-pappas-hassani2022}
+Alexander Robey, Luiz Chamon, George~J. Pappas, and Hamed Hassani.
+Probabilistically robust learning: Balancing average and worst-case
+  performance.
+In Kamalika Chaudhuri, Stefanie Jegelka, Le~Song, Csaba Szepesvari, Gang Niu,
+  and Sivan Sabato, editors, {\em Proceedings of the 39th International
+  Conference on Machine Learning}, volume 162 of {\em Proceedings of Machine
+  Learning Research}, pages 18667--18686. PMLR, 7 2022.
+
+\bibitem{pep}
+Adrien~B. Taylor, Julien~M. Hendrickx, and Fran{\c{c}}ois Glineur.
+Smooth strongly convex interpolation and exact worst-case performance of
+  first-order methods.
+{\em Mathematical Programming}, 161(1):307--345, 1 2017.
+
+\bibitem{taylor2018lyapunov}
+Adrien~B. Taylor, Bryan Van~Scoy, and Laurent Lessard.
+Lyapunov functions for first-order methods: {T}ight automated convergence
+  guarantees.
+In {\em International Conference on Machine Learning}, pages 4897--4906, 2018.
+
+\bibitem{ZDG}
+Kemin Zhou, John Doyle, and Keith Glover.
+{\em Robust and Optimal Control}.
+Prentice Hall, 1996.
+
+\end{thebibliography}

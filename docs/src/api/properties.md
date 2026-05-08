@@ -1,0 +1,15 @@
+```@docs
+Trait
+Linear
+RelativelyBounded
+Monotone
+SmoothStronglyConvex
+PointwiseQuadraticConstraint
+IncrementalQuadraticConstraint
+TwoPointLinearQuadraticConstraint
+SlopeRestricted
+SectorBounded
+quadraticform
+linearquadraticform
+reference
+```
