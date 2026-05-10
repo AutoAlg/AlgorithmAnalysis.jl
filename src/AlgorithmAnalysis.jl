@@ -4,7 +4,7 @@ module AlgorithmAnalysis
 # IMPORT
 #########################################################
 
-import JuMP
+import JuMP, Clarabel
 import MathOptInterface as MOI
 
 import Base: +, -, *, /, ^, ==, ∈, ∘, ∩, ⊆, ≤, ≥, <=, >=

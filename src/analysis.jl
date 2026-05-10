@@ -3,43 +3,43 @@ export optimization_variable_dictionary, optimization_variable, optimization_con
 
 
 function optimization_variable_dictionary(model::JuMP.Model, vars::Objects)
-    optvar_dict = Dict{Object, JuMP.VariableRef}()
+    dict = Dict{Object, JuMP.VariableRef}()
     for var ∈ vars
         t = get(var, Numeric)
         if isnothing(t)
             error("Variable $var is not numeric.")
         end
         if datatype(t) == Float64
-            optvar_dict[var] = JuMP.@variable(model)
+            dict[var] = JuMP.@variable(model)
         else
             error("Optimization with variable $var not implemented")
         end
     end
-    optvar_dict
+    dict
 end
 
-function optimization_variable(x::Object, dict::Dict)
-    if x ∈ keys(dict)
-        dict[x]
-    elseif hasvalue(x)
-        val = value(x)
-        if val isa Evaluation
+# function optimization_variable(x::Object, dict::Dict)
+#     if x ∈ keys(dict)
+#         dict[x]
+#     elseif hasvalue(x)
+#         val = value(x)
+#         if val isa Evaluation
             
-        end
-        # mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
-        x = 0
-        for (key,val) ∈ weights(x)
-            if haskey(dict, key)
-                x += val * dict[key]
-            else
-                x += val * value(key)
-            end
-        end
-        x
-    else
-        dict[x]
-    end
-end
+#         end
+#         # mapreduce(p->last(p)*get(optvar_dict, first(p), value(first(p))), +, weights(e))
+#         x = 0
+#         for (key,val) ∈ weights(x)
+#             if haskey(dict, key)
+#                 x += val * dict[key]
+#             else
+#                 x += val * value(key)
+#             end
+#         end
+#         x
+#     else
+#         dict[x]
+#     end
+# end
 
 # function optimization_constraint(model::JuMP.Model, con::Constraint, optvar_dict::Dict)
 #     ex = optvar(expression(con), optvar_dict)
@@ -64,61 +64,49 @@ Use the performance estimation methodology to find the worst-case value of the p
 ## Requirements
 - The performance measure must be a real expression (that is, an element of `R`).
 """
-function maximize(performance::Object)
+function maximize(objective::Object; verbose=1, optimizer=Clarabel, Prop = Space(:Prop), assign_sol = false)
 
-    if !isimplementable(performance)
-        error("The performance measure must be implementable.")
+    if !implementable(objective)
+        error("The objective $objective is not implementable.")
     end
 
-    @info "Maximizing the performance measure $performance"
+    vars = filter(implementable, variables(objective))
 
-    # variables, constraints, and oracles associated with the performance measure
-    vars = related(performance)
-
-    if !isimplementable(cons ∪ variables(cons))
-        error("Analysis is not implementable! All constraints and associated variables must be implementable.")
+    if verbose ≥ 1
+        @info "Maximizing $objective"
+        @info " ⋅ $(length(vars)) variables"
+        @info " ⋅ $(length(elements(Prop))) constraints"
     end
 
-    # optimization variables
-    optvars = filter( isimplementable, vars )
-
-    # optimization problem
-    model = JuMP.Model(SCS.Optimizer)
+    model = JuMP.Model(optimizer.Optimizer)
 
     JuMP.set_silent(model)
 
-    @info "Setting up the optimization problem"
+    optvars = optimization_variable_dictionary(model, vars)
 
-    # optimization variables
-    optvar_dict = optimization_variable_dictionary(model, optvars)
+    JuMP.@objective(model, Max, evaluate(objective, dict = optvars))
 
-    @info "  ✓ variables"
-
-    # optimization objective
-    JuMP.@objective(model, Max, optvar(performance, optvar_dict))
-
-    @info "  ✓ objective"
-
-    # optimization constraints
-    foreach( con -> optcon(model, con, optvar_dict), cons )
-
-    @info "  ✓ constraints"
+    for prop ∈ elements(Prop)
+        evaluate(prop, dict = optvars, model = model)
+    end
 
     JuMP.optimize!(model)
 
-    @info "Termination status: $(JuMP.termination_status(model))"
+    sol = Dict{Object, Float64}( (k, JuMP.value(v)) for (k,v) ∈ optvars )
 
-    @info "Assigning values to original variables"
+    if assign_sol
+        for var ∈ vars
+            value!(var, JuMP.value(optvars[var]))
+        end
+    end
 
-    # set the value of each variable
-    foreach( p -> value!(first(p), JuMP.value(last(p))), optvar_dict )
+    if verbose ≥ 1
+        @info "Termination status: $(JuMP.termination_status(model))"
+        @info "Objective value: $(evaluate(objective, dict=sol))"
+        @info "Use `evaluate(expr, dict = sol)` to obtain the value of any expression."
+    end
 
-    # interpolate each oracle
-    foreach( interpolate, orcs )
-
-    @info "Objective value: $(evaluate(performance))"
-
-    @info "Analysis complete! Use `evaluate()` to obtain the value of any expression in the algorithm."
+    return sol
 end
 
 # function dependencies(s::Space)

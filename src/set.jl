@@ -364,20 +364,42 @@ next(x::Object) = x.next
 value!(x::Object, val = missing) = (x.value = val; nothing)
 label!(x::Object, l::Label = missing) = (x.label = l; nothing)
 
-function evaluate(x::Object, dict::Dict = Dict(), model::Union{JuMP.GenericModel, Missing} = missing)
+function evaluate(x::Object; dict::Dict = Dict(), model::Union{JuMP.GenericModel, Missing} = missing)
     if x ∈ keys(dict)
         return dict[x]
     end
     if hasvalue(x)
         val = value(x)
         if val isa Evaluation
-            return evaluate(val.f, dict)(evaluate(val.x, dict)...)
+            f = evaluate(val.f, dict=dict, model=model)
+            y = evaluate(val.x, dict=dict, model=model)
+
+            if codomain(val.f) === Space(:Prop)
+                t = get(domain(val.f)[1], Order)
+                if ~isnothing(t) && val.f ∈ trait_objects(t)
+                    if val.f === t.ordering
+                        return JuMP.@constraint(model, 0 ≤ evaluate(val.x[2]-val.x[1], dict=dict, model=model))
+                    end
+                end
+            end
+            # if con isa Equality
+            #     return JuMP.@constraint(model, 0 == ex )
+            # elseif con isa Positive
+            #     return JuMP.@constraint(model, 0 ≤ ex )
+            # elseif con isa Semidefinite
+            #     JuMP.@constraint(model, ex .== ex' )
+            #     return JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
+            # else
+            #     error("Optimization with constraint $con not implemented")
+            # end
+
+            return f(y...)
         else
             return val
         end
     end
     if hastrait(x, Product)
-        return evaluate.(as_tuple(x), Ref(dict))
+        return evaluate.(as_tuple(x), dict=dict, model=model)
     end
     for S ∈ numeric()
         if x ∈ trait_objects(S)
@@ -385,18 +407,7 @@ function evaluate(x::Object, dict::Dict = Dict(), model::Union{JuMP.GenericModel
         end
     end
 
-    if con isa Equality
-      JuMP.@constraint(model, 0 == ex )
-    elseif con isa Positive
-        JuMP.@constraint(model, 0 ≤ ex )
-    elseif con isa Semidefinite
-        JuMP.@constraint(model, ex .== ex' )
-        JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
-    else
-        error("Optimization with constraint $con not implemented")
-    end
-
-    error("Cannot evaluate $x because it has no value and is not in the dictionary $dict")
+    error("Cannot evaluate $x.")
 end
 
 trait_objects(::Trait) = Objects()

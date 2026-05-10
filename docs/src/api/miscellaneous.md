@@ -1,4 +1,17 @@
 ```@docs
 adjoint
 hash
+fast_gradient
+multiplier
+stateupdate
+negative!
+triple_momentum
+heavy_ball
+TestFileDescriptor
+ResultFile
+Reference
+Object
+bsmin
+get_element
+AbstractConstraint
 ```

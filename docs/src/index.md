@@ -1,4 +1,4 @@
-# AlgorithmAnalysis.jl
+![Algorithm Analysis Logo](./assets/logo-with-title-dark.svg)
 
 AlgorithmAnalysis.jl is a Julia package for the automated analysis of algorithms.
 
@@ -17,30 +17,28 @@ Pkg.add("AlgorithmAnalysis")
 
 ## Example
 
-This example code finds the worst-case performance guarantee of the gradient descent algorithm at minimizing $L$-smooth and $m$-strongly convex functions.
+This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $m$-strongly convex functions.
 
 ```julia
 using AlgorithmAnalysis
 m, L = 1, 10
-α = 2 / (L + m)
 @algorithm begin
     f = DifferentiableFunctional{Rⁿ}()
     xs = first_order_stationary_point(f)
-    f' ∈ SectorBounded(m, L, xs, f'(xs))
+    f' ∈ SmoothStronglyConvex(m, L)
     x0 ∈ Rⁿ
-    x1 = x0 - α * f'(x0)
-    x0 => x1
+    x0 => x0 - (1/L) * f'(x0)
     performance = (x0 - xs)^2
 end
-@show rate(performance)
+rate(performance)
 ```
 
 ## Documentation structure
 
-- **Manual:** describes the data structures used by AlgorithmAnalysis.jl
+- **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques
 
-- **Examples:** illustrate the analyses on a variety of algorithms and problem classes
+- **Manual:** describes the data structures used by AlgorithmAnalysis.jl
 
 - **API:** a comprehensive list of all public objects exported by AlgorithmAnalysis.jl
 
-- **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques
+- **Results:** illustrate the analyses on a variety of algorithms and problem classes

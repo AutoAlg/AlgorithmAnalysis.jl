@@ -1,7 +1,12 @@
-## Analysis methods
+## Performance Estimation Approach
 
 ```@docs
 maximize
+```
+
+## Control Theoretic Approach
+
+```@docs
 certify
 rate
 ```
@@ -9,5 +14,5 @@ rate
 ## Helper methods
 
 ```@docs
-variables_constraints_oracles
+variables_constraints
 ```

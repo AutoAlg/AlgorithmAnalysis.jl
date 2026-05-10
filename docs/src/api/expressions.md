@@ -16,7 +16,6 @@ InnerProductSpace
 ## Methods
 
 ```@docs
-constraints
 oracles
 associations
 isvariable

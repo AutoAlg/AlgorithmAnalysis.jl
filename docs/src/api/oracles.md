@@ -13,6 +13,7 @@ TwiceDifferentiableFunctional
 QuadraticFunctional
 LinearFunctional
 ZeroFunctional
+SmoothStronglyConvexFunction
 relation
 samples
 sample

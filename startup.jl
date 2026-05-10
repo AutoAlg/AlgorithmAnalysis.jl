@@ -1,5 +1,3 @@
-using Pkg
-Pkg.activate(".")
 using Revise
 using AlgorithmAnalysis
 
@@ -10,7 +8,7 @@ using AlgorithmAnalysis
 
 @set Prop, R
 @trait Prop, PropositionalLogic, Numeric(Bool)
-@trait R, Equality(Prop), Ring, Order(Prop), Numeric
+@trait R, Equality(Prop), Ring, Order(Prop), Numeric(Float64)
 @var x ∈ R, y ∈ R
 50.0 * x + 24.0 * y ≤ 2400.0
 30.0 * x + 33.0 * y ≤ 2100.0
@@ -18,33 +16,11 @@ x ≥ 45.0
 y ≥ 5.0
 @def val = x + y - 50.0
 
-evaluate(val, Dict(x => 45, y => 6.25))
+sol = maximize(val)
 
 # SOLUTION: x=45, y=6.25, val=1.25
 
-import JuMP, SCS
-
-vars = variables(val)
-
-optvars = filter(implementable, vars)
-
-model = JuMP.Model(SCS.Optimizer)
-
-JuMP.set_silent(model)
-
-optvar_dict = optimization_variable_dictionary(model, optvars)
-
-JuMP.@objective(model, Max, evaluate(val, optvar_dict))
-
-for prop ∈ Prop
-  ex = evaluate(prop, optvar_dict, model)
-end
-
-# foreach( con -> optcon(model, con, optvar_dict), cons )
-
-# JuMP.optimize!(model)
-
-# foreach( p -> value!(first(p), JuMP.value(last(p))), optvar_dict )
+evaluate(val, dict = sol)
 
 #########################################################
 # PERFORMANCE ESTIMATION

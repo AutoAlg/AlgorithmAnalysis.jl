@@ -30,10 +30,7 @@ Cone
 PositiveSemidefiniteCone
 PositiveOrthant
 ZeroSet
-ConeConstraint
-Positive
-Semidefinite
-Equality
+UnrestrictedCone
 cone
 ==
 ≤
