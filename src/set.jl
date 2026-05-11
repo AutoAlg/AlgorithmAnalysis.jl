@@ -94,18 +94,14 @@ mutable struct Object <: AbstractObject
     label::Label
     value::Any
     next::Union{Object, Missing}
-    labeler::Union{Function, Missing}
-    trait::Union{Trait, Missing}
 
-    function Object(space::Space; id::ID=allocate_id(space), label::Label=missing, value=missing, next=missing, labeler=missing, trait=missing)
+    function Object(space::Space; id::ID=allocate_id(space), label::Label=missing, value=missing, next=missing)
         get!(space.elements, id) do
             new(
                 id,
                 label,
                 value,
-                next,
-                labeler,
-                trait
+                next
             )
         end
     end
@@ -364,24 +360,74 @@ next(x::Object) = x.next
 value!(x::Object, val = missing) = (x.value = val; nothing)
 label!(x::Object, l::Label = missing) = (x.label = l; nothing)
 
-function evaluate(x::Object; dict::Dict = Dict(), model::Union{JuMP.GenericModel, Missing} = missing)
+const JUMP_MODEL = ScopedValue{JuMP.GenericModel}()
+
+function with_jump(code::Function, Model = JuMP.Model)
+    if !isassigned(JUMP_MODEL)
+        println("Initializing JuMP model...")
+        with(code, JUMP_MODEL => Model())
+        println("JuMP model complete!")
+    else
+        code()
+    end
+end
+
+function evaluate(x::Object, dict::Dict = Dict())
     if x ∈ keys(dict)
         return dict[x]
     end
     if hasvalue(x)
         val = value(x)
         if val isa Evaluation
-            f = evaluate(val.f, dict=dict, model=model)
-            y = evaluate(val.x, dict=dict, model=model)
+            return evaluate(val, dict)
+        else
+            return val
+        end
+    end
+    if hastrait(x, Product)
+        return evaluate.(as_tuple(x), Ref(dict))
+    end
+    if hastrait(space(x), Evaluator)
+        t = get(space(x), Evaluator)
+    end
+    error("Cannot evaluate object $x.")
+end
 
-            if codomain(val.f) === Space(:Prop)
-                t = get(domain(val.f)[1], Order)
-                if ~isnothing(t) && val.f ∈ trait_objects(t)
-                    if val.f === t.ordering
-                        return JuMP.@constraint(model, 0 ≤ evaluate(val.x[2]-val.x[1], dict=dict, model=model))
-                    end
-                end
+function evaluate(val::Evaluation, dict::Dict)
+    f, x = val.f, val.x
+
+    for S ∈ numeric()
+        if f ∈ trait_objects(S)
+            return eval(label(f))( evaluate(x, dict)... )
+        end
+    end
+
+    return evaluate(f, dict)( evaluate(x, dict)... )
+end
+
+function evaluate(x::Object, model::JuMP.GenericModel)
+    if hasvalue(x)
+        val = value(x)
+        if val isa Evaluation
+
+            with(JUMP_MODEL => JuMP.Model()) do
+
             end
+            # f = evaluate(val.f, model)
+            y = evaluate(val.x, model)
+
+            @show y
+
+            # if codomain(val.f) === Space(:Prop)
+            #     t = get(domain(val.f)[1], Order)
+            #     if ~isnothing(t) && val.f ∈ trait_objects(t)
+            #         if val.f === t.ordering
+            #             return JuMP.@constraint(model, 0 ≤ evaluate(val.x[2]-val.x[1], dict=dict, model=model))
+            #         end
+            #     end
+            # end
+
+
             # if con isa Equality
             #     return JuMP.@constraint(model, 0 == ex )
             # elseif con isa Positive
@@ -399,15 +445,9 @@ function evaluate(x::Object; dict::Dict = Dict(), model::Union{JuMP.GenericModel
         end
     end
     if hastrait(x, Product)
-        return evaluate.(as_tuple(x), dict=dict, model=model)
+        return evaluate.(as_tuple(x), model)
     end
-    for S ∈ numeric()
-        if x ∈ trait_objects(S)
-            return eval(label(x))
-        end
-    end
-
-    error("Cannot evaluate $x.")
+    error("Cannot evaluate object $x.")
 end
 
 trait_objects(::Trait) = Objects()
@@ -534,7 +574,7 @@ function register!(x::Object, t::Trait)
     if ismissing(label(x))
         nothing
     else
-        @eval $x.trait = $t
+        # @eval $x.trait = $t
         register!(label(x))
     end
 end

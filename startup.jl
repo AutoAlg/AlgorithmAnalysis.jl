@@ -1,6 +1,6 @@
 using Revise
 using AlgorithmAnalysis
-
+import JuMP
 
 #########################################################
 # LINEAR PROGRAMMING
@@ -8,19 +8,29 @@ using AlgorithmAnalysis
 
 @set Prop, R
 @trait Prop, PropositionalLogic, Numeric(Bool)
-@trait R, Equality(Prop), Ring, Order(Prop), Numeric(Float64)
+@trait R, Ring, Order(Prop), Numeric(Float64)
+
+@trait R × R → Prop, Evaluator
+@trait R × R → R, Evaluator
+
+evaluator!(get(R, Order).ordering, (Float64,Float64), ≤)
+evaluator!(get(R, Ring).additive_group.invop, (Float64,Float64), ≤)
+
 @var x ∈ R, y ∈ R
-50.0 * x + 24.0 * y ≤ 2400.0
-30.0 * x + 33.0 * y ≤ 2100.0
-x ≥ 45.0
-y ≥ 5.0
+@def c1 = 50.0 * x + 24.0 * y ≤ 2400.0
+@def c2 = 30.0 * x + 33.0 * y ≤ 2100.0
+@def c3 = x ≥ 45.0
+@def c4 = y ≥ 5.0
 @def val = x + y - 50.0
+@def opt = max(val, c1 ∧ c2 ∧ c3 ∧ c4)
 
-sol = maximize(val)
+# sol = maximize(val)
 
-# SOLUTION: x=45, y=6.25, val=1.25
+sol = Dict(x => 45.0, y => 6.25)
 
-evaluate(val, dict = sol)
+evaluate(val, sol)
+
+sol[x] ≈ 45.0 && sol[y] ≈ 6.25
 
 #########################################################
 # PERFORMANCE ESTIMATION
