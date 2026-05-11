@@ -178,6 +178,28 @@ macro set(ex)
     end
 end
 
+macro globalset(ex)
+    function _recurse(x)
+        if x isa Symbol
+            space = esc(x)
+            label = QuoteNode(x)
+            quote
+                global $space = Space($label)
+                # $Prop ∈ PredicateLogic($space)
+            end
+        elseif x isa Expr && (x.head == :block || x.head == :tuple)
+            Expr(:block, map(_recurse, x.args)...)
+        elseif x isa LineNumberNode
+            x
+        else
+            error("Invalid expression for @set macro: $x")
+        end
+    end
+    quote
+        $(_recurse(ex)); nothing
+    end
+end
+
 """
     @var a ∈ A, b ∈ B, ...
 
@@ -332,7 +354,7 @@ spaces(universe::Universe = get_universe()) = Spaces(values(universe.spaces))
 objects(x::Object) = Set{Object}([x])
 haslabel(x::Object) = !ismissing(label(x))
 hasnext(x::Object) = !ismissing(next(x))
-hasvalue(x::Object) = !ismissing(value(x))
+hasvalue(x::Object) = !ismissing(value(x)) && !isnothing(value(x))
 next!(x::Object, y::Union{Object, Missing}) = (x.next = y; nothing)
 next(xs::AbstractArray{<:Object}) = [ next(x) for x ∈ xs ]
 # update!(p::Pair{T, T}) where T = next!( first(p), last(p) )
@@ -359,96 +381,6 @@ value(x::Object) = x.value
 next(x::Object) = x.next
 value!(x::Object, val = missing) = (x.value = val; nothing)
 label!(x::Object, l::Label = missing) = (x.label = l; nothing)
-
-const JUMP_MODEL = ScopedValue{JuMP.GenericModel}()
-
-function with_jump(code::Function, Model = JuMP.Model)
-    if !isassigned(JUMP_MODEL)
-        println("Initializing JuMP model...")
-        with(code, JUMP_MODEL => Model())
-        println("JuMP model complete!")
-    else
-        code()
-    end
-end
-
-function evaluate(x::Object, dict::Dict = Dict())
-    if x ∈ keys(dict)
-        return dict[x]
-    end
-    if hasvalue(x)
-        val = value(x)
-        if val isa Evaluation
-            return evaluate(val, dict)
-        else
-            return val
-        end
-    end
-    if hastrait(x, Product)
-        return evaluate.(as_tuple(x), Ref(dict))
-    end
-    if hastrait(space(x), Evaluator)
-        t = get(space(x), Evaluator)
-    end
-    error("Cannot evaluate object $x.")
-end
-
-function evaluate(val::Evaluation, dict::Dict)
-    f, x = val.f, val.x
-
-    for S ∈ numeric()
-        if f ∈ trait_objects(S)
-            return eval(label(f))( evaluate(x, dict)... )
-        end
-    end
-
-    return evaluate(f, dict)( evaluate(x, dict)... )
-end
-
-function evaluate(x::Object, model::JuMP.GenericModel)
-    if hasvalue(x)
-        val = value(x)
-        if val isa Evaluation
-
-            with(JUMP_MODEL => JuMP.Model()) do
-
-            end
-            # f = evaluate(val.f, model)
-            y = evaluate(val.x, model)
-
-            @show y
-
-            # if codomain(val.f) === Space(:Prop)
-            #     t = get(domain(val.f)[1], Order)
-            #     if ~isnothing(t) && val.f ∈ trait_objects(t)
-            #         if val.f === t.ordering
-            #             return JuMP.@constraint(model, 0 ≤ evaluate(val.x[2]-val.x[1], dict=dict, model=model))
-            #         end
-            #     end
-            # end
-
-
-            # if con isa Equality
-            #     return JuMP.@constraint(model, 0 == ex )
-            # elseif con isa Positive
-            #     return JuMP.@constraint(model, 0 ≤ ex )
-            # elseif con isa Semidefinite
-            #     JuMP.@constraint(model, ex .== ex' )
-            #     return JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
-            # else
-            #     error("Optimization with constraint $con not implemented")
-            # end
-
-            return f(y...)
-        else
-            return val
-        end
-    end
-    if hastrait(x, Product)
-        return evaluate.(as_tuple(x), model)
-    end
-    error("Cannot evaluate object $x.")
-end
 
 trait_objects(::Trait) = Objects()
 trait_objects(S::Space) = mapreduce(trait_objects, ∪, traits(S))

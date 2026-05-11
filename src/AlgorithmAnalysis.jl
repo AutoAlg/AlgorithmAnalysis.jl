@@ -40,7 +40,7 @@ include("traits/logic.jl")
 include("traits/evaluator.jl")
 include("dispatch.jl")
 include("transformations.jl")
-include("analysis.jl")
 include("utils.jl")
+include("default.jl")
 
 end
