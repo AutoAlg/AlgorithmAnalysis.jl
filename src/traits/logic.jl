@@ -1,6 +1,6 @@
-#########################################################
+########################################################
 # LOGIC
-#########################################################
+########################################################
 
 export PropositionalLogic, PredicateLogic
 
@@ -14,11 +14,11 @@ struct PropositionalLogic <: Trait
 
     function PropositionalLogic(Prop::Space, conjunction::Symbol = :∧, disjunction::Symbol = :∨, implication::Symbol = :⟹, biconditional::Symbol = :⟺, negation::Symbol = :¬)
         register!(new(Prop,
-            Object(Prop × Prop → Prop, label = conjunction, value = (p,q) -> p && q),
-            Object(Prop × Prop → Prop, label = disjunction, value = (p,q) -> p || q),
-            Object(Prop × Prop → Prop, label = implication, value = (p,q) -> !p || q),
-            Object(Prop × Prop → Prop, label = biconditional, value = (p,q) -> (p && q) || (!p && !q)),
-            Object(Prop → Prop, label = negation, value = p -> !p)
+            Object(Prop × Prop → Prop, label = conjunction),
+            Object(Prop × Prop → Prop, label = disjunction),
+            Object(Prop × Prop → Prop, label = implication),
+            Object(Prop × Prop → Prop, label = biconditional),
+            Object(Prop → Prop, label = negation),
         ))
     end
 end

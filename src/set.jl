@@ -8,12 +8,10 @@ export Evaluation, evaluate, sample
 export get_universe, in_universe, clone, default_universe, register!
 export trait_objects
 
-export _CACHE
 
-
-#########################################################
+########################################################
 # STRUCTS
-#########################################################
+########################################################
 
 struct Universe
     label::Symbol
@@ -113,17 +111,17 @@ struct Evaluation
 end
 
 
-#########################################################
+########################################################
 # CONSTANTS
-#########################################################
+########################################################
 
 const Spaces = Set{Space}
 const Objects = Set{Object}
 
 
-#########################################################
+########################################################
 # MACROS
-#########################################################
+########################################################
 
 """
     @universe A, B, ...
@@ -298,9 +296,9 @@ macro trait(args...)
 end
 
 
-#########################################################
+########################################################
 # METHODS
-#########################################################
+########################################################
 
 function implementable(s::Space)
     hastrait(s, Numeric) ||
@@ -360,6 +358,9 @@ next(xs::AbstractArray{<:Object}) = [ next(x) for x ∈ xs ]
 # update!(p::Pair{T, T}) where T = next!( first(p), last(p) )
 
 push!(space::Space, object::Object) = space.elements[allocate_id(space)] = object
+
+hastrait(s::Space, T::Type{<:Trait}) = !isnothing(get(s, T))
+hastrait(x::Object, T::Type{<:Trait}) = hastrait(space(x), T)
 
 function source(x::Object)
     T = space(x)
@@ -438,9 +439,9 @@ function show(io::IO, ::MIME"text/plain", elements::Objects)
 end
 
 
-#########################################################
+########################################################
 # FREE AND BOUND VARIABLES
-#########################################################
+########################################################
 
 export variables, free, bound
 
@@ -482,9 +483,9 @@ end
 bound(x::Object) = setdiff(variables(x), free(x))
 
 
-#########################################################
+########################################################
 # REGISTER PROPERTIES
-#########################################################
+########################################################
 """
     register!
 
@@ -502,11 +503,10 @@ function register!(t::Trait)
     t
 end
 
-function register!(x::Object, t::Trait)
+function register!(x::Object, ::Trait)
     if ismissing(label(x))
         nothing
     else
-        # @eval $x.trait = $t
         register!(label(x))
     end
 end
@@ -514,7 +514,7 @@ end
 function register!(sym::Symbol)
     @eval begin
         export $sym
-        $sym(x::Term, y::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
+        $sym(x::Term, y::Term, args::Vararg{Any}) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
         $sym(x::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, args...)...)
         $sym(x::Any, y::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
     end

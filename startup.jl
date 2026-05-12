@@ -3,9 +3,9 @@ using AlgorithmAnalysis
 
 default_setup()
 
-#########################################################
+########################################################
 # LINEAR PROGRAMMING
-#########################################################
+########################################################
 
 @var x ∈ R, y ∈ R
 @def c1 = 50.0 * x + 24.0 * y ≤ 2400.0
@@ -16,10 +16,14 @@ default_setup()
 @def obj = x + y - 50.0
 @def opt = max(obj, cons)
 
-evaluate(opt)  # sol = Dict(x => 45.0, y => 6.25)
+evaluate(opt)
 
-# to evaluate other expressions, evaluate them in the same model
-with_jump() do
+# with_verbose() do
+#   evaluate(opt)
+# end
+
+# to evaluate other expressions, evaluate them in the same optimizer
+with_optimizer() do
   evaluate(opt)
   @show evaluate(x)
   @show evaluate(y)
@@ -27,9 +31,9 @@ with_jump() do
 end
 
 
-#########################################################
+########################################################
 # PERFORMANCE ESTIMATION
-#########################################################
+########################################################
 
 # @set Prop, R, Rⁿ, F
 # @trait Prop, PropositionalLogic, Numeric(Bool)
@@ -49,9 +53,9 @@ end
 
 
 
-#########################################################
+########################################################
 # LIST OF TRANSFORMATIONS
-#########################################################
+########################################################
 
 # Transformation(
 #     "Convex interpolation",
@@ -121,9 +125,9 @@ end
 # @variable(model, x[1:2, 1:2], PSD)
 # eltype(x).parameters[1]
 
-#########################################################
+########################################################
 # TODO
-#########################################################
+########################################################
 # • analysis
 # • simplifications? e.g., x + zero(Rⁿ) → x, a - b → a + (-b)
 # • generic terms with set as a trait?

@@ -22,9 +22,9 @@ const _TRANSFORMATIONS = Transformations()
 transformations() = _TRANSFORMATIONS
 
 
-#########################################################
+########################################################
 # SEARCH OVER TRANSFORMATIONS
-#########################################################
+########################################################
 
 function search_path(start_node, neighbors::Function, goal::Function)
     history = Dict{Any, Any}()  # child -> (parent, action)

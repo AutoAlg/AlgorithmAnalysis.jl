@@ -1,10 +1,11 @@
-#########################################################
+########################################################
 # ABSTRACT TYPES
-#########################################################
+########################################################
 
 export Term, AbstractSpace, AbstractObject, Trait
 export Terms, Spaces, Objects, Traits, Label
 export label, isequal
+export with_verbose, verbose
 
 abstract type Term end
 
@@ -32,18 +33,23 @@ An abstract trait.
 abstract type Trait <: Term end
 
 
-#########################################################
+########################################################
 # CONSTANTS
-#########################################################
+########################################################
 
 const Terms = Set{Term}
 const Traits = Set{Trait}
 const Label = Union{Symbol, Missing}
 
 
-#########################################################
+########################################################
 # GENERIC METHODS
-#########################################################
+########################################################
 
 label(::Term) = missing
 isequal(a::Term, b::Term) = a === b
+
+const VERBOSE = ScopedValue{Bool}(false)
+
+with_verbose(code::Function, verbose::Bool = true) = with(code, VERBOSE => verbose)
+verbose() = VERBOSE[]
