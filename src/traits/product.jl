@@ -6,8 +6,8 @@ export Product, spaces, as_product, as_tuple, ×
 
 struct Product <: Trait
     spaces::Tuple{Vararg{Space}}
-    dict::Dict{Tuple{Vararg{Object}}, Object}
-    Product(ss::Vararg{Space}) = new(ss, Dict{Tuple{Vararg{Object}}, Object}())
+    elements::Bijection{Tuple{Vararg{Object}}, Object}
+    Product(ss::Vararg{Space}) = new(ss, Bijection{Tuple{Vararg{Object}}, Object}())
 end
 
 spaces(s::Space) = spaces(get(s, Product), s)
@@ -31,35 +31,27 @@ isempty(x::Object) = isempty(get(x, Product))
 function as_product(xs::Vararg{Object})
     s = ×(space.(xs)...)
     t = get(s, Product)
-    get!(t.dict, xs) do
-        x = Object(s)
-        t.dict[xs] = x
-        x
+    if isnothing(t)
+        error("Object $xs is not a product.")
+    end
+    get!(t.elements, xs) do
+        Object(s, Symbol("(", join(label.(xs), ","), ")"))
     end
 end
 
 as_tuple(x::Object) = as_tuple(get(x, Product), x)
-
-function as_tuple(t::Product, x::Object)
-    xs = [k for (k, v) in t.dict if v === x]
-    if length(xs) > 1
-        error("Product space $t contains multiple tuples for object $x: $xs")
-    end
-    if isempty(xs)
-        error("Product space $t contains no tuples for object $x")
-    end
-    first(xs)
-end
+as_tuple(t::Product, x::Object) = t.elements(x)
 
 getindex(x::Object, ind::Int) = getindex(get(x, Product), x, ind)
 getindex(::Product, x::Object, ind::Int) = as_tuple(x)[ind]
+getindex(::Nothing, x::Object, ind::Int) = as_array(x)[ind]
 
 elements(s::Space, ind::Int) = elements(get(s, Product), get(s, Subset), s, ind)
 elements(::Product, ::Nothing, s::Space, ind::Int) = Objects( x[ind] for x ∈ elements(s) )
 elements(::Nothing, t::Subset, s::Space, ind::Int) = Objects( x[ind] for x ∈ elements(s) )
 
-sample(s::Space, label::Label = missing) = sample(get(s, Product), get(s, Subset), s, label)
-sample(::Nothing, ::Nothing, s::Space, label::Label) = Object(s, label = label)
+sample(s::Space, label::Symbol) = sample(get(s, Product), get(s, Subset), s, label)
+sample(::Nothing, ::Nothing, s::Space, label::Symbol) = Object(s, label)
 
 function sample(t::Product, ::Nothing, s::Space, label::Symbol)
     if ismissing(label)
@@ -67,12 +59,12 @@ function sample(t::Product, ::Nothing, s::Space, label::Symbol)
     else
         xs = Tuple( sample(y, Symbol(label, subscript(i))) for (i,y) ∈ enumerate(t.spaces) )
     end
-    x = Object(s, label = label)
-    t.dict[xs] = x
+    x = Object(s, label)
+    t.elements[xs] = x
     x
 end
 
-function sample(::Any, t::Subset, s::Space, label::Label)
+function sample(::Any, t::Subset, s::Space, label::Symbol)
     x = sample(t.parent, label)
     push!(elements(s), x)
     x
@@ -82,7 +74,7 @@ show(io::IO, t::Product) = print(io, "Cartesian product ", join(t.spaces, " × "
 
 function show(io::IO, ::MIME"text/plain", t::Product)
     println(io, "Cartesian product ", join(t.spaces, " × "), " with elements:")
-    for p ∈ t.dict
+    for p ∈ t.elements
         println(io, "  ", first(p), " ⟷ ", last(p))
     end
 end

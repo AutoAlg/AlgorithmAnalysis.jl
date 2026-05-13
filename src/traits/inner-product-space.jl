@@ -12,8 +12,8 @@ struct InnerProductSpace <: Trait
     function InnerProductSpace(V::Space, F::Space, zero::Symbol = :zero, add::Symbol = :+, neg::Symbol = :-, scale::Symbol = :⋅, adjoint::Symbol = :adjoint)
         register!(new(
             Group(V, zero, add, neg),
-            Object(F × V → V, label = scale),
-            Object(V → (V → F), label = adjoint)
+            Object(F × V → V, scale),
+            Object(V → (V → F), adjoint)
         ))
     end
 end

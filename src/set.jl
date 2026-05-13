@@ -1,8 +1,8 @@
 export Universe, Space, Object, space, spaces, subsets, get, elements, traits
 export @universe, @set, @var, @def, @trait
 export label, label!, getlabel, haslabel, value, value!, hasvalue
-export previous, previous!, next, next!, update, update!
-export next, expression, set, get, hastrait
+export previous, previous!, update, update!
+export expression, set, get, hastrait
 export as_space, scale, source, AbstractSpace, implementable, implementable!
 export Evaluation, evaluate, sample
 export get_universe, in_universe, clone, default_universe, register!
@@ -15,16 +15,16 @@ export trait_objects
 
 struct Universe
     label::Symbol
-    spaces::Dict{Symbol, AbstractSpace}
+    spaces::Bijection{Symbol, AbstractSpace}
 
-    function Universe(label::Symbol = gensym(); spaces::Dict{Symbol, AbstractSpace} = Dict{Symbol, AbstractSpace}())
+    function Universe(label::Symbol = gensym(); spaces::Bijection{Symbol, AbstractSpace} = Bijection{Symbol, AbstractSpace}())
         get!(_CACHE, label) do
             new(label, spaces)
         end
     end
 end
 
-const _CACHE = IdDict{Symbol, Any}()
+const _CACHE = Bijection{Symbol, Universe}()
 const default_universe = Universe(:default_universe)
 const UNIVERSE = ScopedValue{Universe}(default_universe)
 
@@ -36,11 +36,8 @@ function clone(U::Universe, sym::Symbol)
 end
 
 get_universe()::Universe = UNIVERSE[]
-
 in_universe(code::Function, universe::Universe) = with(code, UNIVERSE => universe)
-
 label(U::Universe) = U.label
-
 show(io::IO, U::Universe) = print(io, label(U))
 
 function show(io::IO, ::MIME"text/plain", U::Universe)
@@ -49,17 +46,11 @@ function show(io::IO, ::MIME"text/plain", U::Universe)
     print(io, "\n  Spaces : ", join(spaces(U), ", "))
 end
 
-struct ID
-    id::UInt32
-    space::Symbol
-end
-
 mutable struct Space <: AbstractSpace
     label::Symbol
-    elements::Dict{ID, AbstractObject}
-    subsets::Dict{Symbol, AbstractSpace}
+    elements::Bijection{Symbol, AbstractObject}
+    subsets::Bijection{Symbol, AbstractSpace}
     traits::Traits
-    next_valid_id::UInt32
 
     function Space(label::Symbol; universe::Universe = get_universe(), traits=Traits(), trait=nothing)
         get!(universe.spaces, label) do
@@ -69,37 +60,28 @@ mutable struct Space <: AbstractSpace
             end
             new(
                 label,
-                Dict{ID, AbstractObject}(),
-                Dict{Symbol, AbstractSpace}(),
+                Bijection{Symbol, AbstractObject}(),
+                Bijection{Symbol, AbstractSpace}(),
                 ts,
-                UInt32(0)
             )
         end
     end
 end
 
-function allocate_id(space::Space)::ID
-    id = space.next_valid_id
-    space.next_valid_id += 1
-    return ID(id, space.label)
-end
-
 """
-    Object(space; label, value, next, labeler, trait)
+    Object(space; label, value, labeler, trait)
 """
 mutable struct Object <: AbstractObject
-    id::ID
+    space::Symbol
     label::Label
     value::Any
-    next::Union{Object, Missing}
 
-    function Object(space::Space; id::ID=allocate_id(space), label::Label=missing, value=missing, next=missing)
-        get!(space.elements, id) do
+    function Object(space::Space, label::Symbol; value=missing)
+        get!(space.elements, label) do
             new(
-                id,
+                space.label,
                 label,
-                value,
-                next
+                value
             )
         end
     end
@@ -161,7 +143,6 @@ macro set(ex)
             label = QuoteNode(x)
             quote
                 $space = Space($label)
-                # $Prop ∈ PredicateLogic($space)
             end
         elseif x isa Expr && (x.head == :block || x.head == :tuple)
             Expr(:block, map(_recurse, x.args)...)
@@ -183,7 +164,6 @@ macro globalset(ex)
             label = QuoteNode(x)
             quote
                 global $space = Space($label)
-                # $Prop ∈ PredicateLogic($space)
             end
         elseif x isa Expr && (x.head == :block || x.head == :tuple)
             Expr(:block, map(_recurse, x.args)...)
@@ -210,8 +190,7 @@ macro var(ex)
             A = esc(x.args[3])
             sym = QuoteNode(x.args[2])
             quote
-                $a = sample($A, $sym)
-                nothing
+                $a = sample($A, $sym); nothing
             end
         elseif x isa Expr && (x.head == :block || x.head == :tuple)
             Expr(:block, map(_recurse, x.args)...)
@@ -238,7 +217,7 @@ macro def(ex)
             rhs = esc(x.args[2])
             sym = QuoteNode(x.args[1])
             quote
-                $lhs = $rhs; label!($lhs, $sym); nothing
+                $lhs = as_object($rhs, $sym); nothing
             end
         else
             error("Invalid expression for @def macro: $x")
@@ -317,7 +296,7 @@ traits(s::Space) = s.traits
 
 ∈(s::Space, t::Trait) = push!(traits(s), t)
 ∈(s::Space, ts::Traits) = map(t -> s ∈ t, ts)
-∈(x::Object, s::Space) = x.id ∈ keys(s.elements)
+∈(x::Object, s::Space) = label(x) ∈ keys(s.elements)
 
 function get(s::Space, T::Type{<:Trait})
     ts = filter(p -> p isa T, traits(s))
@@ -345,20 +324,12 @@ end
 iterate(s::Space) = iterate(elements(s))
 length(s::Space) = length(elements(s))
 isempty(s::Space) = isempty(elements(s))
-
-space(id::ID, universe::Universe = get_universe()) = universe.spaces[id.space]
-space(x::Object) = space(x.id)
+space(x::Object, universe::Universe = get_universe()) = universe.spaces[x.space]
 spaces(universe::Universe = get_universe()) = Spaces(values(universe.spaces))
 objects(x::Object) = Set{Object}([x])
 haslabel(x::Object) = !ismissing(label(x))
-hasnext(x::Object) = !ismissing(next(x))
 hasvalue(x::Object) = !ismissing(value(x)) && !isnothing(value(x))
-next!(x::Object, y::Union{Object, Missing}) = (x.next = y; nothing)
-next(xs::AbstractArray{<:Object}) = [ next(x) for x ∈ xs ]
-# update!(p::Pair{T, T}) where T = next!( first(p), last(p) )
-
-push!(space::Space, object::Object) = space.elements[allocate_id(space)] = object
-
+push!(space::Space, object::Object) = space.elements[label(object)] = object
 hastrait(s::Space, T::Type{<:Trait}) = !isnothing(get(s, T))
 hastrait(x::Object, T::Type{<:Trait}) = hastrait(space(x), T)
 
@@ -379,16 +350,16 @@ end
 
 label(x::Object) = x.label
 value(x::Object) = x.value
-next(x::Object) = x.next
 value!(x::Object, val = missing) = (x.value = val; nothing)
 label!(x::Object, l::Label = missing) = (x.label = l; nothing)
 
 trait_objects(::Trait) = Objects()
 trait_objects(S::Space) = mapreduce(trait_objects, ∪, traits(S))
 
+as_object(x::Object, ::Symbol) = x
+
 function clear(x::Object)
     value!(x, missing)
-    next!(x, missing)
 end
 
 function show(io::IO, val::Evaluation)
@@ -426,7 +397,6 @@ function show(io::IO, ::MIME"text/plain", x::Object)
     print(io, "Object in ", space(x))
     haslabel(x) && print(io, "\n  Label : ", label(x))
     hasvalue(x) && print(io, "\n  Value : ", value(x))
-    hasnext(x)  && print(io, "\n  Next  : ", next(x))
 end
 
 function show(io::IO, ::MIME"text/plain", elements::Objects)

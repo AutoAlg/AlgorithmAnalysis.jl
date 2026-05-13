@@ -4,17 +4,17 @@ export Graph, graphof, as_graph, as_pair, input, output
 
 struct Graph <: Trait
     op::Object
-    dict::Dict{Tuple{Object, Object}, Object}
+    elements::Bijection{Tuple{Object, Object}, Object}
 
-    Graph(x::Object) = new(x, Dict{Tuple{Object, Object}, Object}())
+    Graph(x::Object) = new(x, Bijection{Tuple{Object, Object}, Object}())
 end
 
 graphof(s::Space) = graphof(get(s, Graph), s)
 graphof(t::Graph, ::Space) = t.op
 graphof(::Nothing, s::Space) = error("Space $s is not a graph.")
 
-inputs(t::Graph) = Set(k[1] for k ∈ keys(t.dict))
-outputs(t::Graph) = Set(k[2] for k ∈ keys(t.dict))
+inputs(t::Graph) = Set(k[1] for k ∈ keys(t.elements))
+outputs(t::Graph) = Set(k[2] for k ∈ keys(t.elements))
 
 inputs(s::Space) = inputs(get(s, Graph))
 outputs(s::Space) = outputs(get(s, Graph))
@@ -81,10 +81,8 @@ function as_graph(x::Object, y::Object)
     f = val.f
     g = graph(f)
     t = get(g, Graph)
-    get!(t.dict, (x,y)) do
-        p = Object(g)
-        t.dict[(x,y)] = p
-        p
+    get!(t.elements, (x,y)) do
+        Object(g)
     end
 end
 
@@ -93,7 +91,7 @@ function as_pair(x::Object)
     if isnothing(t)
         error("Object $x is not a graph pair.")
     end
-    xs = [k for (k, v) in t.dict if v === x]
+    xs = [k for (k, v) in t.elements if v === x]
     if length(xs) > 1
         error("Space $t contains multiple pairs for object $x: $xs")
     end
@@ -116,17 +114,17 @@ output(x::Object) = as_pair(x)[2]
 function (f::Object)(x::Object)
     g = graph(f)
     t = get(g, Graph)
-    ys = [ k[2] for (k, _) in t.dict if k[1] === x ]
+    ys = [ k[2] for (k, _) in t.elements if k[1] === x ]
     if length(ys) > 1
         error("Graph $t contains multiple pairs for object $x: $ys")
     elseif length(ys) == 1
         return first(ys)
     elseif isempty(ys)
-        y = sample(codomain(f))
-        p = Object(g)
+        y = sample(codomain(f), Symbol(label(f), "(", label(x), ")"))
+        p = Object(g, Symbol("(", label(x), ",", label(y), ")"))
         value!(y, Evaluation(f, x))
         value!(p, (x,y))
-        t.dict[(x,y)] = p
+        t.elements[(x,y)] = p
         return y
     end
 end
@@ -139,7 +137,7 @@ end
 #     # y = sample(codomain(f))
 #     # # graph(f).elements[allocate_id(graph(f))] = as_product(x,y)
 #     # # graph(f)(as_product(x,y))
-#     # # t.dict[(x,y)] = Object(graph(f))
+#     # # t.elements[(x,y)] = Object(graph(f))
 #     # value!(y, Evaluation(f, x))
 #     # return y
 # end

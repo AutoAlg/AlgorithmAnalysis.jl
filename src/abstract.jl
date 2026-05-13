@@ -48,6 +48,11 @@ const Label = Union{Symbol, Missing}
 
 label(::Term) = missing
 isequal(a::Term, b::Term) = a === b
+isequal(a::AbstractObject, b::AbstractObject) = a === b || (hasvalue(a) && isequal(value(a), value(b)))
+isequal(a::AbstractArray{<:Term}, b::AbstractArray{<:Term}) = all(isequal.(a,b))
+
+==(a::Term, b::Term) = isequal(a,b)
+==(a::AbstractArray{<:Term}, b::AbstractArray{<:Term}) = isequal(a,b)
 
 const VERBOSE = ScopedValue{Bool}(false)
 

@@ -10,8 +10,8 @@ struct Monoid <: Trait
 
     function Monoid(S::Space, id::Symbol, op::Symbol)
         register!(new(
-            Object(S, label = id),
-            Object(S × S → S, label = op)
+            Object(S, id),
+            Object(S × S → S, op)
         ))
     end
 end

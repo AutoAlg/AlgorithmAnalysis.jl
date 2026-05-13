@@ -8,7 +8,7 @@ struct Subdifferential <: Trait
     
     function Subdifferential(F::Space, s::Space, subdifferential::Symbol = :adjoint)
         F ∈ SingleValued(domain(s), codomain(s))
-        register!(new(Object(F → (domain(s) ⇒ domain(s)), label = subdifferential)))
+        register!(new(Object(F → (domain(s) ⇒ domain(s)), subdifferential)))
     end
 end
 

@@ -9,7 +9,7 @@ struct Equality <: Trait
     equality::Object
 
     function Equality(S::Space, Prop::Space, equality::Symbol = :(==))
-        register!(new(Prop, Object(S × S → Prop, label = equality)))
+        register!(new(Prop, Object(S × S → Prop, equality)))
     end
 end
 

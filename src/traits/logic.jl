@@ -14,11 +14,11 @@ struct PropositionalLogic <: Trait
 
     function PropositionalLogic(Prop::Space, conjunction::Symbol = :∧, disjunction::Symbol = :∨, implication::Symbol = :⟹, biconditional::Symbol = :⟺, negation::Symbol = :¬)
         register!(new(Prop,
-            Object(Prop × Prop → Prop, label = conjunction),
-            Object(Prop × Prop → Prop, label = disjunction),
-            Object(Prop × Prop → Prop, label = implication),
-            Object(Prop × Prop → Prop, label = biconditional),
-            Object(Prop → Prop, label = negation),
+            Object(Prop × Prop → Prop, conjunction),
+            Object(Prop × Prop → Prop, disjunction),
+            Object(Prop × Prop → Prop, implication),
+            Object(Prop × Prop → Prop, biconditional),
+            Object(Prop → Prop, negation),
         ))
     end
 end
@@ -37,8 +37,8 @@ struct PredicateLogic <: Trait
 
     function PredicateLogic(S::Space, Prop::Space, forall::Symbol = :∀, exists::Symbol = :∃)
         register!(new(S, Prop,
-            Object(Bind(S × Prop → Prop), label = forall),
-            Object(Bind(S × Prop → Prop), label = exists)
+            Object(Bind(S × Prop → Prop), forall),
+            Object(Bind(S × Prop → Prop), exists)
         ))
     end
 end

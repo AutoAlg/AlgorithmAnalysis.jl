@@ -30,6 +30,14 @@ with_optimizer() do
   nothing
 end
 
+@trait Sym(R, 2), Order(Prop, :⪯)
+
+@def X = [ x y; y x ]
+# isequal(X, as_object([ x y; y x ]))
+# evaluate(max(x, 0.0I ⪯ X))
+
+# @def Z = [ x 2.0; 2.0 x ]
+# isequal(Z, as_object([ x 2.0; 2.0 x ]))
 
 ########################################################
 # PERFORMANCE ESTIMATION

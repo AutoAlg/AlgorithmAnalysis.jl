@@ -10,12 +10,7 @@ struct Numeric <: Trait
 
     function Numeric(S::Space, T::DataType = Float64)
         @eval begin
-            function Base.convert(::Type{Object}, val::$T)
-                x = Object($S)
-                label!(x, Symbol(val))
-                value!(x, val)
-                x
-            end
+            Base.convert(::Type{Object}, val::$T) = Object($S, Symbol(val), value = val)
             Base.promote_rule(::Type{Object}, ::Type{<:$T}) = Object
         end
         register!(new(S, T))

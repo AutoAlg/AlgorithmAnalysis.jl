@@ -12,10 +12,10 @@ struct Group <: Trait
 
     function Group(S::Space, id::Symbol, op::Symbol, inv::Symbol)
         register!(new(
-            Object(S, label = id),
-            Object(S × S → S, label = op),
-            Object(S → S, label = inv),
-            Object(S × S → S, label = inv)
+            Object(S, id),
+            Object(S × S → S, op),
+            Object(S → S, inv),
+            Object(S × S → S, inv)
         ))
     end
 end

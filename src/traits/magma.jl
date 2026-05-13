@@ -8,7 +8,7 @@ struct Magma <: Trait
     op::Object
 
     function Magma(S::Space, op::Symbol)
-        register!(new(Object(S × S → S, label = op)))
+        register!(new(Object(S × S → S, op)))
     end
 end
 

@@ -10,6 +10,7 @@ import Base: promote_rule, convert, show, zero, zeros, one, adjoint
 import Base: length, Generator, iterate, size, push!, inv, pairs, getindex
 
 using Base.ScopedValues
+using Bijections
 
 
 ########################################################
@@ -31,7 +32,7 @@ include("traits/ring.jl")
 include("traits/inner-product-space.jl")
 include("traits/binder.jl")
 include("traits/matrix.jl")
-include("traits/psd.jl")
+include("traits/symmetric.jl")
 include("traits/order.jl")
 include("traits/logic.jl")
 include("traits/evaluator.jl")

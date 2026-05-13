@@ -48,9 +48,9 @@ end
 function dispatch(op::Symbol, x::Object)
     valid = implementations(op, x)
     if isempty(valid)
-        error("No valid implementations of $op for object $x.")
+        error("No valid implementations of $op for object $x in space $(space(x)).")
     elseif length(valid) > 1
-        @warn "Multiple implementations of $op for object $x. Returning all valid implementations."
+        @warn "Multiple implementations of $op for object $x in space $(space(x)). Returning all valid implementations."
         return valid
     end
     first(valid)(x)
