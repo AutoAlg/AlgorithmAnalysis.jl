@@ -105,22 +105,20 @@ function evaluate(x::Object, dict::Dict = Dict())
     end
     if active_optimizer() && hastrait(x, Numeric)
         t = get(x, Numeric)
+
         if datatype(t) == Float64
             verbose() && @info "Object $x is numeric with datatype Float64, so initializing in the JuMP model"
             sym = label(x)
             model()[sym] = JuMP.@variable(model(), base_name = string(sym))
             return model()[sym]
 
-            # if con isa Equality
-            #     return JuMP.@constraint(model, 0 == ex )
-            # elseif con isa Positive
-            #     return JuMP.@constraint(model, 0 ≤ ex )
-            # elseif con isa Semidefinite
-            #     JuMP.@constraint(model, ex .== ex' )
-            #     return JuMP.@constraint(model, 0 ≤ ex, JuMP.PSDCone() )
-            # else
-            #     error("Optimization with constraint $con not implemented")
-            # end
+        elseif datatype(t) == Matrix{Float64}
+            verbose() && @info "Object $x is numeric with datatype Matrix{Float64}, so initializing in the JuMP model"
+            sym = label(x)
+            n = dim(get(x, Symmetric))
+            model()[sym] = JuMP.@variable(model(), [1:n,1:n], base_name = string(sym))
+            return model()[sym]
+            
         end
     end
     error("Cannot evaluate object $x.")

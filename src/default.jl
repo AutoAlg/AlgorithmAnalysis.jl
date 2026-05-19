@@ -6,9 +6,14 @@ export default_setup, R, Prop
 
 function default_setup()
 
-    @globalset Prop, R
+    # declare spaces manually instead of using macro to specify global
+    global Prop = Space(:Prop)
+    global R = Space(:R)
     @trait Prop, PropositionalLogic, Numeric(Bool)
     @trait R, Ring, Order(Prop), Numeric(Float64)
+
+    value!(zero(R), 0.0)
+    value!(one(R), 1.0)    
 
     @trait Prop, Evaluator
     @trait R × R → Prop, Evaluator

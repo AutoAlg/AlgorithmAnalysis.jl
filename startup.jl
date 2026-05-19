@@ -30,14 +30,22 @@ with_optimizer() do
   nothing
 end
 
-@trait Sym(R, 2), Order(Prop, :⪯)
+# @trait Sym(R, 2), Group(:id, :*, :inv), InnerProductSpace(R, :zero, :+, :-, :⋅, :adjoint), Order(Prop, :⪯)
+
+# @trait Mat(R, 2, 2), Group(:id, :*, :inv), InnerProductSpace(R, :zero, :+, :-, :⋅, :adjoint), Order(Prop, :⪯)
 
 @def X = [ x y; y x ]
+@def Y = [ x y x; y x y; x y x ]
 # isequal(X, as_object([ x y; y x ]))
-# evaluate(max(x, 0.0I ⪯ X))
+@def opt = max(x, zero(Sym(R, 2)) ⪯ X)
+evaluate(opt)
 
-# @def Z = [ x 2.0; 2.0 x ]
-# isequal(Z, as_object([ x 2.0; 2.0 x ]))
+with_optimizer() do
+  # evaluate(X)
+  # evaluate(zero(Sym(R, 2)))
+  evaluate(zero(R))
+end
+
 
 ########################################################
 # PERFORMANCE ESTIMATION

@@ -157,27 +157,6 @@ macro set(ex)
     end
 end
 
-macro globalset(ex)
-    function _recurse(x)
-        if x isa Symbol
-            space = esc(x)
-            label = QuoteNode(x)
-            quote
-                global $space = Space($label)
-            end
-        elseif x isa Expr && (x.head == :block || x.head == :tuple)
-            Expr(:block, map(_recurse, x.args)...)
-        elseif x isa LineNumberNode
-            x
-        else
-            error("Invalid expression for @set macro: $x")
-        end
-    end
-    quote
-        $(_recurse(ex)); nothing
-    end
-end
-
 """
     @var a ∈ A, b ∈ B, ...
 
@@ -332,6 +311,14 @@ hasvalue(x::Object) = !ismissing(value(x)) && !isnothing(value(x))
 push!(space::Space, object::Object) = space.elements[label(object)] = object
 hastrait(s::Space, T::Type{<:Trait}) = !isnothing(get(s, T))
 hastrait(x::Object, T::Type{<:Trait}) = hastrait(space(x), T)
+label(x::Object) = x.label
+value(x::Object) = x.value
+value!(x::Object, val = missing) = (x.value = val; nothing)
+label!(x::Object, l::Label = missing) = (x.label = l; nothing)
+trait_objects(::Trait) = Objects()
+trait_objects(S::Space) = mapreduce(trait_objects, ∪, traits(S))
+as_object(x::Object, ::Symbol) = x
+clear(x::Object) = value!(x, missing)
 
 function source(x::Object)
     T = space(x)
@@ -346,20 +333,6 @@ function source(x::Object)
         end
     end
     return nothing
-end
-
-label(x::Object) = x.label
-value(x::Object) = x.value
-value!(x::Object, val = missing) = (x.value = val; nothing)
-label!(x::Object, l::Label = missing) = (x.label = l; nothing)
-
-trait_objects(::Trait) = Objects()
-trait_objects(S::Space) = mapreduce(trait_objects, ∪, traits(S))
-
-as_object(x::Object, ::Symbol) = x
-
-function clear(x::Object)
-    value!(x, missing)
 end
 
 function show(io::IO, val::Evaluation)
@@ -451,41 +424,3 @@ function free(x::Object)
 end
 
 bound(x::Object) = setdiff(variables(x), free(x))
-
-
-########################################################
-# REGISTER PROPERTIES
-########################################################
-"""
-    register!
-
-Registers a term. For traits, recursively registers each field. For objects, if the object is labeled, this calls the dispatcher when the object label is called on any components.
-"""
-function register! end
-
-register!(::Any...) = nothing
-
-function register!(t::Trait)
-    for field in fieldnames(typeof(t))
-        x = getfield(t, field)
-        register!(x, t)
-    end
-    t
-end
-
-function register!(x::Object, ::Trait)
-    if ismissing(label(x))
-        nothing
-    else
-        register!(label(x))
-    end
-end
-
-function register!(sym::Symbol)
-    @eval begin
-        export $sym
-        $sym(x::Term, y::Term, args::Vararg{Any}) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
-        $sym(x::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, args...)...)
-        $sym(x::Any, y::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
-    end
-end

@@ -1,9 +1,37 @@
 
 export implementations, dispatch, related, leaves, search, neighbors, leaf
 
+
 ########################################################
-# DISPATCHER
+# REGISTER TRAITS
 ########################################################
+"""
+    register!
+
+Registers a term. For traits, recursively registers each field. For objects, if the object is labeled, this calls the dispatcher when the object label is called on any components.
+"""
+function register! end
+
+register!(::Any...) = nothing
+
+function register!(t::Trait)
+    for field in fieldnames(typeof(t))
+        x = getfield(t, field)
+        register!(x)
+    end
+    t
+end
+
+register!(x::Object) = register!(label(x))
+
+function register!(sym::Symbol)
+    @eval begin
+        export $sym
+        $sym(x::Term, y::Term, args::Vararg{Any}) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
+        $sym(x::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, args...)...)
+        $sym(x::Any, y::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
+    end
+end
 
 """
     implementations(op, args...)
@@ -24,6 +52,11 @@ function implementations(op::Symbol, x::Object)
 end
 
 implementations(op::Symbol, xs::Object...) = implementations(op, as_product(xs...))
+
+
+########################################################
+# DISPATCHER
+########################################################
 
 """
     dispatch(op, args...)
@@ -94,9 +127,9 @@ function neighbors(x::Object)
     objs
 end
 
-leaf(::Term) = error("Not implemented")
+leaf(t::Term) = error("leaf not implemented for term of type $(typeof(t))")
 leaf(s::Space) = traits(s)
-leaf(t::Trait) = [ getfield(t,f) for f ∈ fieldnames(typeof(t)) if getfield(t,f) isa Term ]
+leaf(t::Trait) = [ getfield(t,f) for f ∈ fieldnames(typeof(t)) if getfield(t,f) isa Object || getfield(t,f) isa Trait ]
 leaf(t::Product) = Terms(t.spaces)
 leaf(::Object) = Terms()
 
