@@ -121,8 +121,10 @@ neighbors(t::Product) = Terms(t.spaces)
 
 function neighbors(x::Object)
     objs = Terms([space(x)])
-    if !isnothing(get(x, Map))
+    try
         push!(objs, graph(x))
+    catch
+        # nothing
     end
     objs
 end

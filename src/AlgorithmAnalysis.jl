@@ -11,6 +11,7 @@ import Base: length, Generator, iterate, size, push!, inv, pairs, getindex
 
 using Base.ScopedValues
 using Bijections
+import LinearAlgebra as la
 
 
 ########################################################
@@ -31,7 +32,6 @@ include("traits/group.jl")
 include("traits/ring.jl")
 include("traits/inner-product-space.jl")
 include("traits/binder.jl")
-# include("traits/matrix.jl")
 include("traits/symmetric.jl")
 include("traits/order.jl")
 include("traits/logic.jl")

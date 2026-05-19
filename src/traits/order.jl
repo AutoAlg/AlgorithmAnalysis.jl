@@ -11,7 +11,7 @@ struct Order <: Trait
     min::Object
     max::Object
 
-    function Order(S::Space, Prop::Space, ordering::Symbol = :≤, min::Symbol = :min, max::Symbol = :max)
+    function Order(S::Space, Prop::Space, ordering::Symbol = :≤, min::Symbol = :minimize, max::Symbol = :maximize)
         register!(new(S, Prop,
             Object(S × S → Prop, ordering),
             Object(S × Prop → S, min),

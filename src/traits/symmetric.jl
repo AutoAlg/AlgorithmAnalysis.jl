@@ -2,15 +2,15 @@
 # SYMMETRIC MATRIX
 ########################################################
 
-export Symmetric, Sym, dim, as_array, as_object
+export Symmetric, dim, as_array, as_object, tr
 
 struct Symmetric <: Trait
     eltype::Space
     dim::Int
     elements::Bijection{Object, Matrix{Object}}
 
-    function Symmetric(S::Space, dim::Int)
-        new(S, dim, Bijection{Object, Matrix{Object}}())
+    function Symmetric(::Space, eltype::Space, dim::Int)
+        new(eltype, dim, Bijection{Object, Matrix{Object}}())
     end
 end
 
@@ -18,26 +18,6 @@ space(t::Symmetric) = t.eltype
 dim(t::Symmetric) = t.dim
 
 show(io::IO, t::Symmetric) = print(io, "Symmetric($(space(t)), $(t.dim))")
-
-function Sym(s::Space, dim::Int)
-    S = Space(Symbol("Sym(", label(s), ", ", dim, ")"), trait = Symmetric(s, dim))
-    if isnothing(get(S, Group))
-        @trait S, Group(:id, :*, :inv)
-        value!(id(S), Diagonal(ones(s, dim)))
-    end
-    if isnothing(get(S, InnerProductSpace))
-        @trait S, InnerProductSpace(R, :zero, :+, :-, :⋅, :adjoint)
-        value!(zero(S), zeros(s, dim, dim))
-    end
-    if isnothing(get(S, Order))
-        @trait S, Order(Prop, :⪯)
-    end
-    if isnothing(get(S, Numeric)) && !isnothing(get(s, Numeric))
-        T = datatype(get(s, Numeric))
-        @trait S, Numeric(Matrix{T})
-    end
-    return S
-end
 
 function as_array(x::Object)
     t = get(x, Symmetric)
@@ -84,6 +64,12 @@ function as_object(x::Matrix{Object}, label::Symbol = gensym())
     y = sample(Sym(S, n), label)
     t.elements[y] = x
     return y
+end
+
+function tr(X::Object)
+    t = get(X, Symmetric, err_msg = "Object $X is not a matrix")
+    Y = as_array(X)
+    sum(Y[i,i] for i ∈ 1:dim(t))
 end
 
 getindex(x::Object, i::Int, j::Int) = getindex(get(x, Symmetric), x, i, j)

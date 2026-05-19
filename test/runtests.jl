@@ -1,14 +1,14 @@
 using AlgorithmAnalysis
 using Test
 
-@testset "AlgorithmAnalysis.jl" begin
+default_setup()
 
-  default_setup()
+@testset "AlgorithmAnalysis.jl" begin
 
   ######################################################
   # FEASIBILITY
   ######################################################
-  @test begin
+  @test @eval begin
     @var x ∈ R
     feasible( (x ≥ 1.0) ∧ (x ≤ 2.0) ) && !feasible( (x ≥ 1.0) ∧ (x ≤ -1.0) )
   end
@@ -16,7 +16,7 @@ using Test
   ######################################################
   # LINEAR PROGRAMMING
   ######################################################
-  @test begin
+  @test @eval begin
     @var x ∈ R, y ∈ R
     @def c1 = 50.0 * x + 24.0 * y ≤ 2400.0
     @def c2 = 30.0 * x + 33.0 * y ≤ 2100.0
@@ -27,6 +27,31 @@ using Test
     @def opt = max(obj, cons)
     with_optimizer() do
       evaluate(opt) ≈ 1.25 && evaluate(x) ≈ 45.0 && evaluate(y) ≈ 6.25
+    end
+  end
+
+  ######################################################
+  # SEMIDEFINITE PROGRAMMING
+  ######################################################
+  @test @eval begin
+    @var x ∈ R
+    @def A = [2.0 x; x 2.0]
+    @def con = zero(Sym(R, 2)) ⪯ A
+    @def obj = x
+    @def opt = max(obj, con)
+    with_optimizer() do
+      evaluate(x) ≈ 2.0
+    end
+  end
+
+  @test @eval begin
+    @var t ∈ R, x ∈ R
+    @def X = [1.0 x; x t]
+    @def con = zero(Sym(R, 2)) ⪯ A
+    @def obj = x
+    @def opt = max(obj, con)
+    with_optimizer() do
+      evaluate(opt) ≈ 2.0 && evaluate(x) ≈ 2.0
     end
   end
 

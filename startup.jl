@@ -1,5 +1,6 @@
 using Revise
 using AlgorithmAnalysis
+import AlgorithmAnalysis: ≡
 
 default_setup()
 
@@ -14,7 +15,7 @@ default_setup()
 @def c4 = y ≥ 5.0
 @def cons = c1 ∧ c2 ∧ c3 ∧ c4
 @def obj = x + y - 50.0
-@def opt = max(obj, cons)
+@def opt = maximize(obj, cons)
 
 evaluate(opt)
 
@@ -30,20 +31,45 @@ with_optimizer() do
   nothing
 end
 
-# @trait Sym(R, 2), Group(:id, :*, :inv), InnerProductSpace(R, :zero, :+, :-, :⋅, :adjoint), Order(Prop, :⪯)
+let
+  @def con = zero(Sym(R, 2)) ⪯ [ x y; y x ]
+  @def opt = maximize(x, con)
+  evaluate(opt) ≈ 1.0
+end
 
-# @trait Mat(R, 2, 2), Group(:id, :*, :inv), InnerProductSpace(R, :zero, :+, :-, :⋅, :adjoint), Order(Prop, :⪯)
+evaluate(maximize(x, zero(Sym(R, 2)) ⪯ [2.0 x; x 2.0]))
 
-@def X = [ x y; y x ]
-@def Y = [ x y x; y x y; x y x ]
-# isequal(X, as_object([ x y; y x ]))
-@def opt = max(x, zero(Sym(R, 2)) ⪯ X)
-evaluate(opt)
+feasible( zero(Sym(R,2)) ⪯ [-2.0 x; x -2.0] )
 
-with_optimizer() do
-  # evaluate(X)
-  # evaluate(zero(Sym(R, 2)))
-  evaluate(zero(R))
+# with_optimizer() do
+#   # evaluate(X)
+#   # evaluate(zero(Sym(R, 2)))
+#   evaluate(zero(R))
+# end
+
+let
+  @var X ∈ Sym(R, 2)
+  @def A = Object[1.0 0.0; 0.0 0.0]
+  @def B = Object[0.0 0.0; 0.0 1.0]
+  @def C = Object[0.0 1.0; 1.0 0.0]
+  @def b = one(R)
+  @def c1 = zero(Sym(R, 2)) ⪯ X
+  @def c2 = tr(A * X) ≡ b
+  @def c3 = tr(B * X) ≤ b
+  @def con = c1 ∧ c2 ∧ c3
+  @def obj = tr(C * X)
+  @def opt = minimize(obj, con)
+  with_optimizer() do
+    @show evaluate(opt)
+    @show evaluate(X)
+    @show evaluate(tr(A*X))
+    @show evaluate(tr(B*X))
+    @show evaluate(tr(C*X))
+    @show evaluate(b)
+    @show as_array(X)
+    @show tr(X)
+    nothing
+  end
 end
 
 

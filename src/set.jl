@@ -6,7 +6,7 @@ export expression, set, get, hastrait
 export as_space, scale, source, AbstractSpace, implementable, implementable!
 export Evaluation, evaluate, sample
 export get_universe, in_universe, clone, default_universe, register!
-export trait_objects
+export trait_objects, clear
 
 
 ########################################################
@@ -52,19 +52,29 @@ mutable struct Space <: AbstractSpace
     subsets::Bijection{Symbol, AbstractSpace}
     traits::Traits
 
-    function Space(label::Symbol; universe::Universe = get_universe(), traits=Traits(), trait=nothing)
-        get!(universe.spaces, label) do
+    function Space(label::Symbol, trait_fns::Function...; universe::Universe = get_universe(), traits=Traits(), trait=nothing, callback::Function = S->nothing)
+        new_space = false
+        S = get!(universe.spaces, label) do
+            new_space = true
             ts = traits
             if !isnothing(trait)
                 push!(ts, trait)
             end
-            new(
+            S = new(
                 label,
                 Bijection{Symbol, AbstractObject}(),
                 Bijection{Symbol, AbstractSpace}(),
                 ts,
             )
+            for fn ∈ trait_fns
+                push!(S.traits, fn(S))
+            end
+            return S
         end
+        if new_space
+            callback(S)
+        end
+        return S
     end
 end
 
@@ -277,10 +287,10 @@ traits(s::Space) = s.traits
 ∈(s::Space, ts::Traits) = map(t -> s ∈ t, ts)
 ∈(x::Object, s::Space) = label(x) ∈ keys(s.elements)
 
-function get(s::Space, T::Type{<:Trait})
+function get(s::Space, T::Type{<:Trait}; err_msg = nothing)
     ts = filter(p -> p isa T, traits(s))
     if isempty(ts)
-        nothing
+        isnothing(err_msg) ? nothing : error(err_msg)
     elseif length(ts) > 1
         error("Space $s has multiple traits of type $T: $ts")
     else
@@ -288,7 +298,7 @@ function get(s::Space, T::Type{<:Trait})
     end
 end
 
-get(x::Object, T::Type{<:Trait}) = get(space(x), T)
+get(x::Object, T::Type{<:Trait}; err_msg = nothing) = get(space(x), T, err_msg = err_msg)
 
 show(io::IO, x::Space) = print(io, label(x))
 
@@ -318,7 +328,6 @@ label!(x::Object, l::Label = missing) = (x.label = l; nothing)
 trait_objects(::Trait) = Objects()
 trait_objects(S::Space) = mapreduce(trait_objects, ∪, traits(S))
 as_object(x::Object, ::Symbol) = x
-clear(x::Object) = value!(x, missing)
 
 function source(x::Object)
     T = space(x)
@@ -381,6 +390,32 @@ function show(io::IO, ::MIME"text/plain", elements::Objects)
     end
 end
 
+function clear(U::Universe = get_universe())
+    for S ∈ spaces(U)
+        clear(S)
+        delete!(U.spaces, label(S))
+    end
+    nothing
+end
+
+function clear(S::Space)
+    for e ∈ elements(S)
+        clear(e)
+        delete!(S.elements, label(e))
+    end
+    for s ∈ subsets(S)
+        clear(s)
+        delete!(S.subsets, label(s))
+    end
+    for t ∈ traits(S)
+        clear(t)
+        pop!(traits(S), t)
+    end
+    nothing
+end
+
+clear(x::Object) = value!(x, missing)
+clear(::Trait) = nothing
 
 ########################################################
 # FREE AND BOUND VARIABLES
