@@ -24,12 +24,19 @@ end
 
 register!(x::Object) = register!(label(x))
 
-function register!(sym::Symbol)
-    @eval begin
-        export $sym
-        $sym(x::Term, y::Term, args::Vararg{Any}) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
-        $sym(x::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, args...)...)
-        $sym(x::Any, y::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
+function register!(sym::Symbol, mod::Module = AlgorithmAnalysis)
+    fn = isdefined(mod, sym) ? getfield(mod, sym) : nothing
+
+    if isnothing(fn) || !Base.invokelatest(hasmethod, fn, (Term, Term, Vararg{Any}))
+
+        verbose() && @info "Defining methods for $sym"
+
+        @eval begin
+            export $sym
+            $sym(x::Term, y::Term, args::Vararg{Any}) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
+            $sym(x::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, args...)...)
+            $sym(x::Any, y::Term, args::Any...) = dispatch($(QuoteNode(sym)), promote(x, y, args...)...)
+        end
     end
 end
 

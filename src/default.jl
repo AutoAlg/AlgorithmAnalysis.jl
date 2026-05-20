@@ -18,7 +18,7 @@ function default_setup()
 
     global R = Space(:R, callback = R -> begin
 
-        @trait R, Ring, Order(Prop), Numeric(Float64), Equality(Prop, :≡)
+        @trait R, Ring, Order(Prop), Numeric(Float64), Equality(Prop)
         @trait R, Evaluator
         @trait R → R, Evaluator
         @trait R × R → R, Evaluator
@@ -52,7 +52,6 @@ function default_setup()
             evaluate(constraint)
             JuMP.@objective(model(), Max, evaluate(objective))
             JuMP.optimize!(model())
-            @show JuMP.termination_status(model())
             return evaluate(objective)
         end)
 
@@ -66,9 +65,6 @@ function default_setup()
             evaluate(constraint)
             JuMP.@objective(model(), Min, evaluate(objective))
             JuMP.optimize!(model())
-
-            @show model()
-
             return evaluate(objective)
         end)
     end)

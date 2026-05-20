@@ -1,6 +1,5 @@
 using Revise
 using AlgorithmAnalysis
-import AlgorithmAnalysis: ≡
 
 default_setup()
 
@@ -41,12 +40,6 @@ evaluate(maximize(x, zero(Sym(R, 2)) ⪯ [2.0 x; x 2.0]))
 
 feasible( zero(Sym(R,2)) ⪯ [-2.0 x; x -2.0] )
 
-# with_optimizer() do
-#   # evaluate(X)
-#   # evaluate(zero(Sym(R, 2)))
-#   evaluate(zero(R))
-# end
-
 let
   @var X ∈ Sym(R, 2)
   @def A = Object[1.0 0.0; 0.0 0.0]
@@ -54,21 +47,13 @@ let
   @def C = Object[0.0 1.0; 1.0 0.0]
   @def b = one(R)
   @def c1 = zero(Sym(R, 2)) ⪯ X
-  @def c2 = tr(A * X) ≡ b
+  @def c2 = tr(A * X) ≐ b
   @def c3 = tr(B * X) ≤ b
   @def con = c1 ∧ c2 ∧ c3
   @def obj = tr(C * X)
   @def opt = minimize(obj, con)
   with_optimizer() do
-    @show evaluate(opt)
-    @show evaluate(X)
-    @show evaluate(tr(A*X))
-    @show evaluate(tr(B*X))
-    @show evaluate(tr(C*X))
-    @show evaluate(b)
-    @show as_array(X)
-    @show tr(X)
-    nothing
+    evaluate(opt) ≈ -2 && evaluate(X) ≈ [1 -1; -1 1]
   end
 end
 

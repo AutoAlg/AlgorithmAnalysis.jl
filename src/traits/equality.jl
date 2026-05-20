@@ -8,7 +8,7 @@ struct Equality <: Trait
     Prop::Space
     equality::Object
 
-    function Equality(S::Space, Prop::Space, equality::Symbol = :≡)
+    function Equality(S::Space, Prop::Space, equality::Symbol = :≐)
         register!(new(Prop, Object(S × S → Prop, equality)))
     end
 end

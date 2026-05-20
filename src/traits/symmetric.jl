@@ -2,7 +2,7 @@
 # SYMMETRIC MATRIX
 ########################################################
 
-export Symmetric, dim, as_array, as_object, tr
+export Symmetric, dim, as_array, as_object
 
 struct Symmetric <: Trait
     eltype::Space
@@ -19,6 +19,7 @@ end
 
 space(t::Symmetric) = t.eltype
 dim(t::Symmetric) = t.dim
+dim(x::Object) = dim(get(x, Symmetric, err_msg = "Object $x is not a matrix"))
 
 show(io::IO, t::Symmetric) = print(io, "Symmetric($(space(t)), $(t.dim))")
 
