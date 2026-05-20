@@ -239,21 +239,21 @@ macro trait(args...)
     # build expressions
     output_block = Expr(:block)
     
-    for prop in traits
+    for t in traits
         new_call = nothing
         
-        if prop isa Expr && prop.head == :call
+        if t isa Expr && t.head == :call
             # Case: Trait(Args...) -> Trait(S, Args...)
-            func = prop.args[1]
-            func_args = prop.args[2:end]
+            func = t.args[1]
+            func_args = t.args[2:end]
             new_call = Expr(:call, func, S, func_args...)
             
-        elseif prop isa Symbol
+        elseif t isa Symbol
             # Case: Trait -> Trait(S)
-            new_call = Expr(:call, prop, S)
+            new_call = Expr(:call, t, S)
             
         else
-            error("Invalid trait expression: $prop")
+            error("Invalid trait expression: $t")
         end
         
         # Add "S in Trait(...)" to the block

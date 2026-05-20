@@ -66,6 +66,9 @@ function default_setup()
             evaluate(constraint)
             JuMP.@objective(model(), Min, evaluate(objective))
             JuMP.optimize!(model())
+
+            @show model()
+
             return evaluate(objective)
         end)
     end)
@@ -78,11 +81,13 @@ function default_setup()
                 @trait S, Numeric(Matrix{datatype(get(F, Numeric))})
             end
             @trait S, Evaluator
+            @trait S → F, Evaluator
             @trait S → S, Evaluator
             @trait S × S → S, Evaluator
             @trait F × S → S, Evaluator
             @trait S → (S → F), Evaluator
             @trait S × S → Prop, Evaluator
+            evaluator!(get(S, Symmetric).tr, x -> la.tr(evaluate(x)))
             evaluator!(get(S, Group).id, () -> evaluate.([ i==j ? one(F) : zero(F) for i = 1:dim, j = 1:dim ]))
             evaluator!(get(S, Group).op, x -> evaluate(x[1]) * evaluate(x[2]))
             evaluator!(get(S, Group).inv, x -> inv(evaluate(x[2])))

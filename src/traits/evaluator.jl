@@ -112,7 +112,7 @@ function evaluate(x::Object, dict::Dict = Dict())
         elseif datatype(t) == Matrix{Float64}
             sym = label(x)
             n = dim(get(x, Symmetric))
-            model()[sym] = JuMP.@variable(model(), [1:n,1:n], base_name = string(sym))
+            model()[sym] = JuMP.@variable(model(), [1:n,1:n], Symmetric, base_name = string(sym))
             verbose() && @info "Object $x is numeric with datatype Matrix{Float64}, so initializing in the JuMP model as $(model()[sym])"
             return model()[sym]
             

@@ -8,9 +8,12 @@ struct Symmetric <: Trait
     eltype::Space
     dim::Int
     elements::Bijection{Object, Matrix{Object}}
+    tr::Object
 
-    function Symmetric(::Space, eltype::Space, dim::Int)
-        new(eltype, dim, Bijection{Object, Matrix{Object}}())
+    function Symmetric(S::Space, eltype::Space, dim::Int, tr::Symbol = :tr)
+        register!(new(eltype, dim, Bijection{Object, Matrix{Object}}(),
+            Object(S → eltype, tr)
+        ))
     end
 end
 
@@ -64,12 +67,6 @@ function as_object(x::Matrix{Object}, label::Symbol = gensym())
     y = sample(Sym(S, n), label)
     t.elements[y] = x
     return y
-end
-
-function tr(X::Object)
-    t = get(X, Symmetric, err_msg = "Object $X is not a matrix")
-    Y = as_array(X)
-    sum(Y[i,i] for i ∈ 1:dim(t))
 end
 
 getindex(x::Object, i::Int, j::Int) = getindex(get(x, Symmetric), x, i, j)
