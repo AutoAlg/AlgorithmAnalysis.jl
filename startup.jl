@@ -7,55 +7,69 @@ default_setup()
 # LINEAR PROGRAMMING
 ########################################################
 
-@var x ∈ R, y ∈ R
-@def c1 = 50.0 * x + 24.0 * y ≤ 2400.0
-@def c2 = 30.0 * x + 33.0 * y ≤ 2100.0
-@def c3 = x ≥ 45.0
-@def c4 = y ≥ 5.0
-@def cons = c1 ∧ c2 ∧ c3 ∧ c4
-@def obj = x + y - 50.0
-@def opt = maximize(obj, cons)
+@alg let
+  x, y ∈ R
+  c1 = 50.0x + 24.0y ≤ 2400.0
+  c2 = 30.0x + 33.0y ≤ 2100.0
+  c3 = x ≥ 45.0
+  c4 = y ≥ 5.0
+  cons = c1 ∧ c2 ∧ c3 ∧ c4
+  obj = x + y - 50.0
+  opt = maximize(obj, cons)
 
-evaluate(opt)
+  evaluate(opt)
+end
+
+
+# @var x ∈ R, y ∈ R
+# @def c1 = 50.0 * x + 24.0 * y ≤ 2400.0
+# @def c2 = 30.0 * x + 33.0 * y ≤ 2100.0
+# @def c3 = x ≥ 45.0
+# @def c4 = y ≥ 5.0
+# @def cons = c1 ∧ c2 ∧ c3 ∧ c4
+# @def obj = x + y - 50.0
+# @def opt = maximize(obj, cons)
+
+# evaluate(opt)
 
 # with_verbose() do
 #   evaluate(opt)
 # end
 
 # to evaluate other expressions, evaluate them in the same optimizer
-with_optimizer() do
-  evaluate(opt)
-  @show evaluate(x)
-  @show evaluate(y)
-  nothing
-end
+# with_optimizer() do
+#   evaluate(opt)
+#   @show evaluate(x)
+#   @show evaluate(y)
+#   nothing
+# end
 
-let
-  @def con = zero(Sym(R, 2)) ⪯ [ x y; y x ]
-  @def opt = maximize(x, con)
-  evaluate(opt) ≈ 1.0
-end
+# let
+#   @def con = zero(Sym(R, 2)) ⪯ [ x y; y x ]
+#   @def opt = maximize(x, con)
+#   evaluate(opt) ≈ 1.0
+# end
 
-evaluate(maximize(x, zero(Sym(R, 2)) ⪯ [2.0 x; x 2.0]))
+# evaluate(maximize(x, zero(Sym(R, 2)) ⪯ [2.0 x; x 2.0]))
 
-feasible( zero(Sym(R,2)) ⪯ [-2.0 x; x -2.0] )
+# feasible( zero(Sym(R,2)) ⪯ [-2.0 x; x -2.0] )
 
-let
-  @var X ∈ Sym(R, 2)
-  @def A = Object[1.0 0.0; 0.0 0.0]
-  @def B = Object[0.0 0.0; 0.0 1.0]
-  @def C = Object[0.0 1.0; 1.0 0.0]
-  @def b = one(R)
-  @def c1 = zero(Sym(R, 2)) ⪯ X
-  @def c2 = tr(A * X) ≐ b
-  @def c3 = tr(B * X) ≤ b
-  @def con = c1 ∧ c2 ∧ c3
-  @def obj = tr(C * X)
-  @def opt = minimize(obj, con)
-  with_optimizer() do
-    evaluate(opt) ≈ -2 && evaluate(X) ≈ [1 -1; -1 1]
-  end
-end
+# let
+#   @var X ∈ Sym(R, 2)
+#   @def A = Object[1.0 0.0; 0.0 0.0]
+#   @def B = Object[0.0 0.0; 0.0 1.0]
+#   @def C = Object[0.0 1.0; 1.0 0.0]
+#   @def b = one(R)
+#   @def c1 = zero(Sym(R, 2)) ⪯ X
+#   @def c2 = tr(A * X) ≐ b
+#   @def c3 = tr(B * X) ≤ b
+#   @def con = c1 ∧ c2 ∧ c3
+#   @def obj = tr(C * X)
+#   @def opt = minimize(obj, con)
+#   with_optimizer() do
+#     evaluate(opt) ≈ -2 && evaluate(X) ≈ [1 -1; -1 1]
+#   end
+# end
 
 
 ########################################################

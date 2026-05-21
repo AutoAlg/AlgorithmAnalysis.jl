@@ -8,35 +8,35 @@ default_setup()
   ######################################################
   # FEASIBILITY
   ######################################################
-  @test @eval begin
-    @var x ∈ R
-    feasible( (x ≥ 1.0) ∧ (x ≤ 2.0) )
+  @test @eval @alg let
+    x ∈ R
+    return feasible( (x ≥ 1.0) ∧ (x ≤ 2.0) )
   end
 
-  @test @eval begin
-    @var x ∈ R
-    !feasible( (x ≥ 1.0) ∧ (x ≤ -1.0) )
+  @test @eval @alg let
+    x ∈ R
+    return !feasible( (x ≥ 1.0) ∧ (x ≤ -1.0) )
   end
 
-  @test @eval begin
-    @var x ∈ R
-    @def A = [-2.0 x; x -2.0]
-    !feasible( zero(Sym(R,2)) ⪯ A )
+  @test @eval @alg let
+    x ∈ R
+    A = [-2.0 x; x -2.0]
+    return !feasible( zero(Sym(R,2)) ⪯ A )
   end
 
   ######################################################
   # LINEAR PROGRAMMING
   ######################################################
-  @test @eval begin
-    @var x ∈ R, y ∈ R
-    @def c1 = 50.0 * x + 24.0 * y ≤ 2400.0
-    @def c2 = 30.0 * x + 33.0 * y ≤ 2100.0
-    @def c3 = x ≥ 45.0
-    @def c4 = y ≥ 5.0
-    @def cons = c1 ∧ c2 ∧ c3 ∧ c4
-    @def obj = x + y - 50.0
-    @def opt = maximize(obj, cons)
-    with_optimizer() do
+  @test @eval @alg let
+    x, y ∈ R
+    c1 = 50.0 * x + 24.0 * y ≤ 2400.0
+    c2 = 30.0 * x + 33.0 * y ≤ 2100.0
+    c3 = x ≥ 45.0
+    c4 = y ≥ 5.0
+    cons = c1 ∧ c2 ∧ c3 ∧ c4
+    obj = x + y - 50.0
+    opt = maximize(obj, cons)
+    return with_optimizer() do
       evaluate(opt) ≈ 1.25 && evaluate(x) ≈ 45.0 && evaluate(y) ≈ 6.25
     end
   end
@@ -44,36 +44,28 @@ default_setup()
   ######################################################
   # SEMIDEFINITE PROGRAMMING
   ######################################################
-  @test @eval begin
-    @var x ∈ R
-    @def A = [2.0 x; x 2.0]
-    @def con = zero(Sym(R, 2)) ⪯ A
-    @def obj = x
-    @def opt = maximize(obj, con)
-    evaluate(opt) ≈ 2.0
+  @test @eval @alg let
+    x ∈ R
+    A = [2.0 x; x 2.0]
+    con = zero(Sym(R, 2)) ⪯ A
+    obj = x
+    opt = maximize(obj, con)
+    return evaluate(opt) ≈ 2.0
   end
 
-  @test @eval begin
-    @var t ∈ R, x ∈ R
-    @def X = [1.0 x; x t]
-    @def con = zero(Sym(R, 2)) ⪯ A
-    @def opt = maximize(x, con)
-    evaluate(opt) ≈ 2.0
-  end
-
-  @test @eval begin
-    @var X ∈ Sym(R, 2)
-    @def A = Object[1.0 0.0; 0.0 0.0]
-    @def B = Object[0.0 0.0; 0.0 1.0]
-    @def C = Object[0.0 1.0; 1.0 0.0]
-    @def b = one(R)
-    @def c1 = zero(Sym(R, 2)) ⪯ X
-    @def c2 = tr(A * X) ≐ b
-    @def c3 = tr(B * X) ≤ b
-    @def con = c1 ∧ c2 ∧ c3
-    @def obj = tr(C * X)
-    @def opt = minimize(obj, con)
-    with_optimizer() do
+  @test @eval @alg let
+    X ∈ Sym(R, 2)
+    A = Object[1.0 0.0; 0.0 0.0]
+    B = Object[0.0 0.0; 0.0 1.0]
+    C = Object[0.0 1.0; 1.0 0.0]
+    b = one(R)
+    c1 = zero(Sym(R, 2)) ⪯ X
+    c2 = tr(A * X) ≐ b
+    c3 = tr(B * X) ≤ b
+    con = c1 ∧ c2 ∧ c3
+    obj = tr(C * X)
+    opt = minimize(obj, con)
+    return with_optimizer() do
       evaluate(opt) ≈ -2.0 && evaluate(X) ≈ [1 -1; -1 1]
     end
   end

@@ -1,5 +1,5 @@
 export Universe, Space, Object, space, spaces, subsets, get, elements, traits
-export @universe, @set, @var, @def, @trait
+export @universe, @set, @var, @def, @trait, @alg
 export label, label!, getlabel, haslabel, value, value!, hasvalue
 export previous, previous!, update, update!
 export expression, set, get, hastrait
@@ -263,6 +263,91 @@ macro trait(args...)
     esc(output_block)
 end
 
+"""
+    @alg let
+        x, y in R
+        z = 42
+    end
+
+Runs the algorithm inside a local scope using a `let` block. 
+Can also be used normally as `@alg begin ... end` for global/current scope.
+"""
+macro alg(ex)
+    # Helper to generate sampling code for a single variable
+    function _make_sample(var, set)
+        a = esc(var)
+        A = esc(set)
+        sym = QuoteNode(var)
+        return quote
+            $a = sample($A, $sym); nothing
+        end
+    end
+
+    function _recurse(x)
+        if x isa LineNumberNode
+            return x
+        # Handle implicit or explicit blocks
+        elseif x isa Expr && x.head == :block
+            return Expr(:block, map(_recurse, x.args)...)
+            
+        # NEW: Catch 'let' blocks to create local scope
+        elseif x isa Expr && x.head == :let
+            # x.args[1] is the let bindings (usually a block or an assignment)
+            # x.args[2] is the main body of the let block
+            bindings = x.args[1]
+            body = x.args[2]
+            
+            return Expr(:let, _recurse(bindings), _recurse(body))
+
+        # Handle the operator precedence quirk: x, y in R
+        elseif x isa Expr && x.head == :tuple
+            expanded_exprs = []
+            current_set = nothing
+            
+            for item in reverse(x.args)
+                if item isa Expr && item.head == :call && (item.args[1] == :(∈) || item.args[1] == :in)
+                    var = item.args[2]
+                    current_set = item.args[3]
+                    push!(expanded_exprs, _make_sample(var, current_set))
+                elseif (item isa Symbol || (item isa Expr && item.head == :escape)) && current_set !== nothing
+                    push!(expanded_exprs, _make_sample(item, current_set))
+                else
+                    current_set = nothing
+                    push!(expanded_exprs, _recurse(item))
+                end
+            end
+            return Expr(:block, reverse(expanded_exprs)...)
+        end
+
+        # Standard explicit single variable declaration: x ∈ R
+        if x isa Expr && x.head == :call && (x.args[1] == :(∈) || x.args[1] == :in)
+            lhs = x.args[2]
+            set = x.args[3]
+            if lhs isa Expr && lhs.head == :tuple
+                return Expr(:block, [_make_sample(v, set) for v in lhs.args]...)
+            else
+                return _make_sample(lhs, set)
+            end
+
+        # Match definitions: b = expr
+        elseif x isa Expr && x.head == :(=)
+            lhs = esc(x.args[1])
+            rhs = esc(x.args[2])
+            sym = QuoteNode(x.args[1])
+            return quote
+                $lhs = as_object($rhs, $sym); nothing
+            end
+
+        # Fallback
+        else
+            return esc(x)
+        end
+    end
+
+    quote
+        $(_recurse(ex)); nothing
+    end
+end
 
 ########################################################
 # METHODS

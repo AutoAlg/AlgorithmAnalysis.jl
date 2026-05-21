@@ -58,5 +58,3 @@ const VERBOSE = ScopedValue{Bool}(false)
 
 with_verbose(code::Function, verbose::Bool = true) = with(code, VERBOSE => verbose)
 verbose() = VERBOSE[]
-
-isless(x::AbstractObject, y::AbstractObject) = (x ≤ y) && !(x == y)
