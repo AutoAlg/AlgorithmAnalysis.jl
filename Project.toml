@@ -7,14 +7,8 @@ authors = ["Bryan Van Scoy <bvanscoy@miamioh.edu>"]
 Bijections = "e2ed5e7c-b2de-5872-ae92-c73ca462fb04"
 Clarabel = "61c947e1-3e6d-4ee4-985a-eec8c727bd6e"
 Convex = "f65535da-76fb-5f13-bab9-19810c17039a"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
-LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 
 [compat]
 Bijections = "0.2.2"
@@ -23,8 +17,6 @@ Convex = "0.15, 0.16"
 Documenter = "1"
 JuMP = "1"
 LinearAlgebra = "1.12.0"
-MacroTools = "0.5"
-MathOptInterface = "1"
 julia = "1.10"
 
 [extras]

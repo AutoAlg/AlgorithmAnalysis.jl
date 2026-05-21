@@ -17,7 +17,7 @@ default_setup()
   obj = x + y - 50.0
   opt = maximize(obj, cons)
 
-  evaluate(opt)
+  return evaluate(opt)
 end
 
 
