@@ -2,12 +2,11 @@
 # DEFAULT
 ########################################################
 
-export default_setup, R, Prop, Sym, ⪯, ≡
+export default_setup, R, Rⁿ, F, Prop, Sym, ⪯
 
 function default_setup()
 
     register!(:⪯)
-    register!(:≡)
 
     global Prop = Space(:Prop, callback = Prop -> begin
         @trait Prop, PropositionalLogic, Numeric(Bool), Evaluator
@@ -49,10 +48,14 @@ function default_setup()
             !implementable(objective) && error("Objective $objective is not implementable.")
             !implementable(constraint) && error("Constraint $constraint is not implementable")
 
-            evaluate(constraint)
-            JuMP.@objective(model(), Max, evaluate(objective))
-            JuMP.optimize!(model())
-            return evaluate(objective)
+            try
+                evaluate(constraint)
+                JuMP.@objective(model(), Max, evaluate(objective))
+                JuMP.optimize!(model())
+                return evaluate(objective)
+            catch
+                @info "Failed to solve optimization problem. Searching for a convexifying transformation…"
+            end
         end)
 
         evaluator!(get(R, Order).min, problem -> with_optimizer() do
@@ -67,6 +70,26 @@ function default_setup()
             JuMP.optimize!(model())
             return evaluate(objective)
         end)
+    end)
+
+    global Rⁿ = Space(:Rⁿ, callback = Rⁿ -> begin
+
+        @trait Rⁿ, Equality(Prop), InnerProductSpace(R)
+        @trait Rⁿ, Evaluator
+        @trait Rⁿ → Rⁿ, Evaluator
+        @trait Rⁿ × Rⁿ → Rⁿ, Evaluator
+        @trait R × Rⁿ → Rⁿ, Evaluator
+        @trait Rⁿ → (Rⁿ → R), Evaluator
+
+        evaluator!(get(Rⁿ, InnerProductSpace).scale, x -> evaluate(x[1]) * evaluate(x[2]))
+        evaluator!(get(Rⁿ, InnerProductSpace).adjoint, x -> evaluate(x)')
+        # evaluator!(get(Rⁿ, InnerProductSpace).group.id, () -> 0)
+        evaluator!(get(Rⁿ, InnerProductSpace).group.inv, x -> -evaluate(x))
+        evaluator!(get(Rⁿ, InnerProductSpace).group.invop, x -> evaluate(x[1]) - evaluate(x[2]))
+    end)
+
+    global F = Space(:F, callback = F -> begin
+        @trait F, Subdifferential(Rⁿ → R)
     end)
 
     @eval function Sym(F::Space, dim::Int)

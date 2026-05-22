@@ -21,7 +21,7 @@ end
 show(io::IO, ::Evaluator) = print(io, "Evaluator()")
 
 function evaluator!(x::Object, evaluation::Function)
-    t = get(x, Evaluator, err_msg = "Object $x has no Evaluator trait")
+    t = get(x, Evaluator, err_msg = "Object $x in space $(space(x)) has no Evaluator trait")
     t.evaluator[x] = evaluation
     nothing
 end
@@ -118,7 +118,7 @@ function evaluate(x::Object, dict::Dict = Dict())
             
         end
     end
-    error("Cannot evaluate object $x.")
+    error("Cannot evaluate object $x in space $(space(x)).")
 end
 
 function evaluate(val::Evaluation, dict::Dict)
