@@ -4,19 +4,21 @@ version = "1.0.0-DEV"
 authors = ["Bryan Van Scoy <bvanscoy@miamioh.edu>"]
 
 [deps]
-Bijections = "e2ed5e7c-b2de-5872-ae92-c73ca462fb04"
 Clarabel = "61c947e1-3e6d-4ee4-985a-eec8c727bd6e"
 Convex = "f65535da-76fb-5f13-bab9-19810c17039a"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SymbolicUtils = "d1185830-fcd6-423d-90d6-eec64667417b"
+TermInterface = "8ea1fca8-c5ef-4a55-8b96-4e9afe9c9a3c"
 
 [compat]
-Bijections = "0.2.2"
 Clarabel = "0.11.1"
 Convex = "0.15, 0.16"
 Documenter = "1"
 JuMP = "1"
-LinearAlgebra = "1.12.0"
+LinearAlgebra = "1.10.0"
+SymbolicUtils = "3.32.0"
+TermInterface = "2.0.0"
 julia = "1.10"
 
 [extras]

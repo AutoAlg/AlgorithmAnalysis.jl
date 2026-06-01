@@ -60,7 +60,7 @@ default_setup()
     C = Object[0.0 1.0; 1.0 0.0]
     b = one(R)
     c1 = zero(Sym(R, 2)) ⪯ X
-    c2 = tr(A * X) ≐ b
+    c2 = tr(A * X) == b
     c3 = tr(B * X) ≤ b
     con = c1 ∧ c2 ∧ c3
     obj = tr(C * X)

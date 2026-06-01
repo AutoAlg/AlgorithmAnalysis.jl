@@ -1,26 +1,54 @@
 using Revise
-using AlgorithmAnalysis
-
-default_setup()
+using AlgorithmAnalysis, SymbolicUtils
 
 ########################################################
 # PERFORMANCE ESTIMATION
 ########################################################
 
 @alg begin
-  α ∈ R, x ∈ Rⁿ, xs ∈ Rⁿ, f ∈ F
-  gs = f'(xs)
-  g = f'(x)
+  α  ∈ R
+  x  ∈ Rⁿ
+  xs ∈ Rⁿ
+  f  ∈ F(Rⁿ)
+
+  gs   = f'(xs)
+  g    = f'(x)
   init = (x - xs)'(x - xs)
-  x⁺ = x - α ⋅ g
-  c1 = gs ≐ zero(Rⁿ)
-  c2 = init ≤ one(R)
-  con = c1 ∧ c2
-  performance = (x⁺ - xs)'(x⁺ - xs)
-  opt = maximize(performance, con)
+  x⁺   = x - α * g
+  c1   = f ∈ Convex
+  c2   = gs == zero(Rⁿ)
+  c3   = init ≤ one(R)
+  con  = c1 ∧ c2 ∧ c3
+  obj  = (x⁺ - xs)'(x⁺ - xs)
+  opt  = maximize(obj, con)
 end
 
+topt = simplifier(opt)
 
+using SymbolicUtils, TermInterface
+using SymbolicUtils: Sym, BasicSymbolic, Term, FnType, symtype, Rewriters, @rule, term
+
+
+
+# z = SymTerm{FnType{Tuple{R}, R, Nothing}}( :∇f, [f] )
+
+# using JuMP
+
+# with_optimizer() do
+
+#   !implementable(objective) && error("Objective $objective is not implementable.")
+#   !implementable(constraint) && error("Constraint $constraint is not implementable")
+
+#   try
+#       evaluate(constraint)
+#       JuMP.@objective(model(), Max, evaluate(objective))
+#       JuMP.optimize!(model())
+#       return evaluate(objective)
+#   catch
+#       @info "The optimization problem maximize($objective, $constraint) is not directly solvable. Searching for a convexifying transformation…"
+
+#   end
+# end
 
 ########################################################
 # LIST OF TRANSFORMATIONS

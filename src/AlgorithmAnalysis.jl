@@ -4,41 +4,31 @@ module AlgorithmAnalysis
 # IMPORT
 ########################################################
 
-import Base: +, -, *, /, ^, ==, ∈, ∘, ∩, ⊆, ≤, ≥, <=, >=
-import Base: isempty, iszero, isequal, get, min, max
-import Base: promote_rule, convert, show, zero, zeros, one, adjoint
-import Base: length, Generator, iterate, size, push!, inv, pairs, getindex
+using SymbolicUtils, TermInterface
+using SymbolicUtils: Sym, BasicSymbolic, Term, FnType, Rewriters, @rule, istree, term
 
-using Base.ScopedValues
-using Bijections
-import LinearAlgebra as la
+import Base: +, -, *, adjoint, show, ==, ≤, ≥, isless, <=, >=, zero, one, ∈, iterate
+import LinearAlgebra: dot, ⋅
+
+const symtype = SymbolicUtils.symtype
+
+# import Base: +, -, *, /, ^, ==, ∈, ∘, ∩, ⊆, ≤, ≥, <=, >=
+# import Base: isempty, iszero, isequal, get, min, max
+# import Base: promote_rule, convert, show, zero, zeros, one, adjoint
+# import Base: length, Generator, iterate, size, push!, inv, pairs, getindex
+
+# using Base.ScopedValues
+# using Bijections
+# import LinearAlgebra as la
 
 
 ########################################################
 # INCLUDE
 ########################################################
 
-include("abstract.jl")
-include("set.jl")
-include("traits/numeric.jl")
-include("traits/subset.jl")
-include("traits/product.jl")
-include("traits/graph.jl")
-include("traits/equality.jl")
-include("traits/subdifferential.jl")
-include("traits/magma.jl")
-include("traits/monoid.jl")
-include("traits/group.jl")
-include("traits/ring.jl")
-include("traits/inner-product-space.jl")
-include("traits/binder.jl")
-include("traits/symmetric.jl")
-include("traits/order.jl")
-include("traits/logic.jl")
-include("traits/evaluator.jl")
-include("dispatch.jl")
-include("transformations.jl")
 include("utils.jl")
-include("default.jl")
+include("representation.jl")
+include("transformation.jl")
+include("show.jl")
 
 end
