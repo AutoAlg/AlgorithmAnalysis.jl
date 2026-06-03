@@ -1,5 +1,4 @@
-export simplifier, find_nodes, find_evaluation_points, replace_node
-export is_gradient
+export simplify, find_nodes, find_evaluation_points, replace_node
 
 using SymbolicUtils
 using SymbolicUtils.Rewriters: Chain, Postwalk, Fixpoint
@@ -11,39 +10,9 @@ is_scalar_and_vector(a,x) = is_scalar(a) && is_vector(x) && symtype(a) === field
 are_scalars(a,b) = is_scalar(a) && symtype(a) === symtype(b)
 are_vectors(u,v) = is_vector(u) && symtype(u) === symtype(v)
 
-# =====================================================================
-const vector_space_theory = [
-    # -----------------------------------------------------------------
-    # ADDITIVE IDENTITY
-    # -----------------------------------------------------------------
-    @rule ~x + additive_identity() => ~x where is_scalar_or_vector(~x)
-    @rule additive_identity() + ~x => ~x where is_scalar_or_vector(~x)
-
-    # -----------------------------------------------------------------
-    # ADDITIVE INVERSES & INVOLUTION
-    # -----------------------------------------------------------------
-    @rule +(~x, -(~x)) => zero(symtype(~x)) where is_scalar_or_vector(~x)
-    @rule +(-(~x), ~x) => zero(symtype(~x)) where is_scalar_or_vector(~x)
-    @rule -(-(~x))     => ~x                where is_scalar_or_vector(~x)
-
-    # -----------------------------------------------------------------
-    # SCALAR MULTIPLICATION IDENTITIES
-    # -----------------------------------------------------------------
-    @rule ~x * ~y => ~y where (is_scalar_and_vector(~x, ~y) && ~x === one(symtype(~x)))
-    @rule ~x * ~y => ~y where (are_scalars(~x, ~y) && ~x === one(symtype(~x)))
-    @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && ~x === zero(symtype(~x)))
-
-    @rule ~x ∧ ~y => ~x where symtype(~y) === Satisfied
-    @rule ~x ∧ ~y => ~y where symtype(~x) === Satisfied
-
-    # convex interpolation
-    @rule ~opt => convex_interpolation(~opt) where is_cvx_opt(~opt)
-]
-
-# -----------------------------------------------------------------
+# ------------------------------------------------------
 # CONVEX INTERPOLATION
-# -----------------------------------------------------------------
-export convex_interpolation
+# ------------------------------------------------------
 
 function is_cvx_opt(opt)
     return istree(opt) &&
@@ -65,6 +34,8 @@ function convex_interpolation(opt::BasicSymbolic)
         error("Optimization problem has no convexity constraints")
     end
 
+    new_opt = deepcopy(opt)
+    
     c = first(cs)
     f = arguments(c)[1]
 
@@ -83,6 +54,42 @@ function convex_interpolation(opt::BasicSymbolic)
     return new_opt
 end
 
+# ------------------------------------------------------
+# THEORY
+# ------------------------------------------------------
+const theory = [
+    # --------------------------------------------------
+    # ADDITIVE IDENTITY
+    # --------------------------------------------------
+    @rule ~x + additive_identity() => ~x where is_scalar_or_vector(~x)
+    @rule additive_identity() + ~x => ~x where is_scalar_or_vector(~x)
 
-simplifier = Fixpoint(Postwalk(Chain(vector_space_theory)))
+    # --------------------------------------------------
+    # ADDITIVE INVERSES & INVOLUTION
+    # --------------------------------------------------
+    @rule +(~x, -(~x)) => zero(symtype(~x)) where is_scalar_or_vector(~x)
+    @rule +(-(~x), ~x) => zero(symtype(~x)) where is_scalar_or_vector(~x)
+    @rule -(-(~x))     => ~x                where is_scalar_or_vector(~x)
 
+    # --------------------------------------------------
+    # SCALAR MULTIPLICATION IDENTITIES
+    # --------------------------------------------------
+    @rule ~x * ~y => ~y where (is_scalar_and_vector(~x, ~y) && ~x === one(symtype(~x)))
+    @rule ~x * ~y => ~y where (are_scalars(~x, ~y) && ~x === one(symtype(~x)))
+    @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && ~x === zero(symtype(~x)))
+
+    @rule ~x ∧ ~y => ~x where symtype(~y) === Satisfied
+    @rule ~x ∧ ~y => ~y where symtype(~x) === Satisfied
+
+    # --------------------------------------------------
+    # CONVEX INTERPOLATION
+    # --------------------------------------------------
+    @rule ~opt => convex_interpolation(~opt) where is_cvx_opt(~opt)
+
+    # --------------------------------------------------
+    # GRAM TRANSFORMATION
+    # --------------------------------------------------
+
+]
+
+simplify = Fixpoint(Postwalk(Chain(theory)))

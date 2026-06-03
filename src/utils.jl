@@ -1,5 +1,21 @@
-export find_nodes, replace_nodes, flatten_evaluations, find_evaluation_points
-export rewrite
+export find_nodes, replace_nodes, flatten_evaluations
+export rewrite, find_evaluation_points
+
+function postwalk_with_operators(f, x)
+    if istree(x)
+        new_op = postwalk_with_operators(f, operation(x))
+        new_args = map(arg -> postwalk_with_operators(f, arg), arguments(x))
+        T = symtype(x)
+        return f(Term{T}(new_op, new_args))
+    else
+        return f(x)
+    end
+end
+
+"""
+    rewrite(tree, rules)
+"""
+rewrite(tree, rules) = postwalk_with_operators(Chain(rules), tree)
 
 """
     find_nodes(predicate::Function, tree) -> Vector
@@ -25,11 +41,6 @@ function find_nodes(predicate::Function, node, results::Set = Set())
 end
 
 """
-    rewrite(tree, rules)
-"""
-rewrite(tree, rules) = postwalk_with_operators(Chain(rules), tree)
-
-"""
     replace_node(tree, old_node, new_node)
 
 Walks the entire AST and swaps every instance that matches `old_node` 
@@ -42,15 +53,12 @@ end
 
 function flatten_evaluations(tree, f::BasicSymbolic)
 
-    T = symtype(f)
+    T = symtype(f).parameters[2]
     iseval(x) = istree(x) && operation(x) === f
     newsym(x) = begin
         arg = arguments(x)[1]
-        if istree(arg)
-            Sym{T}(Symbol(f, "_(", arg, ")"))
-        else
-            Sym{T}(Symbol(f, "_", arg))
-        end
+        sym = istree(arg) ? Symbol(f, "_(", arg, ")") : Symbol(f, "_", arg)
+        setmetadata(Sym{T}(sym), ID, sym)
     end
     
     rule = @rule( ~x => newsym(~x) where iseval(~x) )
@@ -71,15 +79,7 @@ end
 Recursively crawls your optimization tree. It safely matches standard function calls 
 and looks inside applied adjoint operators to capture gradient evaluation points.
 """
-find_evaluation_points(f, node) = find_nodes(x -> istree(x) && operation(x) === f, node)
-
-function postwalk_with_operators(f, x)
-    if istree(x)
-        new_op = postwalk_with_operators(f, operation(x))
-        new_args = map(arg -> postwalk_with_operators(f, arg), arguments(x))
-        T = symtype(x)
-        return f(Term{T}(new_op, new_args))
-    else
-        return f(x)
-    end
+function find_evaluation_points(f, node)
+    evals = find_nodes(x -> istree(x) && operation(x) === f, node)
+    map(x -> arguments(x)[1], collect(evals))
 end
