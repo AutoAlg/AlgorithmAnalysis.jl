@@ -1,6 +1,7 @@
 export R, Rⁿ, Sⁿ, F, VectorSpace, field, additive_identity, multiplicative_identity
 export zero, one, ∧, maximize, objective, constraint
-export is_function, function_category, Convex, @var, @alg
+export is_function, function_category, Convex
+export @var, @alg, @def
 export Gradient, LinearFunctional, DifferentiableFunctional, ∇, Gram
 
 abstract type VectorSpace{F} end
@@ -18,7 +19,6 @@ function multiplicative_identity end
 function satisfied end
 function gradient end
 function Gram end
-# function ∇ end
 
 abstract type Category end
 abstract type LinearFunctional <: Category end
@@ -180,6 +180,31 @@ macro var(args...)
     return esc(Expr(:macrocall, Symbol("@syms"), __source__, syms_args...))
 end
 
+macro def(assignment)
+    # Ensure the input is a valid assignment expression: a = b
+    if !(assignment isa Expr && assignment.head == :(=))
+        error("Use syntax: @def x = expr")
+    end
+    
+    var_name = assignment.args[1]  # The symbol on the left (e.g., :x)
+    expr = assignment.args[2]      # The expression on the right
+    
+    # Generate the code to attach metadata at runtime
+    return esc(quote
+        # 1. Evaluate the expression
+        local evaluated_expr = $expr
+        
+        # 2. Attach the variable name into the SymbolicUtils metadata dictionary
+        evaluated_expr = setmetadata(evaluated_expr, Symbol, $(QuoteNode(var_name)))
+        
+        # 3. Bind it to the local variable name in the user's workspace
+        $var_name = evaluated_expr
+    end)
+end
+
+has_id(node::BasicSymbolic) = hasmetadata(node, Symbol)
+get_id(node::BasicSymbolic) = has_id(node) ? getmetadata(node, Symbol) : nothing
+
 macro alg(block_expr)
     # Ensure the input is a begin...end block
     if !(block_expr isa Expr && block_expr.head === :block)
@@ -210,5 +235,3 @@ macro alg(block_expr)
     # Package the processed lines back into an executable block
     return esc(Expr(:block, new_body...))
 end
-
-# (f::SymTerm{FnType{Tuple{X}, Y, Z}})(arg::BasicSymbolic{X}) where {X,Y,Z} = Term{Y}(f, [arg])
