@@ -1,17 +1,17 @@
 module AlgorithmAnalysis
 
 # ------------------------------------------------------
-# IMPORT
+# USING AND IMPORT
 # ------------------------------------------------------
 
 using SymbolicUtils, TermInterface
-using SymbolicUtils: Sym, BasicSymbolic, Term, FnType, Rewriters, @rule, istree, term
+using SymbolicUtils: Sym, BasicSymbolic, Term, FnType, Rewriters
+using SymbolicUtils: symtype, @rule, istree, term
 using SymbolicUtils: hasmetadata, setmetadata, getmetadata
 
-import Base: +, -, *, adjoint, show, ==, ≤, ≥, isless, <=, >=, zero, one, ∈, iterate
+import Base: +, -, *, adjoint, show, ==, ≤, ≥, isless, <=, >=, zero, one, ∈
+import Base: iterate, getindex
 import LinearAlgebra: dot, ⋅
-
-const symtype = SymbolicUtils.symtype
 
 # ------------------------------------------------------
 # INCLUDE

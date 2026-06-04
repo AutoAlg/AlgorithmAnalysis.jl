@@ -1,8 +1,17 @@
-export R, Rⁿ, Sⁿ, F, VectorSpace, field, additive_identity, multiplicative_identity
+export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace
+export field, additive_identity, multiplicative_identity
 export zero, one, ∧, maximize, objective, constraint
 export is_function, function_category, Convex
 export @var, @alg, @def
 export Gradient, LinearFunctional, DifferentiableFunctional, ∇, Gram
+export PositiveSemidefinite
+export has_id, id, ID
+export satisfied, unsatisfied
+
+abstract type ID end
+
+has_id(t::BasicSymbolic) = hasmetadata(t, ID)
+id(t::BasicSymbolic) = has_id(t) ? getmetadata(t, ID) : (hasproperty(t, :name) ? t.name : nothing)
 
 abstract type VectorSpace{F} end
 abstract type MatrixSpace{F} <: VectorSpace{F} end
@@ -17,12 +26,13 @@ field(::BasicSymbolic{V}) where {F,V<:VectorSpace{F}} = F
 function additive_identity end
 function multiplicative_identity end
 function satisfied end
-function Gram end
+# function Gram end
 
 abstract type Category end
 abstract type LinearFunctional <: Category end
 abstract type DifferentiableFunctional <: Category end
 abstract type Gradient <: Category end
+abstract type GramMatrix <: Category end
 
 abstract type Constraint end
 abstract type Satisfied <: Constraint end
@@ -30,6 +40,7 @@ abstract type Unsatisfied <: Constraint end
 abstract type Equality{T} <: Constraint end
 abstract type LessThanOrEqualTo{T} <: Constraint end
 abstract type Convex <: Constraint end
+abstract type PositiveSemidefinite <: Constraint end
 
 abstract type Optimization end
 abstract type Minimization <: Optimization end
@@ -38,12 +49,16 @@ abstract type Feasibility <: Optimization end
 
 function constant end
 
-const ∇ = Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,AlgorithmAnalysis.DifferentiableFunctional}},FnType{Tuple{Rⁿ},Rⁿ,Gradient},Nothing}}(:∇)
+const ∇ = Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}},FnType{Tuple{Rⁿ},Rⁿ,Gradient},Nothing}}(:∇)
+
+const Gram = Sym{FnType{Tuple{Vararg{Rⁿ}}, MatrixSpace{R}, Nothing}}(:Gram)
 
 zero(::Type{Rⁿ}) = Sym{Rⁿ}(:additive_identity)
 zero(::Type{R}) = Sym{R}(:additive_identity)
 one(::Type{R}) = Sym{R}(:multiplicative_identity)
 R(val::Real) = Term{R}(constant, [val])
+satisfied() = Sym{Satisfied}()
+unsatisfied() = Sym{Unsatisfied}()
 
 function F(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}
@@ -81,7 +96,7 @@ end
 
 function adjoint(f::BasicSymbolic{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
     # If it's already an adjoint term tree, peel it off to prevent double nesting
-    if istree(f) && operation(f) === adjoint
+    if istree(f) && isequal(operation(f), adjoint)
         return arguments(f)[1]
     end
     return Term{V}(adjoint, [f])
@@ -93,11 +108,15 @@ function adjoint(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}) 
     return ∇(f)
 end
 
-is_gradient(x) = is_function(x) && operator(x) === ∇
+is_gradient(x) = is_function(x) && isequal(operator(x), ∇)
 
 
 function ∈(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}, ::Type{Convex}) where {F,V<:VectorSpace{F}}
     return Term{Convex}(∈, [f])
+end
+
+function ∈(G::BasicSymbolic{<:MatrixSpace}, ::Type{PositiveSemidefinite})
+    return Term{PositiveSemidefinite}(∈, [G])
 end
 
 function (f::BasicSymbolic{FnType{Tuple{V},F,Nothing}})(x::V) where {F,V<:VectorSpace{F}}
@@ -120,9 +139,9 @@ function ∧(x::BasicSymbolic{<:Constraint}, y::BasicSymbolic{<:Constraint})
     return Term{Constraint}(∧, [x, y])
 end
 
-function Gram(vecs::BasicSymbolic{T}...) where {F,T<:VectorSpace{F}}
-    return Term{MatrixSpace{F}}(Gram, vecs)
-end
+# function Gram(vecs::BasicSymbolic{T}...) where {F,T<:VectorSpace{F}}
+#     return Term{MatrixSpace{F}}(Gram, vecs)
+# end
 
 function maximize(obj::BasicSymbolic, con::BasicSymbolic{Constraint})
     return Term{Maximization}(maximize, [obj, con])
@@ -141,12 +160,14 @@ function function_category(t::BasicSymbolic)
     return fn_type.parameters[3]
 end
 
-export has_id, id, ID
-
-abstract type ID end
-
-has_id(node::BasicSymbolic) = hasmetadata(node, ID)
-id(node::BasicSymbolic) = has_id(node) ? getmetadata(node, ID) : nothing
+function getindex(A::BasicSymbolic{MatrixSpace{F}}, i::Int, j::Int) where F
+    if isequal(operation(A), Gram)
+        args = arguments(A)
+        return args[i]'(args[j])
+    else
+        error("Indexing of general matrices not implemented")
+    end
+end
 
 # ------------------------------------------------------
 # MACROS

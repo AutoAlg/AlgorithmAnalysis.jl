@@ -52,9 +52,44 @@ function pretty_ast(t::BasicSymbolic{Maximization}; use_id = true)
     return OptimizationProblem(sense, objective, constraints, id(t))
 end
 
-function pretty_ast(t::BasicSymbolic{Convex}; use_id = true)
-    f = pretty_ast(arguments(t)[1], use_id=use_id)
-    return ConstraintSet(f, :Convex, id(t))
+function pretty_ast(t::BasicSymbolic{T}; use_id = true) where {T<:Constraint}
+    isequal(T, Satisfied) && return satisfied()
+    isequal(T, Unsatisfied) && return unsatisfied()
+    op = operation(t)
+    args = arguments(t)
+
+    if length(args) == 2 && isequal(args[1], args[2])
+        return op in (≤, ≥, ==) ? satisfied() : unsatisfied()
+    end
+
+    if isequal(op, ==)
+        return Expr(:call, :(==), map(pretty_ast, args)...)
+    elseif isequal(op, ≤)
+        return Expr(:call, :≤, map(pretty_ast, args)...)
+    elseif isequal(op, ∧)
+        return Expr(:call, :∧, map(pretty_ast, args)...)
+    else
+        f = pretty_ast(args[1], use_id=use_id)
+        return ConstraintSet(f, Symbol(T), id(t))
+    end
+end
+
+function pretty_ast(t::BasicSymbolic{Bool}; use_id = true)
+    if istree(t)
+        op = operation(t)
+        args = arguments(t)
+        pretty_args = map(arg -> pretty_ast(arg; use_id=use_id), args)
+
+        if isequal(op, ==)
+            return Expr(:call, Symbol(op), pretty_args...)
+        elseif op === ≤
+            return Expr(:call, :≤, pretty_args...)
+        elseif op === ≥
+            return Expr(:call, :≥, pretty_args...)
+        end
+    else
+        return id(t)
+    end
 end
 
 function pretty_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}; use_id = true) where T
@@ -83,20 +118,16 @@ function pretty_ast(t::BasicSymbolic; use_id::Bool = true)
         args = arguments(t)
         pretty_args = map(arg -> pretty_ast(arg; use_id=use_id), args)
 
-        if op === constant
+        if isequal(op, constant)
             return pretty_args[1]
-        elseif op ∈ [+, -, *, /, ∧, ==]
+        elseif op ∈ [+, -, *, /]
             return Expr(:call, Symbol(op), pretty_args...)
-        elseif op === ≤
-            return Expr(:call, :≤, pretty_args...)
-        elseif op === ≥
-            return Expr(:call, :≥, pretty_args...)
         end
 
         if !isempty(args)
-            if applicable(adjoint, args[1]) && op === args[1]'
+            if applicable(adjoint, args[1]) && isequal(op, args[1]')
                 return NormSquared(pretty_args[1], id(t))
-            elseif op === adjoint
+            elseif isequal(op, adjoint)
                 return Postfixed(pretty_args[1], Symbol("'"), id(t))
             end
         end
@@ -140,8 +171,7 @@ end
 
 function Base.show(io::IO, opt::OptimizationProblem)
     println(io, opt.sense, " "^5, render(opt.objective))
-    flat_cons = []
-    flatten_constraints!(flat_cons, opt.constraints)
+    flat_cons = flatten_constraints(opt.constraints)
     
     for (i, con) in enumerate(flat_cons)
         prefix = (i == 1) ? "subject to   " : " "^13
@@ -186,24 +216,10 @@ end
 #  UTILITIES
 # ------------------------------------------------------
 
-function flatten_constraints!(list, node)
-    if istree(node) && operation(node) === ∧
-        map(arg -> flatten_constraints!(list, arg), arguments(node))
-        return
-    elseif node isa Expr && node.head === :call
-        op = node.args[1]
-        if (op === ∧) || (op === :∧)
-            map(arg -> flatten_constraints!(list, arg), node.args[2:end])
-            return
-        end
-    end
-    push!(list, node)
-end
-
 function check_and_translate_identity(node)
     if hasproperty(node, :name)
-        node.name === :additive_identity && return 0
-        node.name === :multiplicative_identity && return 1
+        isequal(node.name, :additive_identity) && return 0
+        isequal(node.name, :multiplicative_identity) && return 1
     end
     return nothing
 end
