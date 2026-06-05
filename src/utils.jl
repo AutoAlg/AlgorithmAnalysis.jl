@@ -57,8 +57,8 @@ function flatten_evaluations(tree, f::BasicSymbolic)
     iseval(x) = istree(x) && isequal(operation(x), f)
     newsym(x) = begin
         arg = arguments(x)[1]
-        @show Symbol(f)
-        sym = istree(arg) ? Symbol(f, "_(", arg, ")") : Symbol(f, "_", arg)
+        fstr = tostring(f)
+        sym = istree(arg) ? Symbol(fstr, "_(", arg, ")") : Symbol(fstr, "_", arg)
         setmetadata(Sym{T}(sym), ID, sym)
     end
     
@@ -103,4 +103,10 @@ function flatten_constraints!(list, node)
         end
     end
     push!(list, node)
+end
+
+function tostring(node)
+    buf = IOBuffer()
+    show(buf, MIME"text/plain"(), node)
+    return String(take!(buf))
 end

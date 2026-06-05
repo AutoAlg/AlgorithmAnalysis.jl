@@ -7,10 +7,7 @@ using AlgorithmAnalysis: expand, simplify
 # ------------------------------------------------------
 
 @alg begin
-  α  ∈ R
-  x  ∈ Rⁿ
-  xs ∈ Rⁿ
-  f  ∈ F(Rⁿ)
+  α ∈ R, x ∈ Rⁿ, xs ∈ Rⁿ, f ∈ F(Rⁿ)
 
   gs   = f'(xs)
   g    = f'(x)
@@ -23,8 +20,6 @@ using AlgorithmAnalysis: expand, simplify
   obj  = (x⁺ - xs)'(x⁺ - xs)
   opt  = maximize(obj, con)
 end
-
-@show opt
 
 topt = simplify(opt)
 

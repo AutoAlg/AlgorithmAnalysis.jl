@@ -1,6 +1,6 @@
 export expand
 
-Base.show(io::IO, mime::MIME"text/plain", t::BasicSymbolic) = show(io, mime, pretty_ast(t))
+Base.show(io::IO, mime::MIME"text/plain", t::BasicSymbolic) = show(io, mime, semantic_ast(t))
 expand(t::BasicSymbolic) = show(IOContext(stdout, :use_id => false), MIME"text/plain"(), t)
 
 # ------------------------------------------------------
@@ -58,24 +58,24 @@ end
 #  SEMANTIC AST TRANSFORMATION
 # ------------------------------------------------------
 
-function pretty_ast(t::Any)
+function semantic_ast(t::Any)
     id = check_and_translate_identity(t)
     return id ≠ nothing ? id : error("Unknown semantics for $t")
 end
 
-function pretty_ast(t::BasicSymbolic{<:Optimization})
+function semantic_ast(t::BasicSymbolic{<:Optimization})
     sense = Symbol(operation(t))
-    objective = pretty_ast(arguments(t)[1])
-    constraints = pretty_ast.(flatten_constraints(arguments(t)[2]))
+    objective = semantic_ast(arguments(t)[1])
+    constraints = semantic_ast.(flatten_constraints(arguments(t)[2]))
     return OptimizationProblem(sense, objective, constraints, id(t))
 end
 
-function pretty_ast(t::BasicSymbolic{T}; use_id = true) where {T<:Constraint}
-    isequal(T, Satisfied) && return Leaf(:true)
-    isequal(T, Unsatisfied) && return Leaf(:false)
+function semantic_ast(t::BasicSymbolic{T}; use_id = true) where {T<:Constraint}
+    isequal(T, Satisfied) && return Leaf(Symbol(true))
+    isequal(T, Unsatisfied) && return Leaf(Symbol(false))
     op = operation(t)
     args = arguments(t)
-    pretty_args = map(arg -> pretty_ast(arg), args)
+    pretty_args = map(arg -> semantic_ast(arg), args)
 
     if isequal(op, ==)
         return InfixOp(Leaf(:(==)), pretty_args, id(t))
@@ -84,16 +84,16 @@ function pretty_ast(t::BasicSymbolic{T}; use_id = true) where {T<:Constraint}
     elseif isequal(op, ∧)
         return InfixOp(Leaf(:∧), pretty_args, id(t))
     else
-        f = pretty_ast(args[1])
+        f = semantic_ast(args[1])
         return ConstraintSet(f, Leaf(Symbol(T)), id(t))
     end
 end
 
-function pretty_ast(t::BasicSymbolic{Bool}; use_id = true)
+function semantic_ast(t::BasicSymbolic{Bool}; use_id = true)
     if istree(t)
         op = operation(t)
         args = arguments(t)
-        pretty_args = map(arg -> pretty_ast(arg), args)
+        pretty_args = map(arg -> semantic_ast(arg), args)
 
         if isequal(op, ==)
             return InfixOp(Leaf(:(==)), pretty_args, id(t))
@@ -107,17 +107,17 @@ function pretty_ast(t::BasicSymbolic{Bool}; use_id = true)
     end
 end
 
-function pretty_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}) where T
-    f = istree(t) ? pretty_ast(arguments(t)[1]) : f = Leaf(id(t))
+function semantic_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}) where T
+    f = istree(t) ? semantic_ast(arguments(t)[1]) : f = Leaf(id(t))
     return GradientOp(f, id(t))
 end
 
-function pretty_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
-    f = istree(t) ? pretty_ast(arguments(t)[1]) : Leaf(id(t))
+function semantic_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
+    f = istree(t) ? semantic_ast(arguments(t)[1]) : Leaf(id(t))
     return Postfixed(f, Symbol("'"), id(t))
 end
 
-function pretty_ast(t::BasicSymbolic)
+function semantic_ast(t::BasicSymbolic)
 
     x = check_and_translate_identity(t)
     x ≠ nothing && return x
@@ -125,7 +125,7 @@ function pretty_ast(t::BasicSymbolic)
     if istree(t)
         op = operation(t)
         args = arguments(t)
-        pretty_args = map(arg -> pretty_ast(arg), args)
+        pretty_args = map(arg -> semantic_ast(arg), args)
 
         if isequal(op, constant)
             return pretty_args[1]
@@ -145,7 +145,7 @@ function pretty_ast(t::BasicSymbolic)
             end
         end
 
-        pretty_op = pretty_ast(op)
+        pretty_op = semantic_ast(op)
 
         if length(args) == 1
             return FuncEval(pretty_op, pretty_args, id(t))

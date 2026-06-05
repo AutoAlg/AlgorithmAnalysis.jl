@@ -4,25 +4,27 @@ using SymbolicUtils
 using SymbolicUtils.Rewriters: Chain, Postwalk, Fixpoint
 
 is_vector(x) = symtype(x) <: VectorSpace
-is_scalar(x) = symtype(x) <: Real
+is_scalar(x) = symtype(x) <: Field
 is_scalar_or_vector(x) = is_scalar(x) || is_vector(x)
 is_scalar_and_vector(a,x) = is_scalar(a) && is_vector(x) && isequal(symtype(a), field(x))
 are_scalars(a,b) = is_scalar(a) && isequal(symtype(a), symtype(b))
 are_vectors(u,v) = is_vector(u) && isequal(symtype(u), symtype(v))
 
+are_vectors(xs...) = all(map(is_vector, xs))
+are_scalars(xs...) = all(map(is_scalar, xs))
+are_scalars_or_vectors(xs...) = all(map(is_scalar_or_vector, xs))
+
 # ------------------------------------------------------
 # CONVEX INTERPOLATION
 # ------------------------------------------------------
 
-convex_interpolation_is_applicable(::BasicSymbolic) = false
+convex_interpolation_is_applicable(::Any) = false
 
 function convex_interpolation_is_applicable(opt::BasicSymbolic{<:Optimization})
     return !isempty(find_nodes(c -> isequal(symtype(c), Convex), opt))
 end
 
 function convex_interpolation(opt::BasicSymbolic{T}) where {T<:Optimization}
-
-    @show symtype.(flatten_constraints(constraint(opt)))
     
     cvx_cons = find_nodes(c -> isequal(symtype(c), Convex), opt)
 
@@ -103,8 +105,8 @@ const theory = [
     # --------------------------------------------------
     # ADDITIVE IDENTITY
     # --------------------------------------------------
-    @rule ~x + additive_identity() => ~x where is_scalar_or_vector(~x)
-    @rule additive_identity() + ~x => ~x where is_scalar_or_vector(~x)
+    @rule ~x::is_scalar + ~y => ~x where (id(~y) == :additive_identity)
+    @rule ~x + ~y::is_scalar => ~y where (id(~x) == :additive_identity)
 
     # --------------------------------------------------
     # ADDITIVE INVERSES & INVOLUTION
@@ -120,10 +122,10 @@ const theory = [
     @rule ~x * ~y => ~y where (are_scalars(~x, ~y) && isequal(~x, one(symtype(~x))))
     @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && isequal(~x, zero(symtype(~x))))
 
-    @rule ~x ∧ ~y => ~x where isequal(symtype(~y), Satisfied)
-    @rule ~x ∧ ~y => ~y where isequal(symtype(~x), Satisfied)
-    @rule ~x ∧ ~y => Sym{Unsatisfied}() where isequal(symtype(~y), Unsatisfied)
-    @rule ~x ∧ ~y => Sym{Unsatisfied}() where isequal(symtype(~x), Unsatisfied)
+    # @rule ~~x ∧ ~y => ~x where isequal(symtype(~y), Satisfied)
+    # @rule ~x ∧ ~~y => ~y where isequal(symtype(~x), Satisfied)
+    # @rule ~~x ∧ ~y => unsatisfied() where isequal(symtype(~y), Unsatisfied)
+    # @rule ~x ∧ ~~y => unsatisfied() where isequal(symtype(~x), Unsatisfied)
 
     # --------------------------------------------------
     # CONVEX INTERPOLATION

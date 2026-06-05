@@ -13,9 +13,10 @@ abstract type ID end
 has_id(t::BasicSymbolic) = hasmetadata(t, ID)
 id(t::BasicSymbolic) = has_id(t) ? getmetadata(t, ID) : (hasproperty(t, :name) ? t.name : nothing)
 
+abstract type Field end
 abstract type VectorSpace{F} end
 abstract type MatrixSpace{F} <: VectorSpace{F} end
-abstract type R <: Real end
+abstract type R <: Field end
 
 struct Rⁿ <: VectorSpace{R} end
 struct Sⁿ <: MatrixSpace{R} end
@@ -26,7 +27,6 @@ field(::BasicSymbolic{V}) where {F,V<:VectorSpace{F}} = F
 function additive_identity end
 function multiplicative_identity end
 function satisfied end
-# function Gram end
 
 abstract type Category end
 abstract type LinearFunctional <: Category end
@@ -59,6 +59,8 @@ one(::Type{R}) = Sym{R}(:multiplicative_identity)
 R(val::Real) = Term{R}(constant, [val])
 satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
+
++(x::T...) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(+, x)
 
 function F(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}
@@ -135,9 +137,22 @@ function ≥(x::BasicSymbolic{T}, y::BasicSymbolic{T}) where {T}
     return Term{LessThanOrEqualTo{T}}(≤, [y, x])
 end
 
-function ∧(x::BasicSymbolic{<:Constraint}, y::BasicSymbolic{<:Constraint})
-    return Term{Constraint}(∧, [x, y])
+function ∧(args::BasicSymbolic{<:Constraint}...)
+    flat_args = Any[]
+    for arg in args
+        if istree(arg) && operation(arg) === ∧
+            append!(flat_args, arguments(arg))
+        elseif isequal(arg, unsatisfied())
+            return unsatisfied()
+        elseif !isequal(arg, satisfied())
+            push!(flat_args, arg)
+        end
+    end
+    return Term{Constraint}(∧, flat_args)
 end
+
+∧(x::BasicSymbolic{<:Constraint}, y::Bool) = y ? x : unsatisfied()
+∧(x::Bool, y::BasicSymbolic{<:Constraint}) = x ? y : unsatisfied()
 
 # function Gram(vecs::BasicSymbolic{T}...) where {F,T<:VectorSpace{F}}
 #     return Term{MatrixSpace{F}}(Gram, vecs)
