@@ -8,6 +8,7 @@ using SymbolicUtils, TermInterface
 using SymbolicUtils: Sym, BasicSymbolic, Term, FnType, Rewriters
 using SymbolicUtils: symtype, @rule, istree, term
 using SymbolicUtils: hasmetadata, setmetadata, getmetadata
+using SymbolicUtils: issym, nameof
 
 import Base: +, -, *, adjoint, show, ==, ≤, ≥, isless, <=, >=, zero, one, ∈
 import Base: iterate, getindex

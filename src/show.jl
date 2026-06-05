@@ -1,38 +1,56 @@
 export expand
 
-Base.show(io::IO, ::MIME"text/plain", t::BasicSymbolic) = print(io, render(t))
-expand(t::BasicSymbolic) = println(render(t, use_id = false))
+Base.show(io::IO, mime::MIME"text/plain", t::BasicSymbolic) = show(io, mime, pretty_ast(t))
+expand(t::BasicSymbolic) = show(IOContext(stdout, :use_id => false), MIME"text/plain"(), t)
 
 # ------------------------------------------------------
 #  DISPLAY WRAPPERS & LAYOUT TYPES
 # ------------------------------------------------------
 
-struct Postfixed
-    expr
+abstract type SemanticNode end
+
+struct Postfixed <: SemanticNode
+    expr::SemanticNode
     op::Symbol
     id::Union{Symbol, Nothing}
 end
 
-struct CleanOp
-    name::Symbol
+struct Leaf <: SemanticNode
+    id::Symbol
+end
+
+struct NormSquared <: SemanticNode
+    expr::SemanticNode
     id::Union{Symbol, Nothing}
 end
 
-struct NormSquared
-    expr
+struct ConstraintSet <: SemanticNode
+    obj::SemanticNode
+    set::SemanticNode
     id::Union{Symbol, Nothing}
 end
 
-struct ConstraintSet
-    obj
-    type::Symbol
-    id::Union{Symbol, Nothing}
-end
-
-struct OptimizationProblem
+struct OptimizationProblem <: SemanticNode
     sense::Symbol  # :maximize or :minimize or :feasible
-    objective
-    constraints
+    objective::SemanticNode
+    constraints::Vector{SemanticNode}
+    id::Union{Symbol, Nothing}
+end
+
+struct InfixOp <: SemanticNode
+    op::SemanticNode
+    args::Vector{SemanticNode}
+    id::Union{Symbol, Nothing}
+end
+
+struct GradientOp <: SemanticNode
+    func::SemanticNode
+    id::Union{Symbol, Nothing}
+end
+
+struct FuncEval <: SemanticNode
+    func::SemanticNode
+    args::Vector{<:SemanticNode}
     id::Union{Symbol, Nothing}
 end
 
@@ -40,37 +58,34 @@ end
 #  SEMANTIC AST TRANSFORMATION
 # ------------------------------------------------------
 
-function pretty_ast(t::Any; use_id)
+function pretty_ast(t::Any)
     id = check_and_translate_identity(t)
-    return id ≠ nothing ? id : t
+    return id ≠ nothing ? id : error("Unknown semantics for $t")
 end
 
-function pretty_ast(t::BasicSymbolic{Maximization}; use_id = true)
+function pretty_ast(t::BasicSymbolic{<:Optimization})
     sense = Symbol(operation(t))
-    objective = pretty_ast(arguments(t)[1], use_id=use_id)
-    constraints = pretty_ast(arguments(t)[2], use_id=use_id)
+    objective = pretty_ast(arguments(t)[1])
+    constraints = pretty_ast.(flatten_constraints(arguments(t)[2]))
     return OptimizationProblem(sense, objective, constraints, id(t))
 end
 
 function pretty_ast(t::BasicSymbolic{T}; use_id = true) where {T<:Constraint}
-    isequal(T, Satisfied) && return satisfied()
-    isequal(T, Unsatisfied) && return unsatisfied()
+    isequal(T, Satisfied) && return Leaf(:true)
+    isequal(T, Unsatisfied) && return Leaf(:false)
     op = operation(t)
     args = arguments(t)
-
-    if length(args) == 2 && isequal(args[1], args[2])
-        return op in (≤, ≥, ==) ? satisfied() : unsatisfied()
-    end
+    pretty_args = map(arg -> pretty_ast(arg), args)
 
     if isequal(op, ==)
-        return Expr(:call, :(==), map(pretty_ast, args)...)
+        return InfixOp(Leaf(:(==)), pretty_args, id(t))
     elseif isequal(op, ≤)
-        return Expr(:call, :≤, map(pretty_ast, args)...)
+        return InfixOp(Leaf(:≤), pretty_args, id(t))
     elseif isequal(op, ∧)
-        return Expr(:call, :∧, map(pretty_ast, args)...)
+        return InfixOp(Leaf(:∧), pretty_args, id(t))
     else
-        f = pretty_ast(args[1], use_id=use_id)
-        return ConstraintSet(f, Symbol(T), id(t))
+        f = pretty_ast(args[1])
+        return ConstraintSet(f, Leaf(Symbol(T)), id(t))
     end
 end
 
@@ -78,37 +93,31 @@ function pretty_ast(t::BasicSymbolic{Bool}; use_id = true)
     if istree(t)
         op = operation(t)
         args = arguments(t)
-        pretty_args = map(arg -> pretty_ast(arg; use_id=use_id), args)
+        pretty_args = map(arg -> pretty_ast(arg), args)
 
         if isequal(op, ==)
-            return Expr(:call, Symbol(op), pretty_args...)
-        elseif op === ≤
-            return Expr(:call, :≤, pretty_args...)
-        elseif op === ≥
-            return Expr(:call, :≥, pretty_args...)
+            return InfixOp(Leaf(:(==)), pretty_args, id(t))
+        elseif isequal(op, ≤)
+            return InfixOp(Leaf(:≤), pretty_args, id(t))
+        elseif isequal(op, ≥)
+            return InfixOp(Leaf(:≥), pretty_args, id(t))
         end
     else
-        return id(t)
+        return Leaf(id(t))
     end
 end
 
-function pretty_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}; use_id = true) where T
-    if istree(t)
-        f = pretty_ast(arguments(t)[1], use_id=use_id)
-    else
-        f = t.name
-    end
-    return CleanOp(Symbol(:∇, f), id(t))
+function pretty_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}) where T
+    f = istree(t) ? pretty_ast(arguments(t)[1]) : f = Leaf(id(t))
+    return GradientOp(f, id(t))
 end
 
-function pretty_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}; use_id = true) where {X,Y}
-    f = istree(t) ? pretty_ast(arguments(t)[1], use_id=use_id) : id(t)
+function pretty_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
+    f = istree(t) ? pretty_ast(arguments(t)[1]) : Leaf(id(t))
     return Postfixed(f, Symbol("'"), id(t))
 end
 
-function pretty_ast(t::BasicSymbolic; use_id::Bool = true)
-
-    use_id && has_id(t) && return CleanOp(id(t), id(t))
+function pretty_ast(t::BasicSymbolic)
 
     x = check_and_translate_identity(t)
     x ≠ nothing && return x
@@ -116,12 +125,16 @@ function pretty_ast(t::BasicSymbolic; use_id::Bool = true)
     if istree(t)
         op = operation(t)
         args = arguments(t)
-        pretty_args = map(arg -> pretty_ast(arg; use_id=use_id), args)
+        pretty_args = map(arg -> pretty_ast(arg), args)
 
         if isequal(op, constant)
             return pretty_args[1]
-        elseif op ∈ [+, -, *, /]
-            return Expr(:call, Symbol(op), pretty_args...)
+        elseif op ∈ [+, -, *, /, ∧, ==]
+            return InfixOp(Leaf(Symbol(op)), pretty_args, id(t))
+        elseif op === ≤
+            return InfixOp(Leaf(:≤), pretty_args, id(t))
+        elseif op === ≥
+            return InfixOp(Leaf(:≥), pretty_args, id(t))
         end
 
         if !isempty(args)
@@ -132,84 +145,127 @@ function pretty_ast(t::BasicSymbolic; use_id::Bool = true)
             end
         end
 
-        pretty_op = pretty_ast(op, use_id=use_id)
+        pretty_op = pretty_ast(op)
 
-        return Expr(:call, pretty_op, pretty_args...)
+        if length(args) == 1
+            return FuncEval(pretty_op, pretty_args, id(t))
+        else
+            return InfixOp(pretty_op, pretty_args, id(t))
+        end
     end
     
-    return id(t)
+    return Leaf(id(t))
 end
 
 # ------------------------------------------------------
-#  STRING RENDERING ENGINE (`render`)
+#  SHOW
 # ------------------------------------------------------
 
-# Entry orchestrator: converts the sanitized math AST to a structural string
-render(x; use_id::Bool = true) = string(pretty_ast(x; use_id=use_id))
-render(x::String) = x
+Base.show(io::IO, n::NormSquared) = show(io, MIME"text/plain"(), n)
+Base.show(io::IO, con::ConstraintSet) = show(io, MIME"text/plain"(), con)
+Base.show(io::IO, p::Postfixed) = show(io, MIME"text/plain"(), p)
+Base.show(io::IO, opt::OptimizationProblem) = show(io, MIME"text/plain"(), opt)
+Base.show(io::IO, ∇f::GradientOp) = show(io, MIME"text/plain"(), ∇f)
+Base.show(io::IO, f::FuncEval) = show(io, MIME"text/plain"(), f)
+Base.show(io::IO, op_node::InfixOp) = show(io, MIME"text/plain"(), op_node)
 
-# Display layouts for custom math categories
-function Base.show(io::IO, op::CleanOp)
-    get(io, :use_id, true) && op.id ≠ nothing && return print(io, op.id)
-    
-    print(io, string(op.name))
+Base.show(io::IO, ::MIME"text/plain", op::Leaf) = print(io, string(op.id))
+Base.show(io::IO, op::Leaf) = print(io, string(op.id))
+
+function Base.show(io::IO, mime::MIME"text/plain", n::NormSquared)
+    get(io, :use_id, true) && n.id ≠ nothing && return print(io, n.id)
+    print(io, "‖")
+    show(io, mime, n.expr)
+    print(io, "‖²")
 end
-Base.show(io::IO, n::NormSquared) = print(io, "‖", render(n.expr), "‖²")
-Base.show(io::IO, con::ConstraintSet) = print(io, render(con.obj), " ∈ ", con.type)
 
-function Base.show(io::IO, p::Postfixed)
+function Base.show(io::IO, mime::MIME"text/plain", con::ConstraintSet)
+    get(io, :use_id, true) && con.id ≠ nothing && return print(io, con.id)
+    show(io, mime, con.obj)
+    print(io, " ∈ ")
+    show(io, mime, con.set)
+end
+
+function Base.show(io::IO, ::MIME"text/plain", p::Postfixed)
     get(io, :use_id, true) && p.id ≠ nothing && return print(io, p.id)
 
-    # Check if children need protection parentheses
-    inner_str = render(p.expr)
-    if any(c -> c in ['+', '-', '*'], inner_str) && !(startswith(inner_str, "(") && endswith(inner_str, ")"))
-        print(io, "(", inner_str, ")", p.op)
+    if p.expr isa Leaf
+        print(io, p.expr, p.op)
     else
-        print(io, inner_str, p.op)
+        print("(")
+        show(io, p.expr)
+        print(io, ")", p.op)
     end
 end
 
-function Base.show(io::IO, opt::OptimizationProblem)
-    println(io, opt.sense, " "^5, render(opt.objective))
-    flat_cons = flatten_constraints(opt.constraints)
-    
-    for (i, con) in enumerate(flat_cons)
+function Base.show(io::IO, mime::MIME"text/plain", opt::OptimizationProblem)
+    get(io, :use_id, true) && opt.id ≠ nothing && return print(io, opt.id)
+
+    print(io, opt.sense, " "^5, opt.objective)
+    for (i, con) in enumerate(opt.constraints)
+        println()
         prefix = (i == 1) ? "subject to   " : " "^13
-        println(io, prefix, render(con))
+        print(io, prefix)
+        show(io, mime, con)
     end
 end
 
-# Infix math rendering overrides
-render(e::Expr) = render_expr_node(e.head, e.args)
-render_expr_node(head, args) = string(Expr(head, args...))
+function Base.show(io::IO, mime::MIME"text/plain", ∇f::GradientOp)
+    get(io, :use_id, true) && ∇f.id ≠ nothing && return print(io, ∇f.id)
 
-function render_expr_node(head::Symbol, args)
-    head ≠ :call && return string(Expr(head, args...))
-    op = Symbol(args[1])
-    
-    if op in (:+, :-, :*, :≤, :≥, :(==))
-        rendered_children = [render_child(op, arg) for arg in args[2:end]]
-        return join(rendered_children, " $op ")
-    end
-    
-    # Standard prefix functions: f(x, y)
-    return string(op) * "(" * join(map(render, args[2:end]), ", ") * ")"
+    print(io, "∇", ∇f.func)
 end
 
-# Precedence layout helper to manage natural parenthesis groupings
-function render_child(parent_op::Symbol, child)
-    child_str = render(child)
-    !istree(child) && !(child isa Expr) && return child_str
-    
-    # Grab the active operator head safely
-    child_op = child isa Expr ? child.args[1] : operation(child)
-    child_op = Symbol(child_op)
-    
-    # Wrap additions/subtractions inside multiplications or postfix operators
-    if parent_op in (:*, Symbol("'")) && child_op in (:+, :-, :≤, :≥, :(==))
-        return "($child_str)"
+function Base.show(io::IO, mime::MIME"text/plain", f::FuncEval)
+    get(io, :use_id, true) && f.id ≠ nothing && return print(io, f.id)
+
+    show(io, mime, f.func)
+    print(io, "(")
+    for (i,arg) in enumerate(f.args)
+        show(io, mime, arg)
+        i < length(f.args) && print(io, ", ")
     end
-    return child_str
+    print(io, ")")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", op_node::InfixOp)
+
+    get(io, :use_id, true) && op_node.id ≠ nothing && return print(io, op_node.id)
+
+    parent_op = op_node.op
+
+    # Render and format each child element individually
+    rendered_children = map(op_node.args) do child
+
+        if child isa Symbol
+            return string(child)
+        end
+
+        # Capture the child's text string safely using the active stream context
+        buf = IOBuffer()
+        ctx = IOContext(buf, io)
+        show(ctx, child)
+        child_str = String(take!(buf))
+        
+        # Determine the child's operator if it is an algebraic structure
+        child_op = nothing
+        if child isa InfixOp
+            child_op = child.op
+        elseif child isa Expr && child.head === :call
+            child_op = Symbol(child.args[1])
+        elseif istree(child) # Fallback if a raw symbolic tree leaks through
+            child_op = Symbol(operation(child))
+        end
+
+        if child_op !== nothing && parent_op in (:*, :∧, Symbol("'")) && child_op in (:+, :-, :≤, :≥, :(==))
+            return "($child_str)"
+        end
+        
+        return child_str
+    end
+    
+    # Join the children with natural mathematical padding (e.g., "x + y")
+    print(io, join(rendered_children, " $parent_op "))
 end
 
 # ------------------------------------------------------
@@ -217,9 +273,9 @@ end
 # ------------------------------------------------------
 
 function check_and_translate_identity(node)
-    if hasproperty(node, :name)
-        isequal(node.name, :additive_identity) && return 0
-        isequal(node.name, :multiplicative_identity) && return 1
+    if issym(node)
+        isequal(nameof(node), :additive_identity) && return Leaf(Symbol(0))
+        isequal(nameof(node), :multiplicative_identity) && return Leaf(Symbol(1))
     end
     return nothing
 end

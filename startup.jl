@@ -26,10 +26,7 @@ end
 
 @show opt
 
-SymbolicUtils.symtype.(AlgorithmAnalysis.flatten_constraints(constraint(opt)))
-
 topt = simplify(opt)
 
 SymbolicUtils.symtype.(AlgorithmAnalysis.flatten_constraints(constraint(opt)))
-
 SymbolicUtils.symtype.(AlgorithmAnalysis.flatten_constraints(constraint(topt)))
