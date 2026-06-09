@@ -59,7 +59,7 @@ function flatten_evaluations(tree, f::BasicSymbolic)
         arg = arguments(x)[1]
         fstr = tostring(f)
         sym = istree(arg) ? Symbol(fstr, "_(", arg, ")") : Symbol(fstr, "_", arg)
-        setmetadata(Sym{T}(sym), ID, sym)
+        Sym{T}(sym)
     end
     
     rule = @rule( ~x => newsym(~x) where iseval(~x) )
@@ -72,6 +72,47 @@ function flatten_evaluations(tree, fs::Vector{BasicSymbolic})
         new_tree = flatten_evaluations(new_tree, f)
     end
     return new_tree
+end
+
+function flatten_inner_product(v1, v2)
+
+    if issym(v1) && issym(v2)
+        T = field(v1)
+        sym = isequal(v1,v2) ? Symbol("‖", v1, "‖²") : Symbol("⟨", v1, ",", v2, "⟩")
+        return Sym{T}(sym)
+    end
+
+    if istree(v1)
+        op = operation(v1)
+        args = arguments(v1)
+        if isequal(op, +)
+            new_args = map(v -> flatten_inner_product(v, v2), args)
+            return new_arg[1] + new_args[2]
+        elseif isequal(op, -)
+            new_args = map(v -> flatten_inner_product(v, v2), args)
+            return new_args[1] - new_args[2]
+        elseif isequal(op, *)
+            # Assuming first arg is scalar, second is vector
+            return args[1] * flatten_inner_product(args[2], v2)
+        end
+    end
+
+    if istree(v2)
+        op = operation(v2)
+        args = arguments(v2)
+        if isequal(op, +)
+            new_args = map(v -> flatten_inner_product(v1, v), args)
+            return new_arg[1] + new_args[2]
+        elseif isequal(op, -)
+            new_args = map(v -> flatten_inner_product(v1, v), args)
+            return new_args[1] - new_args[2]
+        elseif isequal(op, *)
+            # Assuming first arg is scalar, second is vector
+            return args[1] * flatten_inner_product(v1, args[2])
+        end
+    end
+
+    error("Could not flatten inner product between vectors $v1 and $v2")
 end
 
 """

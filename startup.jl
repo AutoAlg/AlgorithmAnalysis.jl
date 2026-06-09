@@ -22,6 +22,3 @@ using AlgorithmAnalysis: expand, simplify
 end
 
 topt = simplify(opt)
-
-SymbolicUtils.symtype.(AlgorithmAnalysis.flatten_constraints(constraint(opt)))
-SymbolicUtils.symtype.(AlgorithmAnalysis.flatten_constraints(constraint(topt)))

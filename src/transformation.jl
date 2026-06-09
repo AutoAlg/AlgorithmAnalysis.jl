@@ -14,6 +14,10 @@ are_vectors(xs...) = all(map(is_vector, xs))
 are_scalars(xs...) = all(map(is_scalar, xs))
 are_scalars_or_vectors(xs...) = all(map(is_scalar_or_vector, xs))
 
+function add_constraint(opt::BasicSymbolic{T}, con::BasicSymbolic{<:Constraint}) where {T<:Optimization}
+    return Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
+end
+
 # ------------------------------------------------------
 # CONVEX INTERPOLATION
 # ------------------------------------------------------
@@ -42,15 +46,22 @@ end
 
 function convex_interpolation(opt::BasicSymbolic{T}, f::BasicSymbolic) where {T<:Optimization}
 
+    @info "Applying convex interpolation to function $f"
+
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
 
-    new_con = replace_node(constraint(opt), f ∈ Convex, satisfied())
-
-    for x ∈ points, y ∈ points
-        new_con = new_con ∧ ( f(x) ≥ f(y) + f'(y)'(x-y) )
+    if isempty(points)
+        @info "No points found!"
+        return opt
     end
 
-    new_opt = Term{T}(operation(opt), [objective(opt), new_con])
+    interp = satisfied()
+
+    for x ∈ points, y ∈ points
+        interp = interp ∧ ( f(x) ≥ f(y) + f'(y)'(x-y) )
+    end
+
+    new_opt = replace_node(opt, f ∈ Convex, interp)
     new_opt = flatten_evaluations(new_opt, [f, f'])
 
     return new_opt
@@ -60,43 +71,44 @@ end
 # GRAM TRANSFORMATION
 # ------------------------------------------------------
 
-# function gram_transformation_is_applicable(opt::BasicSymbolic)
-#     return false
-# end
+export gram_transformation
 
-# function gram_transformation(opt::BasicSymbolic)
+gram_transformation_is_applicable(::Any) = false
 
-#     if !istree(opt) || operation(opt) ≠ maximize
-#         error("Expected a 'maximize' optimization term structure.")
-#     end
+function gram_transformation_is_applicable(opt::BasicSymbolic{<:Optimization})
+    if convex_interpolation_is_applicable(opt)
+        return false
+    elseif isempty(find_nodes(x -> symtype(x) <: VectorSpace, opt))
+        return false
+    end
+    return true
+end
 
-#     objective, constraint = arguments(opt)
+function gram_transformation(opt::BasicSymbolic{<:Optimization})
 
-#     cs = find_nodes(c -> isequal(symtype(c), Convex), opt)
+    all_vecs = find_nodes(x -> symtype(x) <: VectorSpace, opt)
+    vectorspaces = Set(symtype.(all_vecs))
 
-#     if isempty(cs)
-#         error("Optimization problem has no convexity constraints")
-#     end
+    for vectorspace in vectorspaces
+        vecs = [v for v in all_vecs if isequal(symtype(v), vectorspace) && issym(v)]
+        vecs = unique!(vecs)
 
-#     new_opt = deepcopy(opt)
-    
-#     c = first(cs)
-#     f = arguments(c)[1]
+        # G = Gram(vecs...)
+        G = Term{Sⁿ}(Matrix, vec([ x'(y) for x in vecs, y in vecs ]))
 
-#     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
+        vec_str = join(vecs, ", ")
 
-#     for x ∈ points, y ∈ points
-#         interp = f(x) ≥ f(y) + f'(y)'(x-y)
-#         constraint = constraint ∧ interp
-#     end
+        @info "Applying Gram transformation to vector space $vectorspace with vectors $vec_str"
 
-#     new_con = replace_node(constraint, f ∈ Convex, Term{Satisfied}(satisfied, []))
+        opt = add_constraint(opt, G ∈ PositiveSemidefinite)
 
-#     new_opt = Term{Maximization}(maximize, [objective, new_con])
-#     new_opt = flatten_evaluations(new_opt, [f, f'])
+        rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2)
+        
+        opt = rewrite(opt, [rule])
+    end
 
-#     return new_opt
-# end
+    return opt
+end
 
 # ------------------------------------------------------
 # THEORY
@@ -135,7 +147,7 @@ const theory = [
     # --------------------------------------------------
     # GRAM TRANSFORMATION
     # --------------------------------------------------
-    # @rule ~opt => gram_transformation(~opt) where gram_transformation_is_applicable(~opt)
+    @rule ~opt => gram_transformation(~opt) where gram_transformation_is_applicable(~opt)
 ]
 
 simplify = Fixpoint(Postwalk(Chain(theory)))

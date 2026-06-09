@@ -15,13 +15,13 @@ id(t::BasicSymbolic) = has_id(t) ? getmetadata(t, ID) : (hasproperty(t, :name) ?
 
 abstract type Field end
 abstract type VectorSpace{F} end
-abstract type MatrixSpace{F} <: VectorSpace{F} end
+abstract type MatrixSpace{F} end
 abstract type R <: Field end
 
 struct Rⁿ <: VectorSpace{R} end
 struct Sⁿ <: MatrixSpace{R} end
 
-field(::Type{<:VectorSpace{R}}) = R
+field(::Type{<:VectorSpace{F}}) where F = F
 field(::BasicSymbolic{V}) where {F,V<:VectorSpace{F}} = F
 
 function additive_identity end
@@ -61,6 +61,9 @@ satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
 
 +(x::T...) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(+, x)
+*(x::T...) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(*, x)
+-(x::T, y::T) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(-, [x, y])
+/(x::T, y::T) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(/, [x, y])
 
 function F(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}

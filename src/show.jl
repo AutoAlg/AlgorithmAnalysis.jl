@@ -54,6 +54,11 @@ struct FuncEval <: SemanticNode
     id::Union{Symbol, Nothing}
 end
 
+struct Mat <: SemanticNode
+    args::Matrix
+    id::Union{Symbol, Nothing}
+end
+
 # ------------------------------------------------------
 #  SEMANTIC AST TRANSFORMATION
 # ------------------------------------------------------
@@ -61,6 +66,12 @@ end
 function semantic_ast(t::Any)
     id = check_and_translate_identity(t)
     return id ≠ nothing ? id : error("Unknown semantics for $t")
+end
+
+function semantic_ast(t::BasicSymbolic{<:MatrixSpace})
+    args = semantic_ast.(arguments(t))
+    n = Int(sqrt(length(args)))
+    return Mat(reshape(args, n, n), id(t))
 end
 
 function semantic_ast(t::BasicSymbolic{<:Optimization})
@@ -266,6 +277,11 @@ function Base.show(io::IO, ::MIME"text/plain", op_node::InfixOp)
     
     # Join the children with natural mathematical padding (e.g., "x + y")
     print(io, join(rendered_children, " $parent_op "))
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", t::Mat)
+    get(io, :use_id, true) && t.id ≠ nothing && return print(io, t.id)
+    show(io, mime, t.args)
 end
 
 # ------------------------------------------------------
