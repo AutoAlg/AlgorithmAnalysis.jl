@@ -1,5 +1,6 @@
 export find_nodes, replace_nodes, flatten_evaluations
 export rewrite, find_evaluation_points, flatten_constraints
+export with_verbose
 
 function postwalk_with_operators(f, x)
     if istree(x)
@@ -151,3 +152,8 @@ function tostring(node)
     show(buf, MIME"text/plain"(), node)
     return String(take!(buf))
 end
+
+
+const VERBOSE = Base.ScopedValues.ScopedValue{Bool}(false)
+verbose() = VERBOSE[]
+with_verbose(code::Function, verbose::Bool = true) = Base.ScopedValues.with(code, VERBOSE => verbose)

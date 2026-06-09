@@ -22,3 +22,9 @@ using AlgorithmAnalysis: expand, simplify
 end
 
 topt = simplify(opt)
+
+with_numerics() do
+    model()
+
+    nothing
+end
