@@ -9,6 +9,11 @@ expand(t::BasicSymbolic) = show(IOContext(stdout, :use_id => false), MIME"text/p
 
 abstract type SemanticNode end
 
+struct Constant <: SemanticNode
+    value::Any
+    id::Union{Symbol, Nothing}
+end
+
 struct Postfixed <: SemanticNode
     expr::SemanticNode
     op::Symbol
@@ -69,19 +74,22 @@ function semantic_ast(t::Any)
 end
 
 function semantic_ast(t::BasicSymbolic{<:MatrixSpace})
+    op = operation(t)
     args = semantic_ast.(arguments(t))
+    if op ∈ [+, -, *, /]
+        return InfixOp(Leaf(Symbol(op)), args, id(t))
+    end
     n = Int(sqrt(length(args)))
     return Mat(reshape(args, n, n), id(t))
 end
 
-function semantic_ast(t::BasicSymbolic{<:Optimization})
-    sense = Symbol(operation(t))
-    objective = semantic_ast(arguments(t)[1])
-    constraints = semantic_ast.(flatten_constraints(arguments(t)[2]))
-    return OptimizationProblem(sense, objective, constraints, id(t))
+function semantic_ast(t::BasicSymbolic{Optimization})
+    obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
+    con = semantic_ast.(flatten_constraints(constraint(t)))
+    return OptimizationProblem(sense(t), obj, con, id(t))
 end
 
-function semantic_ast(t::BasicSymbolic{T}; use_id = true) where {T<:Constraint}
+function semantic_ast(t::BasicSymbolic{T}) where {T<:Constraint}
     isequal(T, Satisfied) && return Leaf(Symbol(true))
     isequal(T, Unsatisfied) && return Leaf(Symbol(false))
     op = operation(t)
@@ -100,8 +108,8 @@ function semantic_ast(t::BasicSymbolic{T}; use_id = true) where {T<:Constraint}
     end
 end
 
-function semantic_ast(t::BasicSymbolic{Bool}; use_id = true)
-    if istree(t)
+function semantic_ast(t::BasicSymbolic{Bool})
+    if iscall(t)
         op = operation(t)
         args = arguments(t)
         pretty_args = map(arg -> semantic_ast(arg), args)
@@ -119,12 +127,12 @@ function semantic_ast(t::BasicSymbolic{Bool}; use_id = true)
 end
 
 function semantic_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}) where T
-    f = istree(t) ? semantic_ast(arguments(t)[1]) : f = Leaf(id(t))
+    f = iscall(t) ? semantic_ast(arguments(t)[1]) : f = Leaf(id(t))
     return GradientOp(f, id(t))
 end
 
 function semantic_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
-    f = istree(t) ? semantic_ast(arguments(t)[1]) : Leaf(id(t))
+    f = iscall(t) ? semantic_ast(arguments(t)[1]) : Leaf(id(t))
     return Postfixed(f, Symbol("'"), id(t))
 end
 
@@ -133,19 +141,22 @@ function semantic_ast(t::BasicSymbolic)
     x = check_and_translate_identity(t)
     x ≠ nothing && return x
 
-    if istree(t)
+    if iscall(t)
         op = operation(t)
+
+        isequal(op, constant) && return Constant(arguments(t)[1], id(t))
+
         args = arguments(t)
         pretty_args = map(arg -> semantic_ast(arg), args)
 
-        if isequal(op, constant)
-            return pretty_args[1]
-        elseif op ∈ [+, -, *, /, ∧, ==]
+        if op ∈ [+, -, *, /, ∧, ==]
             return InfixOp(Leaf(Symbol(op)), pretty_args, id(t))
         elseif op === ≤
             return InfixOp(Leaf(:≤), pretty_args, id(t))
         elseif op === ≥
             return InfixOp(Leaf(:≥), pretty_args, id(t))
+        elseif op === tr
+            return FuncEval(Leaf(:tr), pretty_args, id(t))
         end
 
         if !isempty(args)
@@ -172,6 +183,7 @@ end
 #  SHOW
 # ------------------------------------------------------
 
+Base.show(io::IO, x::Constant) = show(io, MIME"text/plain"(), x)
 Base.show(io::IO, n::NormSquared) = show(io, MIME"text/plain"(), n)
 Base.show(io::IO, con::ConstraintSet) = show(io, MIME"text/plain"(), con)
 Base.show(io::IO, p::Postfixed) = show(io, MIME"text/plain"(), p)
@@ -179,9 +191,15 @@ Base.show(io::IO, opt::OptimizationProblem) = show(io, MIME"text/plain"(), opt)
 Base.show(io::IO, ∇f::GradientOp) = show(io, MIME"text/plain"(), ∇f)
 Base.show(io::IO, f::FuncEval) = show(io, MIME"text/plain"(), f)
 Base.show(io::IO, op_node::InfixOp) = show(io, MIME"text/plain"(), op_node)
+Base.show(io::IO, x::Mat) = show(io, MIME"text/plain"(), x)
 
 Base.show(io::IO, ::MIME"text/plain", op::Leaf) = print(io, string(op.id))
 Base.show(io::IO, op::Leaf) = print(io, string(op.id))
+
+function Base.show(io::IO, ::MIME"text/plain", x::Constant)
+    get(io, :use_id, true) && x.id ≠ nothing && return print(io, x.id)
+    print(io, x.value)
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", n::NormSquared)
     get(io, :use_id, true) && n.id ≠ nothing && return print(io, n.id)
@@ -264,7 +282,7 @@ function Base.show(io::IO, ::MIME"text/plain", op_node::InfixOp)
             child_op = child.op
         elseif child isa Expr && child.head === :call
             child_op = Symbol(child.args[1])
-        elseif istree(child) # Fallback if a raw symbolic tree leaks through
+        elseif iscall(child) # Fallback if a raw symbolic tree leaks through
             child_op = Symbol(operation(child))
         end
 

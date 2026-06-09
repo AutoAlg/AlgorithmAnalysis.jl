@@ -3,11 +3,11 @@ export rewrite, find_evaluation_points, flatten_constraints
 export with_verbose
 
 function postwalk_with_operators(f, x)
-    if istree(x)
-        new_op = postwalk_with_operators(f, operation(x))
-        new_args = map(arg -> postwalk_with_operators(f, arg), arguments(x))
+    if iscall(x)
+        op = postwalk_with_operators(f, operation(x))
+        args = map(arg -> postwalk_with_operators(f, arg), arguments(x))
         T = symtype(x)
-        return f(Term{T}(new_op, new_args))
+        return f(Term{T}(op, args))
     else
         return f(x)
     end
@@ -28,7 +28,7 @@ function find_nodes(predicate::Function, node, results::Set = Set())
     if predicate(node)
         push!(results, node)
     end
-    if !istree(node)
+    if !iscall(node)
         return
     end
     op = operation(node)
@@ -55,11 +55,11 @@ end
 function flatten_evaluations(tree, f::BasicSymbolic)
 
     T = symtype(f).parameters[2]
-    iseval(x) = istree(x) && isequal(operation(x), f)
+    iseval(x) = iscall(x) && isequal(operation(x), f)
     newsym(x) = begin
         arg = arguments(x)[1]
         fstr = tostring(f)
-        sym = istree(arg) ? Symbol(fstr, "_(", arg, ")") : Symbol(fstr, "_", arg)
+        sym = iscall(arg) ? Symbol(fstr, "_(", arg, ")") : Symbol(fstr, "_", arg)
         Sym{T}(sym)
     end
     
@@ -83,7 +83,7 @@ function flatten_inner_product(v1, v2)
         return Sym{T}(sym)
     end
 
-    if istree(v1)
+    if iscall(v1)
         op = operation(v1)
         args = arguments(v1)
         if isequal(op, +)
@@ -98,7 +98,7 @@ function flatten_inner_product(v1, v2)
         end
     end
 
-    if istree(v2)
+    if iscall(v2)
         op = operation(v2)
         args = arguments(v2)
         if isequal(op, +)
@@ -123,7 +123,7 @@ Recursively crawls your optimization tree. It safely matches standard function c
 and looks inside applied adjoint operators to capture gradient evaluation points.
 """
 function find_evaluation_points(f, node)
-    evals = find_nodes(x -> istree(x) && isequal(operation(x), f), node)
+    evals = find_nodes(x -> iscall(x) && isequal(operation(x), f), node)
     map(x -> arguments(x)[1], collect(evals))
 end
 
@@ -134,7 +134,7 @@ function flatten_constraints(node)
 end
 
 function flatten_constraints!(list, node)
-    if istree(node) && isequal(operation(node), ∧)
+    if iscall(node) && isequal(operation(node), ∧)
         map(arg -> flatten_constraints!(list, arg), arguments(node))
         return
     elseif node isa Expr && isequal(node.head, :call)

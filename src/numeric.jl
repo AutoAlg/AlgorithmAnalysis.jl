@@ -2,14 +2,16 @@
 # NUMERIC
 # ------------------------------------------------------
 
-export with_numerics, evaluate, model
+export with_numerics, evaluate, feasible
 
 import JuMP, Hypatia
 
 
 const JUMP_MODEL = Base.ScopedValues.ScopedValue{JuMP.GenericModel}()
+const PARAMETERS = Base.ScopedValues.ScopedValue{Dict}(Dict())
 
 active_model() = isassigned(JUMP_MODEL)
+parameters() = PARAMETERS[]
 
 function default_model()
     model = JuMP.Model(Hypatia.Optimizer)
@@ -17,14 +19,20 @@ function default_model()
     return model
 end
 
-function with_numerics(code::Function, model_constructor::Function = () -> default_model())
-    if active_model()
-        code()
-    else
-        verbose() && @info "Initializing JuMP model..."
-        val = Base.ScopedValues.with(code, JUMP_MODEL => model_constructor())
-        verbose() && @info "JuMP model complete!"
-        return val
+function with_parameters(code::Function, params::Dict)
+    return Base.ScopedValues.with(code, PARAMETERS => params)
+end
+
+function with_numerics(code::Function; model_constructor::Function = () -> default_model(), parameters::Dict = Dict())
+    with_parameters(parameters) do
+        if active_model()
+            code()
+        else
+            verbose() && @info "Initializing JuMP model..."
+            val = Base.ScopedValues.with(code, JUMP_MODEL => model_constructor())
+            verbose() && @info "JuMP model complete!"
+            return val
+        end
     end
 end
 
@@ -36,70 +44,119 @@ function model()
     end
 end
 
-# function evaluate(x::Object, dict::Dict = Dict())
-#     if x ∈ keys(dict)
-#         verbose() && @info "Object $x exists in the dictionary $dict"
-#         return dict[x]
-#     end
-#     if active_model() && label(x) ∈ keys(JuMP.object_dictionary(model()))
-#         verbose() && @info "Object $x exists in the JuMP model"
-#         val = model()[label(x)]
-#         if JuMP.has_values(model())
-#             return JuMP.value(val)
-#         else
-#             return val
-#         end
-#     end
-#     if hasvalue(x)
-#         val = value(x)
-#         if val isa Evaluation
-#             verbose() && @info "Object $x is an Evaluation, so evaluating its value"
-#             return evaluate(val, dict)
-#         else
-#             verbose() && @info "Returning the value of object $x"
-#             return val
-#         end
-#     end
-#     if has_evaluation(x)
-#         verbose() && @info "Object $x has an Evaluator"
-#         return get(x, Evaluator).evaluator[x]()
-#     end
-#     if hastrait(x, Product)
-#         verbose() && @info "Object $x is a product, so evaluating each component"
-#         return evaluate.(as_tuple(x), Ref(dict))
-#     end
-#     if hastrait(x, Symmetric)
-#         verbose() && @info "Object $x is a matrix, so evaluating each component"
-#         return evaluate.(as_array(x), Ref(dict))
-#     end
-#     if active_model() && hastrait(x, Numeric)
-#         t = get(x, Numeric)
+function evaluate(x::BasicSymbolic)
+    
+    eval_node = function (node)
 
-#         if datatype(t) == Float64
-#             sym = label(x)
-#             model()[sym] = JuMP.@variable(model(), base_name = string(sym))
-#             verbose() && @info "Object $x is numeric with datatype Float64, so initializing in the JuMP model as $(model()[sym])"
-#             return model()[sym]
+        !(node isa BasicSymbolic) && return node
 
-#         elseif datatype(t) == Matrix{Float64}
-#             sym = label(x)
-#             n = dim(get(x, Symmetric))
-#             model()[sym] = JuMP.@variable(model(), [1:n,1:n], Symmetric, base_name = string(sym))
-#             verbose() && @info "Object $x is numeric with datatype Matrix{Float64}, so initializing in the JuMP model as $(model()[sym])"
-#             return model()[sym]
-            
-#         end
-#     end
-#     error("Cannot evaluate object $x in space $(space(x)).")
-# end
-
-function feasible(constraint::BasicSymbolic{<:Constraint})
-    with_numerics() do
-        if !implementable(constraint)
-            error("Constraint $constraint is not implementable")
+        if issym(node) && isequal(symtype(node), R)
+            isequal(id(node), :additive_identity) && return 0.0
+            isequal(id(node), :multiplicative_identity) && return 1.0
         end
-        evaluate(constraint)
-        JuMP.optimize!(model())
-        return JuMP.is_solved_and_feasible(model())
+
+        # ---------------------------------------------------------
+        # LEAF TERMINALS
+        # ---------------------------------------------------------
+        if node ∈ keys(parameters())
+            verbose() && @info "Object $node is a parameter"
+            return parameters()[node]
+        end
+        
+        if active_model() && has_id(node) && id(node) ∈ keys(JuMP.object_dictionary(model()))
+            verbose() && @info "Object $node exists in the JuMP model"
+            val = model()[id(node)]
+            return JuMP.has_values(model()) ? JuMP.value(val) : val
+        end
+
+        # Handle initialization of raw variables (leaves) in JuMP
+        if active_model() && !iscall(node)
+            T = symtype(node)
+            sym = id(node)
+            if isequal(T, R)
+                model()[sym] = JuMP.@variable(model(), base_name = string(sym))
+                verbose() && @info "Object $node is in R, so initializing in JuMP as $(model()[sym])"
+                return model()[sym]
+            elseif isequal(T, Sⁿ)
+                n = size(node)
+                model()[sym] = JuMP.@variable(model(), [1:n,1:n], Symmetric, base_name = string(sym))
+                verbose() && @info "Object $node is in Sⁿ, so initializing in JuMP as $(model()[sym])"
+                return model()[sym]
+            end
+        end
+
+        # ---------------------------------------------------------
+        # OPERATORS
+        # ---------------------------------------------------------
+        if iscall(node)
+            op = operation(node)
+            args = arguments(node)
+            T = symtype(node)
+
+            if isequal(op, constant)
+                return args[1]
+            elseif op ∈ [+, -, *, /]
+                return op(args...)
+            elseif isequal(op, tr)
+                verbose() && @info "Evaluating the trace of $(args[1])"
+                return tr(args[1])
+            elseif isequal(T, Sⁿ)
+                return mat(node)
+            end
+        end
+
+        # ---------------------------------------------------------
+        # CONSTRAINTS & METAFUNCTIONS
+        # ---------------------------------------------------------
+        T = symtype(node)
+
+        if T <: Constraint && isequal(operation(node), ∧)
+            return arguments(node)
+        end
+
+        if active_model()
+            if T <: Equality
+                lhs, rhs = arguments(node)
+                verbose() && @info "Enforcing equality constraint $lhs = $rhs"
+                return isequal(T, Equality{R}) ? 
+                    JuMP.@constraint(model(), lhs == rhs) : 
+                    JuMP.@constraint(model(), lhs .== rhs)
+
+            elseif T <: LessThanOrEqualTo{R}
+                lhs, rhs = arguments(node)
+                verbose() && @info "Enforcing inequality constraint $lhs ≤ $rhs"
+                return JuMP.@constraint(model(), lhs ≤ rhs)
+
+            elseif T <: PositiveSemidefinite
+                A = arguments(node)[1]
+                verbose() && @info "Enforcing positive semidefinite constraint 0 ⪯ $A"
+                return JuMP.@constraint(model(), la.Symmetric(convert(Matrix{JuMP.AffExpr}, A)) in JuMP.PSDCone())
+
+            elseif isequal(T, Optimization)
+                obj = objective(node)
+                con = constraint(node)
+                verbose() && @info "Optimizing $obj subject to $con"
+
+                try
+                    if is_minimization(node)
+                        JuMP.@objective(model(), Min, obj)
+                    elseif is_maximization(node)
+                        JuMP.@objective(model(), Max, obj)
+                    end
+                    JuMP.optimize!(model())
+                    
+                    if is_minimization(node) || is_maximization(node)
+                        return JuMP.value(obj)
+                    elseif is_feasibility(node)
+                        return JuMP.is_solved_and_feasible(model())
+                    end
+                catch
+                    error("Failed to solve optimization problem. Consider first simplifying the problem symbolically using `simplify(opt)`")
+                end
+            end
+        end
+        return node
     end
+
+    return postwalk_with_operators(eval_node, x)
 end

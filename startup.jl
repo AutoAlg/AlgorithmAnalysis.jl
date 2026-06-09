@@ -1,6 +1,5 @@
 using Revise
-using AlgorithmAnalysis, SymbolicUtils
-using AlgorithmAnalysis: expand, simplify
+using AlgorithmAnalysis
 
 # ------------------------------------------------------
 # PERFORMANCE ESTIMATION
@@ -13,7 +12,7 @@ using AlgorithmAnalysis: expand, simplify
   g    = f'(x)
   init = (x - xs)'(x - xs)
   x⁺   = x - α * g
-  c1   = f ∈ Convex
+  c1   = convex(f)
   c2   = gs'(gs) == zero(R)
   c3   = init ≤ one(R)
   con  = c1 ∧ c2 ∧ c3
@@ -23,8 +22,8 @@ end
 
 topt = simplify(opt)
 
-with_numerics() do
-    model()
 
-    nothing
-end
+
+
+# TODO
+#   @var a = one(R) overwrites the id, which is how we identify the multiplicative identity
