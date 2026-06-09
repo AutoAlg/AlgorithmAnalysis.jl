@@ -116,8 +116,8 @@ const theory = [
     # --------------------------------------------------
     # ADDITIVE IDENTITY
     # --------------------------------------------------
-    @rule ~x::is_scalar + ~y => ~x where (id(~y) == :additive_identity)
-    @rule ~x + ~y::is_scalar => ~y where (id(~x) == :additive_identity)
+    @rule ~x::is_scalar + ~y => ~x where (iscall(~y) && isequal(operation(~y), zero))
+    @rule ~x + ~y::is_scalar => ~y where (iscall(~x) && isequal(operation(~x), zero))
 
     # --------------------------------------------------
     # ADDITIVE INVERSES & INVOLUTION

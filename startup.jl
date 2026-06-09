@@ -23,7 +23,5 @@ end
 topt = simplify(opt)
 
 
-
-
 # TODO
 #   @var a = one(R) overwrites the id, which is how we identify the multiplicative identity

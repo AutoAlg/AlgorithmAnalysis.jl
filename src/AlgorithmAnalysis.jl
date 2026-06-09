@@ -6,12 +6,11 @@ module AlgorithmAnalysis
 
 using SymbolicUtils, TermInterface
 using SymbolicUtils: Sym, BasicSymbolic, Term, FnType, Rewriters
-using SymbolicUtils: symtype, @rule, iscall, term
+using SymbolicUtils: symtype, @rule, iscall, issym, term
 using SymbolicUtils: hasmetadata, setmetadata, getmetadata
-using SymbolicUtils: issym, nameof
 
 import Base: +, -, *, adjoint, show, ==, ≤, ≥, isless, <=, >=, zero, one, ∈
-import Base: iterate, getindex, size
+import Base: iterate, getindex, size, iszero, isone
 import LinearAlgebra as la
 import LinearAlgebra: dot, ⋅
 

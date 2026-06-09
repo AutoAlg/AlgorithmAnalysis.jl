@@ -1,5 +1,4 @@
-export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace
-export field, additive_identity, multiplicative_identity
+export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace, field
 export zero, one, ∧, maximize, minimize, objective, constraint
 export is_function, function_category, Convex
 export @var, @alg, @def
@@ -43,8 +42,6 @@ end
 field(::Type{<:VectorSpace{F}}) where F = F
 field(::BasicSymbolic{V}) where {F,V<:VectorSpace{F}} = F
 
-function additive_identity end
-function multiplicative_identity end
 function satisfied end
 
 abstract type Category end
@@ -72,12 +69,15 @@ const ∇ = Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}},FnT
 
 const Gram = Sym{FnType{Tuple{Vararg{Rⁿ}}, MatrixSpace{R}, Nothing}}(:Gram)
 
-zero(::Type{Rⁿ}) = Sym{Rⁿ}(:additive_identity)
-zero(::Type{R}) = Sym{R}(:additive_identity)
-one(::Type{R}) = Sym{R}(:multiplicative_identity)
+zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
+zero(::Type{R}) = Term{R}(zero, [])
+one(::Type{R}) = Term{R}(one, [])
 R(val::Real) = Term{R}(constant, [val])
 satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
+
+iszero(x::BasicSymbolic) = iscall(x) && isequal(operation(x), zero)
+isone(x::BasicSymbolic) = iscall(x) && isequal(operation(x), one)
 
 function Sⁿ(A::Matrix{BasicSymbolic{R}})
     size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
@@ -141,6 +141,7 @@ function ⋅(u::BasicSymbolic{V}, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F
 end
 
 function adjoint(x::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
+    iszero(x) && return Term{FnType{Tuple{V},F,LinearFunctional}}(zero, [])
     return Term{FnType{Tuple{V},F,LinearFunctional}}(adjoint, [x])
 end
 

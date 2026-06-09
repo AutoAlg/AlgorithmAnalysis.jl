@@ -132,6 +132,7 @@ function semantic_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}) where T
 end
 
 function semantic_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
+    iszero(t) && return Leaf(Symbol(0))
     f = iscall(t) ? semantic_ast(arguments(t)[1]) : Leaf(id(t))
     return Postfixed(f, Symbol("'"), id(t))
 end
@@ -307,9 +308,7 @@ end
 # ------------------------------------------------------
 
 function check_and_translate_identity(node)
-    if issym(node)
-        isequal(nameof(node), :additive_identity) && return Leaf(Symbol(0))
-        isequal(nameof(node), :multiplicative_identity) && return Leaf(Symbol(1))
-    end
+    iszero(node) && return Leaf(Symbol(0))
+    isone(node) && return Leaf(Symbol(1))
     return nothing
 end

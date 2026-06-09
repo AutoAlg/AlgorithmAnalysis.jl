@@ -77,6 +77,14 @@ end
 
 function flatten_inner_product(v1, v2)
 
+    if symtype(v1) ≠ symtype(v2)
+        error("Inner product of $v1 and $v2 cannot be flattened since they are in different spaces")
+    end
+
+    if iszero(v1) || iszero(v2)
+        return zero(field(v1))
+    end
+
     if issym(v1) && issym(v2)
         T = field(v1)
         sym = isequal(v1,v2) ? Symbol("‖", v1, "‖²") : Symbol("⟨", v1, ",", v2, "⟩")

@@ -50,9 +50,9 @@ function evaluate(x::BasicSymbolic)
 
         !(node isa BasicSymbolic) && return node
 
-        if issym(node) && isequal(symtype(node), R)
-            isequal(id(node), :additive_identity) && return 0.0
-            isequal(id(node), :multiplicative_identity) && return 1.0
+        if iscall(node) && isequal(symtype(node), R)
+            isequal(operation(node), zero) && return 0.0
+            isequal(operation(node), one) && return 1.0
         end
 
         # ---------------------------------------------------------
