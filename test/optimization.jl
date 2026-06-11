@@ -43,21 +43,25 @@ end
 end
 
 @testitem "Performance estimation" begin
-    # --------------------------------------------------
-    # PERFORMANCE ESTIMATION
-    # --------------------------------------------------
-    # @test begin
-    #   m,L = 1,10
-    #   α = 2 / (L + m)
-    #   @algorithm begin
-    #       f = DifferentiableFunctional{Rⁿ}()
-    #       xs = first_order_stationary_point(f)
-    #       f' ∈ SectorBounded(m, L, xs, f'(xs))
-    #       x0 = Rⁿ()
-    #       x1 = x0 - α * f'(x0)
-    #       x0 => x1
-    #       performance = (x0 - xs)^2
-    #   end
-    #   rate(performance) ≈ ((L-m)/(L+m))^2
-    # end
+    @alg begin
+        α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
+
+        gs   = f'(xs)
+        g    = f'(x)
+        init = (x - xs)'(x - xs)
+        x⁺   = x - α * g
+        f⁺   = f(x⁺)
+        c1   = smooth_convex(f, L)
+        c2   = gs'(gs) == zero(R)
+        c3   = init ≤ one(R)
+        con  = c1 ∧ c2 ∧ c3
+        obj  = f⁺ - f(xs)
+        opt  = maximize(obj, con)
+    end
+
+    topt = simplify(opt)
+
+    @test with_numerics(T = BigFloat, parameters = Dict(α => big"0.075", L => big"10.0")) do
+        evaluate(topt) ≈ 2.0
+    end
 end

@@ -15,7 +15,7 @@ const PARAMETERS = Base.ScopedValues.ScopedValue{Dict}(Dict())
 active_model() = isassigned(JUMP_MODEL)
 parameters() = PARAMETERS[]
 
-function default_model(T::DataType = BigFloat)
+function default_model(T::DataType)
     model = JuMP.GenericModel{T}(Hypatia.Optimizer{T})
     JuMP.set_silent(model)
     return model
@@ -25,7 +25,7 @@ function with_parameters(code::Function, params::Dict)
     return Base.ScopedValues.with(code, PARAMETERS => params)
 end
 
-function with_numerics(code::Function; model_constructor::Function = () -> default_model(), parameters::Dict = Dict())
+function with_numerics(code::Function; T::DataType = Float64, model_constructor::Function = () -> default_model(T), parameters::Dict = Dict())
     with_parameters(parameters) do
         if active_model()
             code()
@@ -131,9 +131,10 @@ function evaluate(x::BasicSymbolic)
 
             elseif T <: PositiveSemidefinite
                 A = arguments(node)[1]
-                A = la.Symmetric(A+A')
+                T = typeof(model()).parameters[1]
+                AA = convert.(JuMP.GenericAffExpr{T, JuMP.GenericVariableRef{T}}, A)
                 verbose() && @info "Enforcing positive semidefinite constraint 0 ⪯ $A"
-                return JuMP.@constraint(model(), A in JuMP.PSDCone())
+                return JuMP.@constraint(model(), AA in JuMP.PSDCone())
 
             elseif isequal(T, Optimization)
                 obj = objective(node)

@@ -1,12 +1,12 @@
 @testitem "Feasibility" begin
     @alg let
         x ∈ R
-        A = Sⁿ([-2.0 x; x -2.0])
+        A = [-2 x; x -2]
         @test with_numerics() do
-            evaluate(feasible((x ≥ 1.0) ∧ (x ≤ 2.0)))
+            evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
         end
         @test with_numerics() do
-            !evaluate(feasible((x ≥ 1.0) ∧ (x ≤ -1.0)))
+            !evaluate(feasible((x ≥ 1) ∧ (x ≤ -1)))
         end
         @test with_numerics() do
             !evaluate(feasible(A ⪰ 0))
