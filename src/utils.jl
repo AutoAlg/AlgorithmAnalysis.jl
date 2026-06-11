@@ -6,8 +6,7 @@ function postwalk_with_operators(f, x)
     if iscall(x)
         op = postwalk_with_operators(f, operation(x))
         args = map(arg -> postwalk_with_operators(f, arg), arguments(x))
-        T = symtype(x)
-        return f(Term{T}(op, args))
+        return f(maketerm(typeof(x), op, args, metadata(x)))
     else
         return f(x)
     end
@@ -57,9 +56,9 @@ function flatten_evaluations(tree, f::BasicSymbolic)
     T = symtype(f).parameters[2]
     iseval(x) = iscall(x) && isequal(operation(x), f)
     newsym(x) = begin
-        arg = arguments(x)[1]
+        arg = tostring(arguments(x)[1])
         fstr = tostring(f)
-        sym = iscall(arg) ? Symbol(fstr, "_(", arg, ")") : Symbol(fstr, "_", arg)
+        sym = Symbol(fstr, "(", arg, ")")
         Sym{T}(sym)
     end
     
@@ -85,9 +84,23 @@ function flatten_inner_product(v1, v2)
         return zero(field(v1))
     end
 
+    if iscall(v1) && isequal(operation(v1), -) && length(arguments(v1)) == 1
+        return -flatten_inner_product(arguments(v1)[1], v2)
+    end
+    if iscall(v2) && isequal(operation(v2), -) && length(arguments(v2)) == 1
+        return -flatten_inner_product(v1, arguments(v2)[1])
+    end
+
     if issym(v1) && issym(v2)
         T = field(v1)
-        sym = isequal(v1,v2) ? Symbol("‖", v1, "‖²") : Symbol("⟨", v1, ",", v2, "⟩")
+        s1 = tostring(v1)
+        s2 = tostring(v2)
+        if isequal(v1, v2)
+            sym = Symbol("‖", s1, "‖²")
+        else
+            first_str, second_str = s1 < s2 ? (s1, s2) : (s2, s1)
+            sym = Symbol("⟨", first_str, ",", second_str, "⟩")
+        end
         return Sym{T}(sym)
     end
 
@@ -95,11 +108,11 @@ function flatten_inner_product(v1, v2)
         op = operation(v1)
         args = arguments(v1)
         if isequal(op, +)
-            new_args = map(v -> flatten_inner_product(v, v2), args)
-            return new_arg[1] + new_args[2]
+            return sum(map(v -> flatten_inner_product(v, v2), args))
         elseif isequal(op, -)
-            new_args = map(v -> flatten_inner_product(v, v2), args)
-            return new_args[1] - new_args[2]
+            if length(args) == 2
+                return flatten_inner_product(args[1], v2) - flatten_inner_product(args[2], v2)
+            end
         elseif isequal(op, *)
             # Assuming first arg is scalar, second is vector
             return args[1] * flatten_inner_product(args[2], v2)
@@ -110,11 +123,12 @@ function flatten_inner_product(v1, v2)
         op = operation(v2)
         args = arguments(v2)
         if isequal(op, +)
-            new_args = map(v -> flatten_inner_product(v1, v), args)
-            return new_arg[1] + new_args[2]
+            return sum(map(v -> flatten_inner_product(v1, v), args))
         elseif isequal(op, -)
             new_args = map(v -> flatten_inner_product(v1, v), args)
-            return new_args[1] - new_args[2]
+            if length(args) == 2
+                return flatten_inner_product(v1, args[1]) - flatten_inner_product(v1, args[2])
+            end
         elseif isequal(op, *)
             # Assuming first arg is scalar, second is vector
             return args[1] * flatten_inner_product(v1, args[2])

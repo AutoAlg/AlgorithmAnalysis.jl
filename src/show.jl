@@ -102,6 +102,10 @@ function semantic_ast(t::BasicSymbolic{T}) where {T<:Constraint}
         return InfixOp(Leaf(:≤), pretty_args, id(t))
     elseif isequal(op, ∧)
         return InfixOp(Leaf(:∧), pretty_args, id(t))
+    elseif isequal(op, smooth_convex)
+        f = semantic_ast(args[1])
+        L = semantic_ast(args[2])
+        return ConstraintSet(f, Leaf(Symbol("SmoothConvex($L)")), id(t))
     else
         f = semantic_ast(args[1])
         return ConstraintSet(f, Leaf(Symbol(T)), id(t))
@@ -308,7 +312,7 @@ end
 # ------------------------------------------------------
 
 function check_and_translate_identity(node)
-    iszero(node) && return Leaf(Symbol(0))
-    isone(node) && return Leaf(Symbol(1))
+    node isa BasicSymbolic && iszero(node) && return Leaf(Symbol(0))
+    node isa BasicSymbolic && isone(node) && return Leaf(Symbol(1))
     return nothing
 end

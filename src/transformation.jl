@@ -46,9 +46,11 @@ end
 
 function convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicSymbolic)
 
-    @info "Applying convex interpolation to function $f"
-
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
+
+    pts = join(tostring.(points), ", ")
+
+    @info "Applying convex interpolation to function $f with evaluation points $pts"
 
     if isempty(points)
         @info "No points found!"
@@ -68,6 +70,65 @@ function convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicSymbolic
 end
 
 # ------------------------------------------------------
+# SMOOTH CONVEX INTERPOLATION
+# ------------------------------------------------------
+
+smooth_convex_interpolation_is_applicable(::Any) = false
+
+function smooth_convex_interpolation_is_applicable(opt::BasicSymbolic{Optimization})
+    predicate = function (c)
+        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), smooth_convex)
+    end
+    return !isempty(find_nodes(predicate, opt))
+end
+
+function smooth_convex_interpolation(opt::BasicSymbolic{Optimization})
+    
+    predicate = function (c)
+        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), smooth_convex)
+    end
+    cons = find_nodes(predicate, opt)
+
+    if isempty(cons)
+        error("Optimization problem has no smooth convexity constraints")
+    end
+
+    for con ∈ cons
+        f, L = arguments(con)
+        opt = smooth_convex_interpolation(opt, f, L)
+    end
+
+    return opt
+end
+
+function smooth_convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicSymbolic, L::BasicSymbolic)
+
+    points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
+
+    pts = join(tostring.(points), ", ")
+
+    @info "Applying $L-smooth convex interpolation to function $f with evaluation points $pts"
+
+    if isempty(points)
+        @info "No points found!"
+        return opt
+    end
+
+    interp = satisfied()
+
+    for x ∈ points, y ∈ points
+        gx = f'(x)
+        gy = f'(y)
+        interp = interp ∧ ( f(x) ≥ f(y) + gy'(x-y) + 1/2L * (gx-gy)'(gx-gy) )
+    end
+
+    new_opt = replace_node(opt, smooth_convex(f, L), interp)
+    new_opt = flatten_evaluations(new_opt, [f, f'])
+
+    return new_opt
+end
+
+# ------------------------------------------------------
 # GRAM TRANSFORMATION
 # ------------------------------------------------------
 
@@ -77,6 +138,8 @@ gram_transformation_is_applicable(::Any) = false
 
 function gram_transformation_is_applicable(opt::BasicSymbolic{Optimization})
     if convex_interpolation_is_applicable(opt)
+        return false
+    elseif smooth_convex_interpolation_is_applicable(opt)
         return false
     elseif isempty(find_nodes(x -> symtype(x) <: VectorSpace, opt))
         return false
@@ -95,7 +158,7 @@ function gram_transformation(opt::BasicSymbolic{Optimization})
 
         G = Sⁿ([ x'(y) for x in vecs, y in vecs ])
 
-        vec_str = join(vecs, ", ")
+        vec_str = join(tostring.(vecs), ", ")
 
         @info "Applying Gram transformation to vector space $vectorspace with vectors $vec_str"
 
@@ -142,6 +205,8 @@ const theory = [
     # CONVEX INTERPOLATION
     # --------------------------------------------------
     @rule ~opt => convex_interpolation(~opt) where convex_interpolation_is_applicable(~opt)
+    @rule ~opt => smooth_convex_interpolation(~opt) where smooth_convex_interpolation_is_applicable(~opt)
+
 
     # --------------------------------------------------
     # GRAM TRANSFORMATION

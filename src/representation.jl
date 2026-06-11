@@ -6,7 +6,8 @@ export Gradient, LinearFunctional, DifferentiableFunctional, ∇, Gram
 export PositiveSemidefinite
 export has_id, id, set_id, ID
 export satisfied, unsatisfied
-export ⪯, ⪰, convex, to_symbolic, tr
+export ⪯, ⪰, to_symbolic, tr
+export convex, smooth_convex
 
 leaf(sym::Symbol, T) = Sym{T}(sym)
 
@@ -132,9 +133,9 @@ function *(scalar::BasicSymbolic{F}, v::BasicSymbolic{V}) where {F,V<:VectorSpac
     return Term{V}(*, [scalar, v])
 end
 
-function *(scalar::F, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
-    return Term{F}(*, [scalar, v])
-end
+# function *(scalar::F, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
+#     return Term{F}(*, [scalar, v])
+# end
 
 function ⋅(u::BasicSymbolic{V}, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
     return Term{F}(⋅, [u, v])
@@ -168,6 +169,10 @@ is_gradient(x) = is_function(x) && isequal(operator(x), ∇)
 
 function convex(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
     return Term{Convex}(∈, [f])
+end
+
+function smooth_convex(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}, L::BasicSymbolic{F}) where {F,V<:VectorSpace{F}}
+    return Term{Constraint}(smooth_convex, [f, L])
 end
 
 # function ∈(G::BasicSymbolic{<:MatrixSpace}, ::Type{PositiveSemidefinite})
@@ -336,39 +341,6 @@ macro def(ex)
         $(_def(ex)); nothing
     end)
 end
-
-# macro alg(ex)
-    
-#     _alg(x) = error("Invalid expression for @alg macro: $x")
-#     _alg(x::LineNumberNode) = x
-
-#     function _alg(x::Expr)
-#         if x.head == :block || x.head == :tuple
-#             return Expr(:block, map(_alg, x.args)...)
-
-#         elseif x.head == :call && length(x.args) == 3 && (x.args[1] == :(∈) || x.args[1] == :in)
-#             return Expr(:macrocall, 
-#                 Expr(:., :AlgorithmAnalysis, QuoteNode(Symbol("@var"))),
-#                 LineNumberNode(@__LINE__, @__FILE__),
-#                 x
-#             )
-
-#         elseif x.head == :(=)
-#             return Expr(:macrocall,
-#                 Expr(:., :AlgorithmAnalysis, QuoteNode(Symbol("@def"))),
-#                 LineNumberNode(@__LINE__, @__FILE__),
-#                 x
-#             )
-            
-#         else
-#             error("Invalid expression for @alg macro: $x")
-#         end
-#     end
-    
-#     return esc(quote
-#         $(_alg(ex)); nothing
-#     end)
-# end
 
 """
     @alg let
