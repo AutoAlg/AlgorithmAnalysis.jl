@@ -48,11 +48,11 @@ end
 
         gs   = f'(xs)
         g    = f'(x)
-        init = (x - xs)'(x - xs)
+        init = (x - xs)^2
         x⁺   = x - α * g
         f⁺   = f(x⁺)
         c1   = smooth_convex(f, L)
-        c2   = gs'(gs) == zero(R)
+        c2   = gs^2 == zero(R)
         c3   = init ≤ one(R)
         con  = c1 ∧ c2 ∧ c3
         obj  = f⁺ - f(xs)

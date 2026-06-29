@@ -163,6 +163,8 @@ end
 is_gradient(x) = is_function(x) && isequal(operator(x), ∇)
 
 
+Base.literal_pow(::typeof(^), x::BasicSymbolic{<:VectorSpace}, ::Val{2}) = x'(x)
+
 # function ∈(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}, ::Type{Convex}) where {F,V<:VectorSpace{F}}
 #     return Term{Convex}(∈, [f])
 # end
