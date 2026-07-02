@@ -11,13 +11,13 @@ abstract type SemanticNode end
 
 struct Constant <: SemanticNode
     value::Any
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct Postfixed <: SemanticNode
     expr::SemanticNode
     op::Symbol
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct Leaf <: SemanticNode
@@ -26,42 +26,42 @@ end
 
 struct NormSquared <: SemanticNode
     expr::SemanticNode
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct ConstraintSet <: SemanticNode
     obj::SemanticNode
     set::SemanticNode
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct OptimizationProblem <: SemanticNode
     sense::Symbol  # :maximize or :minimize or :feasible
     objective::SemanticNode
     constraints::Vector{SemanticNode}
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct InfixOp <: SemanticNode
     op::SemanticNode
     args::Vector{SemanticNode}
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct GradientOp <: SemanticNode
     func::SemanticNode
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct FuncEval <: SemanticNode
     func::SemanticNode
     args::Vector{<:SemanticNode}
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 struct Mat <: SemanticNode
     args::Matrix
-    id::Union{Symbol, Nothing}
+    id::Union{Symbol,Nothing}
 end
 
 # ------------------------------------------------------
@@ -130,12 +130,12 @@ function semantic_ast(t::BasicSymbolic{Bool})
     end
 end
 
-function semantic_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}) where T
+function semantic_ast(t::BasicSymbolic{FnType{Tuple{T},T,Gradient}}) where T
     f = iscall(t) ? semantic_ast(arguments(t)[1]) : f = Leaf(id(t))
     return GradientOp(f, id(t))
 end
 
-function semantic_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
+function semantic_ast(t::BasicSymbolic{FnType{Tuple{X},Y,LinearFunctional}}) where {X,Y}
     iszero(t) && return Leaf(Symbol(0))
     f = iscall(t) ? semantic_ast(arguments(t)[1]) : Leaf(id(t))
     return Postfixed(f, Symbol("'"), id(t))
@@ -156,6 +156,8 @@ function semantic_ast(t::BasicSymbolic)
 
         if op ∈ [+, -, *, /, ∧, ==]
             return InfixOp(Leaf(Symbol(op)), pretty_args, id(t))
+        elseif op === :outer
+            return InfixOp(Leaf(:outer), pretty_args, id(t))
         elseif op === ≤
             return InfixOp(Leaf(:≤), pretty_args, id(t))
         elseif op === ≥
@@ -180,7 +182,7 @@ function semantic_ast(t::BasicSymbolic)
             return InfixOp(pretty_op, pretty_args, id(t))
         end
     end
-    
+
     return Leaf(id(t))
 end
 
@@ -255,7 +257,7 @@ function Base.show(io::IO, mime::MIME"text/plain", f::FuncEval)
 
     show(io, mime, f.func)
     print(io, "(")
-    for (i,arg) in enumerate(f.args)
+    for (i, arg) in enumerate(f.args)
         show(io, mime, arg)
         i < length(f.args) && print(io, ", ")
     end
@@ -280,7 +282,7 @@ function Base.show(io::IO, ::MIME"text/plain", op_node::InfixOp)
         ctx = IOContext(buf, io)
         show(ctx, child)
         child_str = String(take!(buf))
-        
+
         # Determine the child's operator if it is an algebraic structure
         child_op = nothing
         if child isa InfixOp
@@ -294,10 +296,10 @@ function Base.show(io::IO, ::MIME"text/plain", op_node::InfixOp)
         if child_op !== nothing && parent_op in (:*, :∧, Symbol("'")) && child_op in (:+, :-, :≤, :≥, :(==))
             return "($child_str)"
         end
-        
+
         return child_str
     end
-    
+
     # Join the children with natural mathematical padding (e.g., "x + y")
     print(io, join(rendered_children, " $parent_op "))
 end

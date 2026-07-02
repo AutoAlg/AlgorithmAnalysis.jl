@@ -46,22 +46,67 @@ end
     @alg begin
         α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
 
-        gs   = f'(xs)
-        g    = f'(x)
+        gs = f'(xs)
+        g = f'(x)
         init = (x - xs)'(x - xs)
-        x⁺   = x - α * g
-        f⁺   = f(x⁺)
-        c1   = smooth_convex(f, L)
-        c2   = gs'(gs) == zero(R)
-        c3   = init ≤ one(R)
-        con  = c1 ∧ c2 ∧ c3
-        obj  = f⁺ - f(xs)
-        opt  = maximize(obj, con)
+        x⁺ = x - α * g
+        f⁺ = f(x⁺)
+        c1 = smooth_convex(f, L)
+        c2 = gs'(gs) == zero(R)
+        c3 = init ≤ one(R)
+        con = c1 ∧ c2 ∧ c3
+        obj = f⁺ - f(xs)
+        opt = maximize(obj, con)
     end
 
-    topt = simplify(opt)
+    topt = pep_simplify(opt)
 
-    @test with_numerics(T = BigFloat, parameters = Dict(α => big"0.075", L => big"10.0")) do
+    @test with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
         evaluate(topt) ≈ 2.0
     end
 end
+
+@testitem "Control Theoretic" begin
+    @alg begin
+        α, L, ρ ∈ R, x, xn ∈ Rⁿ, f ∈ F(Rⁿ), P ∈ Sⁿ
+
+        c_f = smooth_convex(f, L)
+
+        u = f'(x) # g
+        c_xn = (xn == x - α * u) # X_{k+1} = Ax + Bu
+
+        V = x'(P * x)
+        Vn = xn'(P * xn)
+
+        c_p = P ≻ 0
+        c_vnv = (Vn - ρ * V) ≤ zero(R)
+
+        cons = c_f ∧ c_xn ∧ c_p ∧ c_vnv
+        opt = feasible(cons)
+    end
+
+    topt = lyap_simplify(opt)
+
+    function are_parameters_reasonable(in_α, in_L, in_ρ)::Bool
+        with_numerics(parameters=Dict(α => in_α, L => in_L, ρ => in_ρ)) do
+            evaluate(topt)
+        end
+    end
+
+    function do_binary_search(α, L)
+        ρ_min, ρ_max = 0.0, 1.0
+        while (ρ_max - ρ_min) > 1e-3
+            ρ_mid = (ρ_min + ρ_max) / 2
+            if are_parameters_reasonable(α, L, ρ_mid)
+                ρ_max = ρ_mid
+            else
+                ρ_min = ρ_mid
+            end
+        end
+    end
+
+    @test do_binary_search(big"0.075", big"10.0") ≈ 2.0
+end
+
+# TODO: you need to do the split rule propagation stuff as to not trample the gram
+# TODO: internally do s procedure

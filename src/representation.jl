@@ -3,10 +3,10 @@ export zero, one, ∧, maximize, minimize, objective, constraint
 export is_function, function_category, Convex
 export @var, @alg, @def
 export Gradient, LinearFunctional, DifferentiableFunctional, ∇, Gram
-export PositiveSemidefinite
+export PositiveSemidefinite, PositiveDefinite
 export has_id, id, set_id, ID
 export satisfied, unsatisfied
-export ⪯, ⪰, to_symbolic, tr
+export ⪯, ⪰, ≺, ≻, to_symbolic, tr
 export convex, smooth_convex
 
 leaf(sym::Symbol, T) = Sym{T}(sym)
@@ -58,6 +58,7 @@ abstract type Equality{T} <: Constraint end
 abstract type LessThanOrEqualTo{T} <: Constraint end
 abstract type Convex <: Constraint end
 abstract type PositiveSemidefinite <: Constraint end
+abstract type PositiveDefinite <: Constraint end
 
 abstract type Optimization end
 abstract type Minimization <: Optimization end
@@ -68,7 +69,7 @@ function constant end
 
 const ∇ = Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}},FnType{Tuple{Rⁿ},Rⁿ,Gradient},Nothing}}(:∇)
 
-const Gram = Sym{FnType{Tuple{Vararg{Rⁿ}}, MatrixSpace{R}, Nothing}}(:Gram)
+const Gram = Sym{FnType{Tuple{Vararg{Rⁿ}},MatrixSpace{R},Nothing}}(:Gram)
 
 zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
 zero(::Type{R}) = Term{R}(zero, [])
@@ -81,8 +82,8 @@ iszero(x::BasicSymbolic) = iscall(x) && isequal(operation(x), zero)
 isone(x::BasicSymbolic) = iscall(x) && isequal(operation(x), one)
 
 function Sⁿ(A::Matrix{BasicSymbolic{R}})
-    size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
-    n = size(A,1)
+    size(A, 1) ≠ size(A, 2) && error("Matrix $A is not square")
+    n = size(A, 1)
     # for i in 1:n
     #     for j in 1:i
     #         if !isequal(A[i,j], A[j,i])
@@ -100,16 +101,20 @@ end
 tr(A::BasicSymbolic{Sⁿ}) = Term{R}(tr, [A])
 tr(A::Matrix) = la.tr(A)
 
+function *(A::BasicSymbolic{Sⁿ}, v::BasicSymbolic{V}) where {V<:VectorSpace{R}}
+    return Term{V}(*, [A, v])
+end
+
 +(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(+, [x, y])
 *(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(*, [x, y])
 -(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(-, [x, y])
 /(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(/, [x, y])
 ⋅(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(⋅, [x, y])
 
-+(x::T...) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(+, x)
-*(x::T...) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(*, x)
--(x::T, y::T) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(-, [x, y])
-/(x::T, y::T) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(/, [x, y])
++(x::T...) where {F<:Field,T<:BasicSymbolic{F}} = Term{F}(+, x)
+*(x::T...) where {F<:Field,T<:BasicSymbolic{F}} = Term{F}(*, x)
+-(x::T, y::T) where {F<:Field,T<:BasicSymbolic{F}} = Term{F}(-, [x, y])
+/(x::T, y::T) where {F<:Field,T<:BasicSymbolic{F}} = Term{F}(/, [x, y])
 
 function F(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}
@@ -187,7 +192,17 @@ function ⪯(a::Number, A::BasicSymbolic{<:MatrixSpace})
     end
 end
 
-⪰(A::BasicSymbolic{<:MatrixSpace}, a::Number) = ⪯(a,A)
+⪰(A::BasicSymbolic{<:MatrixSpace}, a::Number) = ⪯(a, A)
+
+function ≺(a::Number, A::BasicSymbolic{<:MatrixSpace})
+    if iszero(a)
+        return Term{PositiveDefinite}(∈, [A]);
+    else
+        error("general positive definte constraint not implemented")
+    end
+end
+
+≻(A::BasicSymbolic{<:MatrixSpace}, a::Number) = ≺(a, A)
 
 function (f::BasicSymbolic{FnType{Tuple{V},F,Nothing}})(x::V) where {F,V<:VectorSpace{F}}
     return Term{F}(f, [x])
@@ -309,9 +324,10 @@ macro var(ex)
             error("Invalid expression for @var macro: $x")
         end
     end
-    
+
     return esc(quote
-        $(_var(ex)); nothing
+        $(_var(ex));
+        nothing
     end)
 end
 
@@ -336,9 +352,10 @@ macro def(ex)
             error("Invalid expression for @def macro: $x")
         end
     end
-    
+
     return esc(quote
-        $(_def(ex)); nothing
+        $(_def(ex));
+        nothing
     end)
 end
 
@@ -358,28 +375,29 @@ macro alg(ex)
         T = esc(_T)
         sym = QuoteNode(_var)
         return quote
-            $var = AlgorithmAnalysis.leaf($sym, $T); nothing
+            $var = AlgorithmAnalysis.leaf($sym, $T);
+            nothing
         end
     end
 
     function _recurse(x)
         if x isa LineNumberNode
             return x
-        
+
         elseif x isa Expr && x.head == :block
             return Expr(:block, map(_recurse, x.args)...)
-            
+
         elseif x isa Expr && x.head == :let
             bindings = x.args[1]
             body = x.args[2]
-            
+
             return Expr(:let, _recurse(bindings), _recurse(body))
 
-        # Handle the operator precedence: x, y ∈ R
+            # Handle the operator precedence: x, y ∈ R
         elseif x isa Expr && x.head == :tuple
             expanded_exprs = []
             current_set = nothing
-            
+
             for item in reverse(x.args)
                 if item isa Expr && item.head == :call && (item.args[1] == :(∈) || item.args[1] == :in)
                     var = item.args[2]
@@ -405,22 +423,24 @@ macro alg(ex)
                 return _make_var(lhs, set)
             end
 
-        # Match definitions: b = expr
+            # Match definitions: b = expr
         elseif x isa Expr && x.head == :(=)
             lhs = esc(x.args[1])
             rhs = esc(x.args[2])
             sym = QuoteNode(x.args[1])
             return quote
-                $lhs = set_id(to_symbolic($rhs), $sym); nothing
+                $lhs = set_id(to_symbolic($rhs), $sym);
+                nothing
             end
 
-        # Fallback
+            # Fallback
         else
             return esc(x)
         end
     end
 
     quote
-        $(_recurse(ex)); nothing
+        $(_recurse(ex));
+        nothing
     end
 end

@@ -1,4 +1,4 @@
-export simplify, find_nodes, find_evaluation_points, replace_node
+export algebra_simplify, pep_simplify, lyap_simplify, find_nodes, find_evaluation_points, replace_node
 
 using SymbolicUtils
 using SymbolicUtils.Rewriters: Chain, Postwalk, Fixpoint
@@ -6,9 +6,9 @@ using SymbolicUtils.Rewriters: Chain, Postwalk, Fixpoint
 is_vector(x) = symtype(x) <: VectorSpace
 is_scalar(x) = symtype(x) <: Field
 is_scalar_or_vector(x) = is_scalar(x) || is_vector(x)
-is_scalar_and_vector(a,x) = is_scalar(a) && is_vector(x) && isequal(symtype(a), field(x))
-are_scalars(a,b) = is_scalar(a) && isequal(symtype(a), symtype(b))
-are_vectors(u,v) = is_vector(u) && isequal(symtype(u), symtype(v))
+is_scalar_and_vector(a, x) = is_scalar(a) && is_vector(x) && isequal(symtype(a), field(x))
+are_scalars(a, b) = is_scalar(a) && isequal(symtype(a), symtype(b))
+are_vectors(u, v) = is_vector(u) && isequal(symtype(u), symtype(v))
 
 are_vectors(xs...) = all(map(is_vector, xs))
 are_scalars(xs...) = all(map(is_scalar, xs))
@@ -29,7 +29,7 @@ function convex_interpolation_is_applicable(opt::BasicSymbolic{Optimization})
 end
 
 function convex_interpolation(opt::BasicSymbolic{Optimization})
-    
+
     cvx_cons = find_nodes(c -> isequal(symtype(c), Convex), opt)
 
     if isempty(cvx_cons)
@@ -60,7 +60,7 @@ function convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicSymbolic
     interp = satisfied()
 
     for x ∈ points, y ∈ points
-        interp = interp ∧ ( f(x) ≥ f(y) + f'(y)'(x-y) )
+        interp = interp ∧ (f(x) ≥ f(y) + f'(y)'(x-y))
     end
 
     new_opt = replace_node(opt, convex(f), interp)
@@ -83,7 +83,7 @@ function smooth_convex_interpolation_is_applicable(opt::BasicSymbolic{Optimizati
 end
 
 function smooth_convex_interpolation(opt::BasicSymbolic{Optimization})
-    
+
     predicate = function (c)
         isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), smooth_convex)
     end
@@ -95,12 +95,13 @@ function smooth_convex_interpolation(opt::BasicSymbolic{Optimization})
 
     for con ∈ cons
         f, L = arguments(con)
-        opt = smooth_convex_interpolation(opt, f, L)
+        opt = smooth_convex_interpolation(opt, f, L) # why is this named the same
     end
 
     return opt
 end
 
+# TODO: all of this is smelly as hell, the fact there *isnt* an assert here isnt great
 function smooth_convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicSymbolic, L::BasicSymbolic)
 
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
@@ -119,7 +120,7 @@ function smooth_convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicS
     for x ∈ points, y ∈ points
         gx = f'(x)
         gy = f'(y)
-        interp = interp ∧ ( f(x) ≥ f(y) + gy'(x-y) + 1/2L * (gx-gy)'(gx-gy) )
+        interp = interp ∧ (f(x) ≥ f(y) + gy'(x-y) + 1/2L * (gx-gy)'(gx-gy))
     end
 
     new_opt = replace_node(opt, smooth_convex(f, L), interp)
@@ -156,7 +157,7 @@ function gram_transformation(opt::BasicSymbolic{Optimization})
         vecs = [v for v in all_vecs if isequal(symtype(v), vectorspace) && issym(v)]
         vecs = unique!(vecs)
 
-        G = Sⁿ([ x'(y) for x in vecs, y in vecs ])
+        G = Sⁿ([x'(y) for x in vecs, y in vecs])
 
         vec_str = join(tostring.(vecs), ", ")
 
@@ -165,17 +166,15 @@ function gram_transformation(opt::BasicSymbolic{Optimization})
         opt = add_constraint(opt, G ⪰ 0)
 
         rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2)
-        
+
         opt = rewrite(opt, [rule])
     end
 
     return opt
 end
 
-# ------------------------------------------------------
-# THEORY
-# ------------------------------------------------------
-const theory = [
+
+const algebra_theory = [
     # --------------------------------------------------
     # ADDITIVE IDENTITY
     # --------------------------------------------------
@@ -187,19 +186,16 @@ const theory = [
     # --------------------------------------------------
     @rule +(~x, -(~x)) => zero(symtype(~x)) where is_scalar_or_vector(~x)
     @rule +(-(~x), ~x) => zero(symtype(~x)) where is_scalar_or_vector(~x)
-    @rule -(-(~x))     => ~x                where is_scalar_or_vector(~x)
+    @rule -(-(~x)) => ~x where is_scalar_or_vector(~x)
 
     # --------------------------------------------------
     # SCALAR MULTIPLICATION IDENTITIES
     # --------------------------------------------------
     @rule ~x * ~y => ~y where (is_scalar_and_vector(~x, ~y) && isequal(~x, one(symtype(~x))))
     @rule ~x * ~y => ~y where (are_scalars(~x, ~y) && isequal(~x, one(symtype(~x))))
-    @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && isequal(~x, zero(symtype(~x))))
+    @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && isequal(~x, zero(symtype(~x))))];
 
-    # @rule ~~x ∧ ~y => ~x where isequal(symtype(~y), Satisfied)
-    # @rule ~x ∧ ~~y => ~y where isequal(symtype(~x), Satisfied)
-    # @rule ~~x ∧ ~y => unsatisfied() where isequal(symtype(~y), Unsatisfied)
-    # @rule ~x ∧ ~~y => unsatisfied() where isequal(symtype(~x), Unsatisfied)
+const pep_theory = [
 
     # --------------------------------------------------
     # CONVEX INTERPOLATION
@@ -212,6 +208,36 @@ const theory = [
     # GRAM TRANSFORMATION
     # --------------------------------------------------
     @rule ~opt => gram_transformation(~opt) where gram_transformation_is_applicable(~opt)
-]
+];
 
-simplify = Fixpoint(Postwalk(Chain(theory)))
+# gram_transformation_is_applicable iff !ssc & convex
+
+const lyap_theory = [
+    # TODO: verify that this is applicable, I think it might need to be changed a little
+    # @rule ~opt => smooth_convex_interpolation(~opt) where smooth_convex_interpolation_is_applicable(~opt)
+
+    # @rule ~opt => propagate_x_into_xn, litterally rewrite the xns into their coresponding x because of that relational constraint
+    # @rule ~opt => s_procedure, collect everything into a single large inequality
+
+    #
+    @rule ~opt => gram_transformation(~opt) where gram_transformation_is_applicable(~opt)];
+
+# TODO: maybe split into a seperated pass of [algebra, expand, algebra, gram]?
+
+algebra_simplify = Fixpoint(Postwalk(Chain(algebra_theory)))
+pep_simplify = Fixpoint(Postwalk(Chain(vcat(algebra_theory, pep_theory))))
+
+function lyap_simplify(opt::BasicSymbolic{Optimization})
+    interop1 = Fixpoint(Postwalk(Chain(algebra_theory)))
+    interop2 = Fixpoint(Postwalk(Chain(lyap_theory)))
+
+    interop2(interop1())
+end
+
+# TODO: just apply the simplifcations directly, get something that works and then try and pass it into the automatic solver 
+# TODO: check whether or not the algebra passes are actually doing anything
+# eliminate the algebra stuff?
+
+# ask
+# í remove algebra, clean up rest? ffe
+# other codebase cleanups

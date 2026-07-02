@@ -23,7 +23,7 @@ rewrite(tree, rules) = postwalk_with_operators(Chain(rules), tree)
 Recursively scans a SymbolicUtils AST or algebraic expression. Returns a flat vector 
 containing every sub-tree, terminal node, or variable that satisfies `predicate(node)`.
 """
-function find_nodes(predicate::Function, node, results::Set = Set())
+function find_nodes(predicate::Function, node, results::Set=Set())
     if predicate(node)
         push!(results, node)
     end
@@ -47,7 +47,7 @@ Walks the entire AST and swaps every instance that matches `old_node`
 with `new_node`.
 """
 function replace_node(tree, old_node, new_node)
-    swap_rule = @rule( ~x => new_node where isequal(~x, old_node) )
+    swap_rule = @rule(~x => new_node where isequal(~x, old_node))
     return rewrite(tree, [swap_rule])
 end
 
@@ -61,8 +61,8 @@ function flatten_evaluations(tree, f::BasicSymbolic)
         sym = Symbol(fstr, "(", arg, ")")
         Sym{T}(sym)
     end
-    
-    rule = @rule( ~x => newsym(~x) where iseval(~x) )
+
+    rule = @rule(~x => newsym(~x) where iseval(~x))
     return rewrite(tree, [rule])
 end
 
@@ -74,6 +74,7 @@ function flatten_evaluations(tree, fs::Vector{BasicSymbolic})
     return new_tree
 end
 
+# TODO: remove redundancies
 function flatten_inner_product(v1, v2)
 
     if symtype(v1) ≠ symtype(v2)
@@ -114,8 +115,11 @@ function flatten_inner_product(v1, v2)
                 return flatten_inner_product(args[1], v2) - flatten_inner_product(args[2], v2)
             end
         elseif isequal(op, *)
-            # Assuming first arg is scalar, second is vector
-            return args[1] * flatten_inner_product(args[2], v2)
+            if symtype(args[1]) <: MatrixSpace
+                return flatten_inner_product(args[2], Term{symtype(v1)}(*, [args[1], v2]))
+            else
+                return args[1] * flatten_inner_product(args[2], v2)
+            end
         end
     end
 
@@ -130,8 +134,12 @@ function flatten_inner_product(v1, v2)
                 return flatten_inner_product(v1, args[1]) - flatten_inner_product(v1, args[2])
             end
         elseif isequal(op, *)
-            # Assuming first arg is scalar, second is vector
-            return args[1] * flatten_inner_product(v1, args[2])
+            if symtype(args[1]) <: MatrixSpace
+                # tr(v1 P v2 rewriting)
+                return Term{R}(tr, [Term{symtype(args[1])}(*, [args[1], Term{symtype(args[1])}(:outer, [args[2], v1])])])
+            else
+                return args[1] * flatten_inner_product(v1, args[2])
+            end
         end
     end
 
@@ -178,4 +186,4 @@ end
 
 const VERBOSE = Base.ScopedValues.ScopedValue{Bool}(false)
 verbose() = VERBOSE[]
-with_verbose(code::Function, verbose::Bool = true) = Base.ScopedValues.with(code, VERBOSE => verbose)
+with_verbose(code::Function, verbose::Bool=true) = Base.ScopedValues.with(code, VERBOSE => verbose)
