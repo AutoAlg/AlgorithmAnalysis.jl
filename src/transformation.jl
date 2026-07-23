@@ -15,7 +15,11 @@ are_scalars(xs...) = all(map(is_scalar, xs))
 are_scalars_or_vectors(xs...) = all(map(is_scalar_or_vector, xs))
 
 function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
-    return Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
+    if is_feasibility(opt)
+        return Term{T}(operation(opt), [constraint(opt) ∧ con])
+    else
+        return Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
+    end
 end
 
 # ------------------------------------------------------
@@ -129,6 +133,64 @@ function smooth_convex_interpolation(opt::Node{Optimization}, f::Node, L::Node)
 end
 
 # ------------------------------------------------------
+# SECTOR BOUNDED GRADIENT
+# ------------------------------------------------------
+
+sector_bound_is_applicable(::Any) = false
+
+function sector_bound_is_applicable(opt::Node{Optimization})
+    predicate = function (c)
+        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), sector_bounded)
+    end
+    return !isempty(find_nodes(predicate, opt))
+end
+
+function sector_bounded_interpolation(opt::Node{Optimization})
+    
+    predicate = function (c)
+        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), sector_bounded)
+    end
+    cons = find_nodes(predicate, opt)
+
+    if isempty(cons)
+        error("Optimization problem has no sector bound constraints")
+    end
+
+    for con ∈ cons
+        f, μ, L = arguments(con)
+        opt = sector_bounded_interpolation(opt, f, μ, L)
+    end
+
+    return opt
+end
+
+function sector_bounded_interpolation(opt::Node{Optimization}, f::Node, μ::Node, L::Node)
+
+    points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
+
+    pts = join(tostring.(points), ", ")
+
+    @info "Applying [$μ,$L] sector bounded interpolation to function $f with evaluation points $pts"
+
+    if isempty(points)
+        @info "No points found!"
+        return opt
+    end
+
+    interp = satisfied()
+
+    for x ∈ points
+        g = f'(x)
+        interp = interp ∧ ( (g - μ*x)'(g - L*x) ≤ 0 )
+    end
+
+    new_opt = replace_node(opt, sector_bounded(f, μ, L), interp)
+    new_opt = flatten_evaluations(new_opt, [f, f'])
+
+    return new_opt
+end
+
+# ------------------------------------------------------
 # GRAM TRANSFORMATION
 # ------------------------------------------------------
 
@@ -140,6 +202,8 @@ function gram_transformation_is_applicable(opt::Node{Optimization})
     if convex_interpolation_is_applicable(opt)
         return false
     elseif smooth_convex_interpolation_is_applicable(opt)
+        return false
+    elseif sector_bound_is_applicable(opt)
         return false
     elseif isempty(find_nodes(x -> symtype(x) <: VectorSpace, opt))
         return false
@@ -218,11 +282,11 @@ const theory = [
     # @rule ~x ∧ ~~y => unsatisfied() where isequal(symtype(~x), Unsatisfied)
 
     # --------------------------------------------------
-    # CONVEX INTERPOLATION
+    # INTERPOLATION
     # --------------------------------------------------
     @rule ~opt => convex_interpolation(~opt) where convex_interpolation_is_applicable(~opt)
     @rule ~opt => smooth_convex_interpolation(~opt) where smooth_convex_interpolation_is_applicable(~opt)
-
+    @rule ~opt => sector_bounded_interpolation(~opt) where sector_bound_is_applicable(~opt)
 
     # --------------------------------------------------
     # LYAPUNOV ANALYSIS

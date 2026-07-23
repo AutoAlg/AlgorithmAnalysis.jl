@@ -124,6 +124,11 @@ function semantic_ast(t::Node{T}) where {T<:Prop}
         f = semantic_ast(args[1])
         L = semantic_ast(args[2])
         return PropSet(f, Leaf(Symbol("SmoothConvex($L)")), id(t))
+    elseif isequal(op, sector_bounded)
+        f = semantic_ast(args[1])
+        μ = semantic_ast(args[2])
+        L = semantic_ast(args[3])
+        return PropSet(f, Leaf(Symbol("SectorBounded($μ,$L)")), id(t))
     else
         f = semantic_ast(args[1])
         return PropSet(f, Leaf(Symbol(T)), id(t))

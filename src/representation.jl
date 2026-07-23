@@ -7,9 +7,10 @@ export PositiveSemidefinite
 export has_id, id, set_id, ID
 export satisfied, unsatisfied
 export ⪯, ⪰, to_symbolic, tr
-export convex, smooth_convex
+export convex, smooth_convex, sector_bounded
 export leaf, branch, Transition
 export LyapunovCertificate, certify, rate
+export Optimization, Minimization, Maximization, Feasibility
 
 leaf(T, sym::Symbol) = Sym{T}(sym)
 branch(T, sym::Symbol, op, args) = (t=Term{T}(op, args); set_id(t, sym); t)
@@ -27,6 +28,7 @@ set_id(::Any, ::Symbol) = nothing
 abstract type Field end
 abstract type VectorSpace{F} end
 abstract type MatrixSpace{F} end
+abstract type SymmetricMatrix{F} <: MatrixSpace{F} end
 abstract type R <: Field end
 abstract type Minimization <: R end
 abstract type Maximization <: R end
@@ -178,6 +180,10 @@ end
 
 function smooth_convex(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}, L::Node{F}) where {F,V<:VectorSpace{F}}
     return Term{Prop}(smooth_convex, [f, L])
+end
+
+function sector_bounded(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}, μ::Node{F}, L::Node{F}) where {F,V<:VectorSpace{F}}
+    return Term{Prop}(sector_bounded, [f, μ, L])
 end
 
 # function ∈(G::Node{<:MatrixSpace}, ::Type{PositiveSemidefinite})

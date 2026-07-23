@@ -39,29 +39,28 @@ import SymbolicUtils: Term, operation, arguments, symtype, iscall, substitute
 #     end
 # end
 
-begin
-    @alg begin
-        α, L, ρ ∈ R
-        x, xs ∈ Rⁿ
-        f ∈ F(Rⁿ)
-        gs = f'(xs)
-        g  = f'(x)
-        t1 = x → x - α * g
-        t2 = xs → xs
-        c1 = smooth_convex(f, L)
-        c2 = gs^2 == zero(R)
-        con = t1 ∧ t2 ∧ c1 ∧ c2
-        perf = (x - xs)^2
-    end
-    
-    prob = certify(con, perf, ρ)
-    # tprob = simplify(prob)
-
-    # # Evaluate feasibility of the Lyapunov certificate.
-    # with_numerics(parameters = Dict(α => 0.1, L => 1.0)) do
-    #     evaluate(tprob)
-    # end
+@alg begin
+    α, L, ρ ∈ R
+    x, xs ∈ Rⁿ
+    f ∈ F(Rⁿ)
+    gs = f'(xs)
+    g  = f'(x)
+    t1 = x → x - α * g
+    t2 = xs → xs
+    c1 = smooth_convex(f, L)
+    c2 = gs^2 == zero(R)
+    con = t1 ∧ t2 ∧ c1 ∧ c2
+    perf = (x - xs)^2
 end
+
+prob = certify(con, perf, ρ)
+# tprob = simplify(prob)
+
+# # Evaluate feasibility of the Lyapunov certificate.
+# with_numerics(parameters = Dict(α => 0.1, L => 1.0)) do
+#     evaluate(tprob)
+# end
+
 
 tprob = AlgorithmAnalysis.lyapunov_transformation(prob);
 
@@ -77,3 +76,23 @@ propagate_transitions(trans, (x-xs)^2)
 
 
 tprob = propagate_transitions(t1, perf)
+
+
+@alg begin
+    α, μ, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
+
+    gs   = f'(xs)
+    g    = f'(x)
+    x⁺   = x - α * g
+    c1   = sector_bounded(f, μ, L)
+    c2   = gs^2 == zero(R)
+    con  = c1 ∧ c2
+    opt  = feasible(con)
+end
+
+topt = simplify(opt)
+
+with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
+    evaluate(topt)
+end
+
