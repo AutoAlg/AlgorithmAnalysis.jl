@@ -238,6 +238,12 @@ and
 ```
 In other words, if there exist vector $v$ and multipliers $\lambda\in K^*$ and $\mu\in K^*$ that satisfy the above equations, then the performance measure converges at rate $\rho$.
 
+In the current implementation, `certify(trans, oracle_con, perf, rate)` is treated as a fixed-rate feasibility problem. After interpolation and Gram transformation, the tool introduces scalar certificate variables and nonnegative multipliers for inequality constraints, then enforces affine coefficient-matching constraints corresponding to
+```math
+  V(x) \ge P(x), \qquad V(x^+) \le \rho V(x).
+```
+This gives an automated certificate search in the transformed scalar space.
+
 
 ## Comparison of Approaches
 

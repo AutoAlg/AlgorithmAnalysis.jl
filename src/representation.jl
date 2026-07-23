@@ -1,4 +1,4 @@
-export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace, field
+export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace, field, Prop
 export zero, one, ∧, maximize, minimize, objective, constraint
 export is_function, function_category, Convex
 export @var, @alg, @def
@@ -8,42 +8,31 @@ export has_id, id, set_id, ID
 export satisfied, unsatisfied
 export ⪯, ⪰, to_symbolic, tr
 export convex, smooth_convex
+export leaf, branch, Transition
+export LyapunovCertificate, certify, rate
 
-leaf(sym::Symbol, T) = Sym{T}(sym)
+leaf(T, sym::Symbol) = Sym{T}(sym)
+branch(T, sym::Symbol, op, args) = (t=Term{T}(op, args); set_id(t, sym); t)
 
-to_symbolic(x::Any) = convert(BasicSymbolic, x)
+to_symbolic(x::Any) = convert(Node, x)
 
 abstract type ID end
 
 has_id(::Any) = false
-has_id(t::BasicSymbolic) = hasmetadata(t, ID) || hasproperty(t, :name)
-id(t::BasicSymbolic) = hasmetadata(t, ID) ? getmetadata(t, ID) : (hasproperty(t, :name) ? t.name : nothing)
-set_id(node::BasicSymbolic, sym::Symbol) = setmetadata(node, ID, sym)
+has_id(t::Node) = hasmetadata(t, ID) || hasproperty(t, :name)
+id(t::Node) = hasmetadata(t, ID) ? getmetadata(t, ID) : (hasproperty(t, :name) ? t.name : nothing)
+set_id(t::Node, sym::Symbol) = setmetadata(t, ID, sym)
 set_id(::Any, ::Symbol) = nothing
 
 abstract type Field end
 abstract type VectorSpace{F} end
 abstract type MatrixSpace{F} end
 abstract type R <: Field end
+abstract type Minimization <: R end
+abstract type Maximization <: R end
 
 abstract type Rⁿ <: VectorSpace{R} end
 abstract type Sⁿ <: MatrixSpace{R} end
-
-Base.convert(::Type{<:BasicSymbolic}, val::Number) = R(val)
-Base.convert(::Type{BasicSymbolic{R}}, val::Number) = R(val)
-Base.promote_rule(::Type{BasicSymbolic{R}}, ::Type{<:Number}) = BasicSymbolic{R}
-
-for op in (:+, :-, :*, :/, :^, :≤, :≥, :(==))
-    @eval begin
-        Base.$op(x::Number, y::BasicSymbolic{R}) = $op(promote(x, y)...)
-        Base.$op(x::BasicSymbolic{R}, y::Number) = $op(promote(x, y)...)
-    end
-end
-
-field(::Type{<:VectorSpace{F}}) where F = F
-field(::BasicSymbolic{V}) where {F,V<:VectorSpace{F}} = F
-
-function satisfied end
 
 abstract type Category end
 abstract type LinearFunctional <: Category end
@@ -51,18 +40,32 @@ abstract type DifferentiableFunctional <: Category end
 abstract type Gradient <: Category end
 abstract type GramMatrix <: Category end
 
-abstract type Constraint end
-abstract type Satisfied <: Constraint end
-abstract type Unsatisfied <: Constraint end
-abstract type Equality{T} <: Constraint end
-abstract type LessThanOrEqualTo{T} <: Constraint end
-abstract type Convex <: Constraint end
-abstract type PositiveSemidefinite <: Constraint end
+abstract type Prop end
+abstract type Satisfied <: Prop end
+abstract type Unsatisfied <: Prop end
+abstract type Equality{T} <: Prop end
+abstract type LessThanOrEqualTo{T} <: Prop end
+abstract type Convex <: Prop end
+abstract type PositiveSemidefinite <: Prop end
+abstract type Transition{T} <: Prop end
+abstract type Feasibility <: Prop end
+abstract type LyapunovCertificate <: Feasibility end
 
-abstract type Optimization end
-abstract type Minimization <: Optimization end
-abstract type Maximization <: Optimization end
-abstract type Feasibility <: Optimization end
+const Optimization = Union{<:Minimization, <:Maximization, <:Feasibility}
+
+Base.convert(::Type{<:Node}, val::Number) = R(val)
+Base.convert(::Type{Node{R}}, val::Number) = R(val)
+Base.promote_rule(::Type{Node{R}}, ::Type{<:Number}) = Node{R}
+
+for op in (:+, :-, :*, :/, :^, :≤, :≥, :(==))
+    @eval begin
+        Base.$op(x::Number, y::Node{R}) = $op(promote(x, y)...)
+        Base.$op(x::Node{R}, y::Number) = $op(promote(x, y)...)
+    end
+end
+
+field(::Type{<:VectorSpace{F}}) where F = F
+field(::Node{V}) where {F,V<:VectorSpace{F}} = F
 
 function constant end
 
@@ -77,10 +80,10 @@ R(val::Real) = Term{R}(constant, [val])
 satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
 
-iszero(x::BasicSymbolic) = iscall(x) && isequal(operation(x), zero)
-isone(x::BasicSymbolic) = iscall(x) && isequal(operation(x), one)
+iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
+isone(x::Node) = iscall(x) && isequal(operation(x), one)
 
-function Sⁿ(A::Matrix{BasicSymbolic{R}})
+function Sⁿ(A::Matrix{Node{R}})
     size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
     n = size(A,1)
     # for i in 1:n
@@ -93,60 +96,60 @@ function Sⁿ(A::Matrix{BasicSymbolic{R}})
     return Term{Sⁿ}(Matrix, vec(A))
 end
 
-function Base.convert(::Type{<:BasicSymbolic}, A::Matrix)
-    Sⁿ(Base.convert.(BasicSymbolic, A))
+function Base.convert(::Type{<:Node}, A::Matrix)
+    Sⁿ(Base.convert.(Node, A))
 end
 
-tr(A::BasicSymbolic{Sⁿ}) = Term{R}(tr, [A])
+tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
 tr(A::Matrix) = la.tr(A)
 
-+(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(+, [x, y])
-*(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(*, [x, y])
--(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(-, [x, y])
-/(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(/, [x, y])
-⋅(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(⋅, [x, y])
++(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(+, [x, y])
+*(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(*, [x, y])
+-(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(-, [x, y])
+/(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(/, [x, y])
+⋅(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(⋅, [x, y])
 
-+(x::T...) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(+, x)
-*(x::T...) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(*, x)
--(x::T, y::T) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(-, [x, y])
-/(x::T, y::T) where {F<:Field, T<:BasicSymbolic{F}} = Term{F}(/, [x, y])
++(x::T...) where {F<:Field, T<:Node{F}} = Term{F}(+, x)
+*(x::T...) where {F<:Field, T<:Node{F}} = Term{F}(*, x)
+-(x::T, y::T) where {F<:Field, T<:Node{F}} = Term{F}(-, [x, y])
+/(x::T, y::T) where {F<:Field, T<:Node{F}} = Term{F}(/, [x, y])
 
 function F(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}
 end
 
-function +(u::BasicSymbolic{V}, v::BasicSymbolic{V}) where {V<:VectorSpace}
+function +(u::Node{V}, v::Node{V}) where {V<:VectorSpace}
     return Term{V}(+, [u, v])
 end
 
-+(u::BasicSymbolic{<:VectorSpace}) = u
++(u::Node{<:VectorSpace}) = u
 
-function -(u::BasicSymbolic{V}, v::BasicSymbolic{V}) where {V<:VectorSpace}
+function -(u::Node{V}, v::Node{V}) where {V<:VectorSpace}
     return Term{V}(-, [u, v])
 end
 
-function -(v::BasicSymbolic{V}) where {V<:VectorSpace}
+function -(v::Node{V}) where {V<:VectorSpace}
     return Term{V}(-, [v])
 end
 
-function *(scalar::BasicSymbolic{F}, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
+function *(scalar::Node{F}, v::Node{V}) where {F,V<:VectorSpace{F}}
     return Term{V}(*, [scalar, v])
 end
 
-# function *(scalar::F, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
+# function *(scalar::F, v::Node{V}) where {F,V<:VectorSpace{F}}
 #     return Term{F}(*, [scalar, v])
 # end
 
-function ⋅(u::BasicSymbolic{V}, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
+function ⋅(u::Node{V}, v::Node{V}) where {F,V<:VectorSpace{F}}
     return Term{F}(⋅, [u, v])
 end
 
-function adjoint(x::BasicSymbolic{V}) where {F,V<:VectorSpace{F}}
+function adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
     iszero(x) && return Term{FnType{Tuple{V},F,LinearFunctional}}(zero, [])
     return Term{FnType{Tuple{V},F,LinearFunctional}}(adjoint, [x])
 end
 
-function adjoint(f::BasicSymbolic{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
+function adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
     # If it's already an adjoint term tree, peel it off to prevent double nesting
     if iscall(f) && isequal(operation(f), adjoint)
         return arguments(f)[1]
@@ -155,7 +158,7 @@ function adjoint(f::BasicSymbolic{FnType{Tuple{V},F,LinearFunctional}}) where {F
     # return Sym{V}( Symbol(f, "'") )
 end
 
-function adjoint(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
+function adjoint(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
     #   return Term{FnType{Tuple{V}, V, Gradient}}(∇, [f])
     return ∇(f)
 end
@@ -163,25 +166,25 @@ end
 is_gradient(x) = is_function(x) && isequal(operator(x), ∇)
 
 
-Base.literal_pow(::typeof(^), x::BasicSymbolic{<:VectorSpace}, ::Val{2}) = x'(x)
+Base.literal_pow(::typeof(^), x::Node{<:VectorSpace}, ::Val{2}) = x'(x)
 
-# function ∈(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}, ::Type{Convex}) where {F,V<:VectorSpace{F}}
+# function ∈(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}, ::Type{Convex}) where {F,V<:VectorSpace{F}}
 #     return Term{Convex}(∈, [f])
 # end
 
-function convex(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
+function convex(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
     return Term{Convex}(∈, [f])
 end
 
-function smooth_convex(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}, L::BasicSymbolic{F}) where {F,V<:VectorSpace{F}}
-    return Term{Constraint}(smooth_convex, [f, L])
+function smooth_convex(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}, L::Node{F}) where {F,V<:VectorSpace{F}}
+    return Term{Prop}(smooth_convex, [f, L])
 end
 
-# function ∈(G::BasicSymbolic{<:MatrixSpace}, ::Type{PositiveSemidefinite})
+# function ∈(G::Node{<:MatrixSpace}, ::Type{PositiveSemidefinite})
 #     return Term{PositiveSemidefinite}(∈, [G])
 # end
 
-function ⪯(a::Number, A::BasicSymbolic{<:MatrixSpace})
+function ⪯(a::Number, A::Node{<:MatrixSpace})
     if iszero(a)
         return Term{PositiveSemidefinite}(∈, [A])
     else
@@ -189,25 +192,25 @@ function ⪯(a::Number, A::BasicSymbolic{<:MatrixSpace})
     end
 end
 
-⪰(A::BasicSymbolic{<:MatrixSpace}, a::Number) = ⪯(a,A)
+⪰(A::Node{<:MatrixSpace}, a::Number) = ⪯(a,A)
 
-function (f::BasicSymbolic{FnType{Tuple{V},F,Nothing}})(x::V) where {F,V<:VectorSpace{F}}
+function (f::Node{FnType{Tuple{V},F,Nothing}})(x::V) where {F,V<:VectorSpace{F}}
     return Term{F}(f, [x])
 end
 
-function ==(x::BasicSymbolic{T}, y::BasicSymbolic{T}) where {T}
+function ==(x::Node{T}, y::Node{T}) where {T}
     return Term{Equality{T}}(==, [x, y])
 end
 
-function ≤(x::BasicSymbolic{T}, y::BasicSymbolic{T}) where {T}
+function ≤(x::Node{T}, y::Node{T}) where {T}
     return Term{LessThanOrEqualTo{T}}(≤, [x, y])
 end
 
-function ≥(x::BasicSymbolic{T}, y::BasicSymbolic{T}) where {T}
+function ≥(x::Node{T}, y::Node{T}) where {T}
     return Term{LessThanOrEqualTo{T}}(≤, [y, x])
 end
 
-function ∧(args::BasicSymbolic{<:Constraint}...)
+function ∧(args::Node{<:Prop}...)
     flat_args = Any[]
     for arg in args
         if iscall(arg) && operation(arg) === ∧
@@ -218,44 +221,67 @@ function ∧(args::BasicSymbolic{<:Constraint}...)
             push!(flat_args, arg)
         end
     end
-    return Term{Constraint}(∧, flat_args)
+    return Term{Prop}(∧, flat_args)
 end
 
-∧(x::BasicSymbolic{<:Constraint}, y::Bool) = y ? x : unsatisfied()
-∧(x::Bool, y::BasicSymbolic{<:Constraint}) = x ? y : unsatisfied()
+∧(x::Node{<:Prop}, y::Bool) = y ? x : unsatisfied()
+∧(x::Bool, y::Node{<:Prop}) = x ? y : unsatisfied()
 
-# function Gram(vecs::BasicSymbolic{T}...) where {F,T<:VectorSpace{F}}
+# function Gram(vecs::Node{T}...) where {F,T<:VectorSpace{F}}
 #     return Term{MatrixSpace{F}}(Gram, vecs)
 # end
 
-function maximize(obj::BasicSymbolic, con::BasicSymbolic{<:Constraint})
-    return Term{Optimization}(maximize, [obj, con])
+function maximize(obj::Node, con::Node{<:Prop})
+    return Term{Maximization}(maximize, [obj, con])
 end
 
-function minimize(obj::BasicSymbolic, con::BasicSymbolic{<:Constraint})
-    return Term{Optimization}(minimize, [obj, con])
+function minimize(obj::Node, con::Node{<:Prop})
+    return Term{Minimization}(minimize, [obj, con])
 end
 
-function feasible(con::BasicSymbolic{<:Constraint})
-    return Term{Optimization}(feasible, [con])
+function feasible(con::Node{<:Prop})
+    return Term{Feasibility}(feasible, [con])
 end
 
-sense(opt::BasicSymbolic{Optimization}) = Symbol(operation(opt))
-is_minimization(opt::BasicSymbolic{Optimization}) = isequal(sense(opt), :minimize)
-is_maximization(opt::BasicSymbolic{Optimization}) = isequal(sense(opt), :maximize)
-is_feasibility(opt::BasicSymbolic{Optimization}) = isequal(sense(opt), :feasible)
+sense(opt::Node{<:Optimization}) = Symbol(operation(opt))
+is_minimization(opt::Node{<:Optimization}) = isequal(sense(opt), :minimize)
+is_maximization(opt::Node{<:Optimization}) = isequal(sense(opt), :maximize)
+is_feasibility(opt::Node{<:Optimization}) = isequal(sense(opt), :feasible)
 
-function objective(opt::BasicSymbolic{Optimization})
-    is_feasibility(opt) ? nothing : arguments(opt)[1]
+objective(opt::Node{Minimization}) = arguments(opt)[1]
+objective(opt::Node{Maximization}) = arguments(opt)[1]
+
+constraint(opt::Node{Minimization}) = arguments(opt)[2]
+constraint(opt::Node{Maximization}) = arguments(opt)[2]
+constraint(opt::Node{Feasibility}) = arguments(opt)[1]
+
+"""
+    certify(trans, oracle_con, performance, rate)
+
+Construct a Lyapunov certification problem. Use `simplify` to transform it into a
+fixed-rate feasibility problem that searches for a parameterized Lyapunov certificate.
+The argument `rate` is required and should satisfy `0 < rate < 1` for geometric decay.
+
+The simplified problem searches for scalar certificate variables (Lyapunov template
+coefficients and nonnegative multipliers) that prove both:
+1. `V(x) ≥ performance(x)`
+2. `V(x⁺) ≤ rate * V(x)`
+
+subject to the transformed interpolation and Gram constraints.
+"""
+function certify(con::Node{<:Prop}, perf::Node{R}, rate::Node{R})
+    return Term{LyapunovCertificate}(certify, Any[con, perf, rate])
 end
 
-function constraint(opt::BasicSymbolic{Optimization})
-    is_feasibility(opt) ? arguments(opt)[1] : arguments(opt)[2]
+function rate(con::Node{<:Prop}, perf::Node{R})
+    return Term{LyapunovAnalysis}(rate, Any[con, perf])
 end
 
-is_function(t) = t isa BasicSymbolic && typeof(t).parameters[1] <: FnType
+constraint(t::Node{LyapunovCertificate}) = arguments(t)[1]
 
-function function_category(t::BasicSymbolic)
+is_function(t) = t isa Node && typeof(t).parameters[1] <: FnType
+
+function function_category(t::Node)
     fn_type = typeof(t).parameters[1]
     if !is_function(t)
         error("$t is not a function")
@@ -263,7 +289,7 @@ function function_category(t::BasicSymbolic)
     return fn_type.parameters[3]
 end
 
-function getindex(A::BasicSymbolic{MatrixSpace{F}}, i::Int, j::Int) where F
+function getindex(A::Node{MatrixSpace{F}}, i::Int, j::Int) where F
     if isequal(operation(A), Gram)
         args = arguments(A)
         return args[i]'(args[j])
@@ -283,8 +309,9 @@ end
 
 export mat, size
 
-mat(A::BasicSymbolic{<:MatrixSpace}) = mat(arguments(A))
-size(A::BasicSymbolic{<:MatrixSpace}) = size(mat(A), 1)
+mat(A::Node{<:MatrixSpace}) = mat(arguments(A))
+size(A::Node{<:MatrixSpace}) = size(mat(A), 1)
+
 
 # ------------------------------------------------------
 # MACROS
@@ -344,224 +371,99 @@ macro def(ex)
     end)
 end
 
-# ======================================================
-# LYAPUNOV ANALYSIS
-# ======================================================
-
-export Transition, certify, @transition
-export lyap_transition, lyap_oracle, lyap_performance, lyap_rate
-
-abstract type LyapunovAnalysis end
-
-"""
-    Transition
-
-Encodes one-step algorithm state-update rules. Each pair `state_var => next_expr`
-specifies how a state variable evolves in one iteration.
-
-Construct with the [`@transition`](@ref) macro or directly:
-
-```julia
-trans = Transition([x => x - α*g, xs => xs])
-```
-"""
-struct Transition
-    pairs::Vector
-end
-Transition(ps::Pair...) = Transition(Any[ps...])
-
-lyap_transition(prob::BasicSymbolic{LyapunovAnalysis})  = arguments(prob)[1]
-lyap_oracle(prob::BasicSymbolic{LyapunovAnalysis})      = arguments(prob)[2]
-lyap_performance(prob::BasicSymbolic{LyapunovAnalysis}) = arguments(prob)[3]
-lyap_rate(prob::BasicSymbolic{LyapunovAnalysis})        = arguments(prob)[4]
-
-"""
-    certify(trans, oracle_con, performance, rate)
-
-Construct a Lyapunov certification problem. Use `simplify` to transform it into a
-1-step performance SDP. If the optimal value of that SDP is ≤ `rate`, there exists
-a Lyapunov function certifying geometric convergence at the given rate.
-"""
-function certify(trans::Transition, oracle_con::BasicSymbolic{<:Constraint},
-                 perf::BasicSymbolic{R}, rate)
-    return Term{LyapunovAnalysis}(certify, Any[trans, oracle_con, perf, rate])
-end
-
-"""
-    @transition begin
-        x  => x - α*g
-        xs => xs
-    end
-
-Build a [`Transition`](@ref) from per-component update rules. Each `var => expr` pair
-specifies the one-step update for a state variable. Variables must already be declared
-(e.g. via `@alg`).
-"""
-macro transition(ex)
-    raw_pairs = if ex isa Expr && ex.head == :block
-        filter(a -> !(a isa LineNumberNode), ex.args)
-    elseif ex isa Expr && ex.head == :call && length(ex.args) == 3 && ex.args[1] == :(=>)
-        [ex]
-    else
-        error("@transition expects a `begin...end` block of `var => expr` rules")
-    end
-    pair_exprs = map(raw_pairs) do p
-        (p isa Expr && p.head == :call && length(p.args) == 3 && p.args[1] == :(=>)) ||
-            error("@transition: expected `var => expr`, got: $p")
-        :($(esc(p.args[2])) => $(esc(p.args[3])))
-    end
-    return :(Transition(Any[$(pair_exprs...)]))
-end
-
 """
     @alg let
         x, y in R
         z = 42
-        x → x - α*g     # transitions collected into __transition__
     end
 
 Runs the algorithm inside a local scope using a `let` block. 
 Can also be used normally as `@alg begin ... end` for global/current scope.
-
-Transitions (lines with `var → expr`) are collected into a `__transition__` Transition object.
-If no transitions are present, `__transition__` is not created.
-
-# Examples
-
-```julia
-@alg begin
-    α, L ∈ R
-    x, xs ∈ Rⁿ
-    f ∈ F(Rⁿ)
-    x → x - α * f'(x)
-    xs → xs
-end
-trans = __transition__  # Access the implicit transition
-```
 """
 macro alg(ex)
 
     function _make_var(_var, _T)
+        var = esc(_var)
+        T = esc(_T)
         sym = QuoteNode(_var)
-        # Build the assignment expression directly as AST, not as a quote
-        # This returns: _var = AlgorithmAnalysis.leaf(sym, _T); nothing
-        assign_expr = Expr(:(=), _var, Expr(:call, :(AlgorithmAnalysis.leaf), sym, _T))
-        return Expr(:block, assign_expr, :(nothing))
+        return quote
+            $var = AlgorithmAnalysis.leaf($T, $sym); nothing
+        end
     end
 
-    # _recurse now threads through a list of accumulated transitions
-    function _recurse(x, transitions)
+    function _recurse(x)
         if x isa LineNumberNode
-            return (x, transitions)
+            return x
         
         elseif x isa Expr && x.head == :block
-            result_exprs = []
-            result_transitions = transitions
-            for item in x.args
-                item_result, item_transitions = _recurse(item, result_transitions)
-                push!(result_exprs, item_result)
-                result_transitions = item_transitions
-            end
-            return (Expr(:block, result_exprs...), result_transitions)
+            return Expr(:block, map(_recurse, x.args)...)
             
         elseif x isa Expr && x.head == :let
             bindings = x.args[1]
             body = x.args[2]
-            body_result, body_transitions = _recurse(body, transitions)
-            bindings_result, _ = _recurse(bindings, [])
             
-            return (Expr(:let, bindings_result, body_result), body_transitions)
+            return Expr(:let, _recurse(bindings), _recurse(body))
 
-        # Transition rule: var → expr (detects the Unicode arrow operator)
-        elseif x isa Expr && x.head == :call && length(x.args) == 3 && 
-               (x.args[1] == :(→) || x.args[1] == Symbol("→"))
-            var = x.args[2]
-            expr = x.args[3]
-            # Collect as (var_expr, expr_expr) pair to be built into Pair later
-            new_transition = (var, expr)
-            return (:(nothing), vcat(transitions, Any[new_transition]))
-
-        # Handle the operator precedence: x, y ∈ R (tuple form)
+        # Handle the operator precedence: x, y ∈ R
         elseif x isa Expr && x.head == :tuple
             expanded_exprs = []
             current_set = nothing
             
             for item in reverse(x.args)
-                if item isa Expr && item.head == :call && 
-                   (item.args[1] == :(∈) || item.args[1] == :in)
+                if item isa Expr && item.head == :call && (item.args[1] == :(∈) || item.args[1] == :in)
                     var = item.args[2]
                     current_set = item.args[3]
                     push!(expanded_exprs, _make_var(var, current_set))
-                elseif (item isa Symbol || (item isa Expr && item.head == :escape)) && 
-                       current_set !== nothing
+                elseif (item isa Symbol || (item isa Expr && item.head == :escape)) && current_set !== nothing
                     push!(expanded_exprs, _make_var(item, current_set))
                 else
                     current_set = nothing
-                    item_result, transitions = _recurse(item, transitions)
-                    push!(expanded_exprs, item_result)
+                    push!(expanded_exprs, _recurse(item))
                 end
             end
-            return (Expr(:block, reverse(expanded_exprs)...), transitions)
+            return Expr(:block, reverse(expanded_exprs)...)
         end
 
         # Standard explicit single variable declaration: x ∈ R
-        if x isa Expr && x.head == :call && 
-           (x.args[1] == :(∈) || x.args[1] == :in)
+        if x isa Expr && x.head == :call && (x.args[1] == :(∈) || x.args[1] == :in)
             lhs = x.args[2]
             set = x.args[3]
             if lhs isa Expr && lhs.head == :tuple
-                return (Expr(:block, [_make_var(v, set) for v in lhs.args]...), 
-                        transitions)
+                return Expr(:block, [_make_var(v, set) for v in lhs.args]...)
             else
-                return (_make_var(lhs, set), transitions)
+                return _make_var(lhs, set)
             end
 
         # Match definitions: b = expr
         elseif x isa Expr && x.head == :(=)
+            lhs = esc(x.args[1])
+            rhs = esc(x.args[2])
             sym = QuoteNode(x.args[1])
-            # Build the assignment as plain AST: x.args[1] = set_id(to_symbolic(x.args[2]), sym)
-            rhs_expr = Expr(:call, :(AlgorithmAnalysis.set_id), 
-                           Expr(:call, :(AlgorithmAnalysis.to_symbolic), x.args[2]), 
-                           sym)
-            assign_expr = Expr(:(=), x.args[1], rhs_expr)
-            return (Expr(:block, assign_expr, :(nothing)), transitions)
 
-        # Fallback for other expressions
+            raw_rhs = x.args[2]
+
+            if raw_rhs isa Expr && raw_rhs.head == :call &&
+                length(raw_rhs.args) == 3 && raw_rhs.args[1] == :(→)
+
+                src = esc(raw_rhs.args[2])
+                dst = esc(raw_rhs.args[3])
+                
+                return quote
+                    $lhs = set_id(Term{Transition}(transition, [$src, $dst]), $sym); nothing
+                end
+            end
+
+            return quote
+                $lhs = set_id(to_symbolic($rhs), $sym); nothing
+            end
+
+        # Fallback
         else
-            return (x, transitions)
+            return esc(x)
         end
     end
 
-    code_expr, transitions = _recurse(ex, Any[])
-    
-    # If no transitions, just execute the code
-    if isempty(transitions)
-        # code_expr is already a properly formed AST, escape it for the calling scope
-        return esc(code_expr)
+    quote
+        $(_recurse(ex)); nothing
     end
-    
-    # Build the pairs array
-    pairs_construction = Expr(:vect)
-    for (var_expr, expr_expr) in transitions
-        pair_expr = Expr(:call, :(=>), var_expr, expr_expr)
-        push!(pairs_construction.args, pair_expr)
-    end
-    
-    # Build final block with proper AST construction
-    final_block = Expr(:block)
-    
-    if code_expr isa Expr && code_expr.head == :block
-        # If code_expr is already a block, copy its arguments
-        append!(final_block.args, code_expr.args)
-    else
-        # Otherwise wrap it
-        push!(final_block.args, code_expr)
-    end
-    
-    # Add __transition__ creation statement
-    transition_stmt = :(__transition__ = AlgorithmAnalysis.Transition($(pairs_construction)))
-    push!(final_block.args, transition_stmt)
-    push!(final_block.args, :(nothing))
-    
-    return esc(final_block)
 end

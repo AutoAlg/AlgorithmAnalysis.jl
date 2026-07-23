@@ -1,7 +1,7 @@
 export expand
 
-Base.show(io::IO, mime::MIME"text/plain", t::BasicSymbolic) = show(io, mime, semantic_ast(t))
-expand(t::BasicSymbolic) = show(IOContext(stdout, :use_id => false), MIME"text/plain"(), t)
+Base.show(io::IO, mime::MIME"text/plain", t::Node) = show(io, mime, semantic_ast(t))
+expand(t::Node) = show(IOContext(stdout, :use_id => false), MIME"text/plain"(), t)
 
 # ------------------------------------------------------
 #  DISPLAY WRAPPERS & LAYOUT TYPES
@@ -29,7 +29,7 @@ struct NormSquared <: SemanticNode
     id::Union{Symbol, Nothing}
 end
 
-struct ConstraintSet <: SemanticNode
+struct PropSet <: SemanticNode
     obj::SemanticNode
     set::SemanticNode
     id::Union{Symbol, Nothing}
@@ -64,6 +64,12 @@ struct Mat <: SemanticNode
     id::Union{Symbol, Nothing}
 end
 
+struct Trans <: SemanticNode
+    src::SemanticNode
+    dst::SemanticNode
+    id::Union{Symbol, Nothing}
+end
+
 # ------------------------------------------------------
 #  SEMANTIC AST TRANSFORMATION
 # ------------------------------------------------------
@@ -73,7 +79,14 @@ function semantic_ast(t::Any)
     return id ≠ nothing ? id : error("Unknown semantics for $t")
 end
 
-function semantic_ast(t::BasicSymbolic{<:MatrixSpace})
+semantic_ast(t::Real) = Leaf(Symbol(t))
+
+function semantic_ast(t::Node{<:Transition})
+    x, x₊ = semantic_ast.(arguments(t))
+    return Trans(x, x₊, id(t))
+end
+
+function semantic_ast(t::Node{<:MatrixSpace})
     op = operation(t)
     args = semantic_ast.(arguments(t))
     if op ∈ [+, -, *, /]
@@ -83,13 +96,18 @@ function semantic_ast(t::BasicSymbolic{<:MatrixSpace})
     return Mat(reshape(args, n, n), id(t))
 end
 
-function semantic_ast(t::BasicSymbolic{Optimization})
+function semantic_ast(t::Node{Optimization})
     obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
     con = semantic_ast.(flatten_constraints(constraint(t)))
     return OptimizationProblem(sense(t), obj, con, id(t))
 end
 
-function semantic_ast(t::BasicSymbolic{T}) where {T<:Constraint}
+function semantic_ast(t::Node{LyapunovCertificate})
+    con, perf, rate = semantic_ast.(arguments(t))
+    return Leaf(Symbol("Certification that performance $perf converges linearly with rate $rate subject to $con"))
+end
+
+function semantic_ast(t::Node{T}) where {T<:Prop}
     isequal(T, Satisfied) && return Leaf(Symbol(true))
     isequal(T, Unsatisfied) && return Leaf(Symbol(false))
     op = operation(t)
@@ -105,14 +123,14 @@ function semantic_ast(t::BasicSymbolic{T}) where {T<:Constraint}
     elseif isequal(op, smooth_convex)
         f = semantic_ast(args[1])
         L = semantic_ast(args[2])
-        return ConstraintSet(f, Leaf(Symbol("SmoothConvex($L)")), id(t))
+        return PropSet(f, Leaf(Symbol("SmoothConvex($L)")), id(t))
     else
         f = semantic_ast(args[1])
-        return ConstraintSet(f, Leaf(Symbol(T)), id(t))
+        return PropSet(f, Leaf(Symbol(T)), id(t))
     end
 end
 
-function semantic_ast(t::BasicSymbolic{Bool})
+function semantic_ast(t::Node{Bool})
     if iscall(t)
         op = operation(t)
         args = arguments(t)
@@ -130,18 +148,18 @@ function semantic_ast(t::BasicSymbolic{Bool})
     end
 end
 
-function semantic_ast(t::BasicSymbolic{FnType{Tuple{T}, T, Gradient}}) where T
+function semantic_ast(t::Node{FnType{Tuple{T}, T, Gradient}}) where T
     f = iscall(t) ? semantic_ast(arguments(t)[1]) : f = Leaf(id(t))
     return GradientOp(f, id(t))
 end
 
-function semantic_ast(t::BasicSymbolic{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
+function semantic_ast(t::Node{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
     iszero(t) && return Leaf(Symbol(0))
     f = iscall(t) ? semantic_ast(arguments(t)[1]) : Leaf(id(t))
     return Postfixed(f, Symbol("'"), id(t))
 end
 
-function semantic_ast(t::BasicSymbolic)
+function semantic_ast(t::Node)
 
     x = check_and_translate_identity(t)
     x ≠ nothing && return x
@@ -190,13 +208,14 @@ end
 
 Base.show(io::IO, x::Constant) = show(io, MIME"text/plain"(), x)
 Base.show(io::IO, n::NormSquared) = show(io, MIME"text/plain"(), n)
-Base.show(io::IO, con::ConstraintSet) = show(io, MIME"text/plain"(), con)
+Base.show(io::IO, con::PropSet) = show(io, MIME"text/plain"(), con)
 Base.show(io::IO, p::Postfixed) = show(io, MIME"text/plain"(), p)
 Base.show(io::IO, opt::OptimizationProblem) = show(io, MIME"text/plain"(), opt)
 Base.show(io::IO, ∇f::GradientOp) = show(io, MIME"text/plain"(), ∇f)
 Base.show(io::IO, f::FuncEval) = show(io, MIME"text/plain"(), f)
 Base.show(io::IO, op_node::InfixOp) = show(io, MIME"text/plain"(), op_node)
 Base.show(io::IO, x::Mat) = show(io, MIME"text/plain"(), x)
+Base.show(io::IO, t::Trans) = show(io, MIME"text/plain"(), t)
 
 Base.show(io::IO, ::MIME"text/plain", op::Leaf) = print(io, string(op.id))
 Base.show(io::IO, op::Leaf) = print(io, string(op.id))
@@ -213,7 +232,7 @@ function Base.show(io::IO, mime::MIME"text/plain", n::NormSquared)
     print(io, "‖²")
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", con::ConstraintSet)
+function Base.show(io::IO, mime::MIME"text/plain", con::PropSet)
     get(io, :use_id, true) && con.id ≠ nothing && return print(io, con.id)
     show(io, mime, con.obj)
     print(io, " ∈ ")
@@ -307,12 +326,19 @@ function Base.show(io::IO, mime::MIME"text/plain", t::Mat)
     show(io, mime, t.args)
 end
 
+function Base.show(io::IO, mime::MIME"text/plain", t::Trans)
+    get(io, :use_id, true) && t.id ≠ nothing && return print(io, t.id)
+    show(io, mime, t.src)
+    print(io, " → ")
+    show(io, mime, t.dst)
+end
+
 # ------------------------------------------------------
 #  UTILITIES
 # ------------------------------------------------------
 
 function check_and_translate_identity(node)
-    node isa BasicSymbolic && iszero(node) && return Leaf(Symbol(0))
-    node isa BasicSymbolic && isone(node) && return Leaf(Symbol(1))
+    node isa Node && iszero(node) && return Leaf(Symbol(0))
+    node isa Node && isone(node) && return Leaf(Symbol(1))
     return nothing
 end

@@ -14,7 +14,7 @@ are_vectors(xs...) = all(map(is_vector, xs))
 are_scalars(xs...) = all(map(is_scalar, xs))
 are_scalars_or_vectors(xs...) = all(map(is_scalar_or_vector, xs))
 
-function add_constraint(opt::BasicSymbolic{T}, con::BasicSymbolic{<:Constraint}) where {T<:Optimization}
+function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
     return Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
 end
 
@@ -24,11 +24,11 @@ end
 
 convex_interpolation_is_applicable(::Any) = false
 
-function convex_interpolation_is_applicable(opt::BasicSymbolic{Optimization})
+function convex_interpolation_is_applicable(opt::Node{Optimization})
     return !isempty(find_nodes(c -> isequal(symtype(c), Convex), opt))
 end
 
-function convex_interpolation(opt::BasicSymbolic{Optimization})
+function convex_interpolation(opt::Node{Optimization})
     
     cvx_cons = find_nodes(c -> isequal(symtype(c), Convex), opt)
 
@@ -44,7 +44,7 @@ function convex_interpolation(opt::BasicSymbolic{Optimization})
     return opt
 end
 
-function convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicSymbolic)
+function convex_interpolation(opt::Node{Optimization}, f::Node)
 
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
 
@@ -75,17 +75,17 @@ end
 
 smooth_convex_interpolation_is_applicable(::Any) = false
 
-function smooth_convex_interpolation_is_applicable(opt::BasicSymbolic{Optimization})
+function smooth_convex_interpolation_is_applicable(opt::Node{Optimization})
     predicate = function (c)
-        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), smooth_convex)
+        isequal(symtype(c), Prop) && iscall(c) && isequal(operation(c), smooth_convex)
     end
     return !isempty(find_nodes(predicate, opt))
 end
 
-function smooth_convex_interpolation(opt::BasicSymbolic{Optimization})
+function smooth_convex_interpolation(opt::Node{Optimization})
     
     predicate = function (c)
-        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), smooth_convex)
+        isequal(symtype(c), Prop) && iscall(c) && isequal(operation(c), smooth_convex)
     end
     cons = find_nodes(predicate, opt)
 
@@ -101,7 +101,7 @@ function smooth_convex_interpolation(opt::BasicSymbolic{Optimization})
     return opt
 end
 
-function smooth_convex_interpolation(opt::BasicSymbolic{Optimization}, f::BasicSymbolic, L::BasicSymbolic)
+function smooth_convex_interpolation(opt::Node{Optimization}, f::Node, L::Node)
 
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
 
@@ -136,7 +136,7 @@ export gram_transformation
 
 gram_transformation_is_applicable(::Any) = false
 
-function gram_transformation_is_applicable(opt::BasicSymbolic{Optimization})
+function gram_transformation_is_applicable(opt::Node{Optimization})
     if convex_interpolation_is_applicable(opt)
         return false
     elseif smooth_convex_interpolation_is_applicable(opt)
@@ -147,7 +147,7 @@ function gram_transformation_is_applicable(opt::BasicSymbolic{Optimization})
     return true
 end
 
-function gram_transformation(opt::BasicSymbolic{Optimization})
+function gram_transformation(opt::Node{Optimization})
 
     all_vecs = find_nodes(x -> symtype(x) <: VectorSpace, opt)
     vectorspaces = Set(symtype.(all_vecs))
@@ -181,6 +181,12 @@ lyapunov_transformation_is_applicable(::Any) = false
 
 # Stub — lyapunov.jl defines the LyapunovAnalysis method that does the real work.
 function lyapunov_transformation end
+
+# Fallback — returns false until lyapunov.jl adds Optimization-specific method.
+lyapunov_certificate_transformation_is_applicable(::Any) = false
+
+# Stub — lyapunov.jl defines the Optimization method that builds certificate constraints.
+function lyapunov_certificate_transformation end
 
 # ------------------------------------------------------
 # THEORY
@@ -227,6 +233,11 @@ const theory = [
     # GRAM TRANSFORMATION
     # --------------------------------------------------
     @rule ~opt => gram_transformation(~opt) where gram_transformation_is_applicable(~opt)
+
+    # --------------------------------------------------
+    # LYAPUNOV CERTIFICATE TRANSFORMATION
+    # --------------------------------------------------
+    @rule ~opt => lyapunov_certificate_transformation(~opt) where lyapunov_certificate_transformation_is_applicable(~opt)
 ]
 
 simplify = Fixpoint(Postwalk(Chain(theory)))

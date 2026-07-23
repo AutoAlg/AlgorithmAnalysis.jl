@@ -5,7 +5,7 @@ module AlgorithmAnalysis
 # ------------------------------------------------------
 
 using SymbolicUtils, TermInterface
-using SymbolicUtils: Sym, BasicSymbolic, Term, FnType, Rewriters
+using SymbolicUtils: Sym, Term, FnType, Rewriters
 using SymbolicUtils: symtype, @rule, iscall, issym, term
 using SymbolicUtils: hasmetadata, setmetadata, getmetadata
 using Printf

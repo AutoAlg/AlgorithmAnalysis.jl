@@ -46,11 +46,11 @@ function model()
     end
 end
 
-function evaluate(x::BasicSymbolic)
+function evaluate(x::Node)
     
     eval_node = function (node)
 
-        !(node isa BasicSymbolic) && return node
+        !(node isa Node) && return node
 
         if iscall(node) && isequal(symtype(node), R)
             isequal(operation(node), zero) && return 0.0
@@ -112,7 +112,7 @@ function evaluate(x::BasicSymbolic)
         # ---------------------------------------------------------
         T = symtype(node)
 
-        if T <: Constraint && isequal(operation(node), ∧)
+        if T <: Prop && isequal(operation(node), ∧)
             return arguments(node)
         end
 
@@ -208,7 +208,7 @@ function inspect(model::JuMP.Model, tolerance = 1e-6)
         if S <: MOI.PositiveSemidefiniteConeTriangle
             for con in JuMP.all_constraints(model, F, S)
                 c_name = JuMP.name(con)
-                display_name = isempty(c_name) ? "[unnamed PSD Constraint]" : c_name
+                display_name = isempty(c_name) ? "[unnamed PSD Prop]" : c_name
                 raw_data = JuMP.value.(JuMP.constraint_object(con).func)
                 matrix_val = unpack_triangular_vector(raw_data)
                 evals = la.eigen(la.Symmetric(matrix_val)).values
@@ -217,11 +217,11 @@ function inspect(model::JuMP.Model, tolerance = 1e-6)
                 display(matrix_val)
 
                 if min_eval < tolerance
-                    println("❌ VIOLATION in PSD Constraint: $display_name")
+                    println("❌ VIOLATION in PSD Prop: $display_name")
                     println("   Minimum Eigenvalue: $min_eval (Should be ≥ 0)")
                     println("   Full Spectrum: ", evals)
                 else
-                    println("✅ PSD Constraint Satisfied: $display_name")
+                    println("✅ PSD Prop Satisfied: $display_name")
                     println("   Minimum Eigenvalue: $min_eval")
                 end
             end

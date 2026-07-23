@@ -1,6 +1,9 @@
 export find_nodes, replace_nodes, flatten_evaluations
 export rewrite, find_evaluation_points, flatten_constraints
-export with_verbose
+export with_verbose, postwalk_with_operators
+export Node
+
+const Node{T} = SymbolicUtils.BasicSymbolic{T}
 
 function postwalk_with_operators(f, x)
     if iscall(x)
@@ -51,7 +54,7 @@ function replace_node(tree, old_node, new_node)
     return rewrite(tree, [swap_rule])
 end
 
-function flatten_evaluations(tree, f::BasicSymbolic)
+function flatten_evaluations(tree, f::Node)
 
     T = symtype(f).parameters[2]
     iseval(x) = iscall(x) && isequal(operation(x), f)
@@ -66,7 +69,7 @@ function flatten_evaluations(tree, f::BasicSymbolic)
     return rewrite(tree, [rule])
 end
 
-function flatten_evaluations(tree, fs::Vector{BasicSymbolic})
+function flatten_evaluations(tree, fs::Vector{Node})
     new_tree = deepcopy(tree)
     for f ∈ fs
         new_tree = flatten_evaluations(new_tree, f)
@@ -179,3 +182,24 @@ end
 const VERBOSE = Base.ScopedValues.ScopedValue{Bool}(false)
 verbose() = VERBOSE[]
 with_verbose(code::Function, verbose::Bool = true) = Base.ScopedValues.with(code, VERBOSE => verbose)
+
+"""
+simple binary search
+  f: function that evaluates to true or false
+  a: lower bound
+  b: upper bound
+  tol: tolerance
+Assumes f(a)==false and f(b)==true and f is monotone (only one cross-over point)
+Returns the smallest x in [a,b] (within tol) such that f(x)==true.
+"""
+function bsmin(f, a::T, b::T; tol=T(1e-5), verbose=false) where T
+    a, b = a > b ? (b, a) : (a, b)
+    i = 0
+    while (b - a) > tol
+        i += 1
+        c = (a + b) / T(2)
+        f(c) ? (b = c) : (a = c)
+        verbose && println("iteration $i: ($a, $b), gap = $(b-a)")
+    end
+    return b
+end
