@@ -344,85 +344,224 @@ macro def(ex)
     end)
 end
 
+# ======================================================
+# LYAPUNOV ANALYSIS
+# ======================================================
+
+export Transition, certify, @transition
+export lyap_transition, lyap_oracle, lyap_performance, lyap_rate
+
+abstract type LyapunovAnalysis end
+
+"""
+    Transition
+
+Encodes one-step algorithm state-update rules. Each pair `state_var => next_expr`
+specifies how a state variable evolves in one iteration.
+
+Construct with the [`@transition`](@ref) macro or directly:
+
+```julia
+trans = Transition([x => x - α*g, xs => xs])
+```
+"""
+struct Transition
+    pairs::Vector
+end
+Transition(ps::Pair...) = Transition(Any[ps...])
+
+lyap_transition(prob::BasicSymbolic{LyapunovAnalysis})  = arguments(prob)[1]
+lyap_oracle(prob::BasicSymbolic{LyapunovAnalysis})      = arguments(prob)[2]
+lyap_performance(prob::BasicSymbolic{LyapunovAnalysis}) = arguments(prob)[3]
+lyap_rate(prob::BasicSymbolic{LyapunovAnalysis})        = arguments(prob)[4]
+
+"""
+    certify(trans, oracle_con, performance, rate)
+
+Construct a Lyapunov certification problem. Use `simplify` to transform it into a
+1-step performance SDP. If the optimal value of that SDP is ≤ `rate`, there exists
+a Lyapunov function certifying geometric convergence at the given rate.
+"""
+function certify(trans::Transition, oracle_con::BasicSymbolic{<:Constraint},
+                 perf::BasicSymbolic{R}, rate)
+    return Term{LyapunovAnalysis}(certify, Any[trans, oracle_con, perf, rate])
+end
+
+"""
+    @transition begin
+        x  => x - α*g
+        xs => xs
+    end
+
+Build a [`Transition`](@ref) from per-component update rules. Each `var => expr` pair
+specifies the one-step update for a state variable. Variables must already be declared
+(e.g. via `@alg`).
+"""
+macro transition(ex)
+    raw_pairs = if ex isa Expr && ex.head == :block
+        filter(a -> !(a isa LineNumberNode), ex.args)
+    elseif ex isa Expr && ex.head == :call && length(ex.args) == 3 && ex.args[1] == :(=>)
+        [ex]
+    else
+        error("@transition expects a `begin...end` block of `var => expr` rules")
+    end
+    pair_exprs = map(raw_pairs) do p
+        (p isa Expr && p.head == :call && length(p.args) == 3 && p.args[1] == :(=>)) ||
+            error("@transition: expected `var => expr`, got: $p")
+        :($(esc(p.args[2])) => $(esc(p.args[3])))
+    end
+    return :(Transition(Any[$(pair_exprs...)]))
+end
+
 """
     @alg let
         x, y in R
         z = 42
+        x → x - α*g     # transitions collected into __transition__
     end
 
 Runs the algorithm inside a local scope using a `let` block. 
 Can also be used normally as `@alg begin ... end` for global/current scope.
+
+Transitions (lines with `var → expr`) are collected into a `__transition__` Transition object.
+If no transitions are present, `__transition__` is not created.
+
+# Examples
+
+```julia
+@alg begin
+    α, L ∈ R
+    x, xs ∈ Rⁿ
+    f ∈ F(Rⁿ)
+    x → x - α * f'(x)
+    xs → xs
+end
+trans = __transition__  # Access the implicit transition
+```
 """
 macro alg(ex)
 
     function _make_var(_var, _T)
-        var = esc(_var)
-        T = esc(_T)
         sym = QuoteNode(_var)
-        return quote
-            $var = AlgorithmAnalysis.leaf($sym, $T); nothing
-        end
+        # Build the assignment expression directly as AST, not as a quote
+        # This returns: _var = AlgorithmAnalysis.leaf(sym, _T); nothing
+        assign_expr = Expr(:(=), _var, Expr(:call, :(AlgorithmAnalysis.leaf), sym, _T))
+        return Expr(:block, assign_expr, :(nothing))
     end
 
-    function _recurse(x)
+    # _recurse now threads through a list of accumulated transitions
+    function _recurse(x, transitions)
         if x isa LineNumberNode
-            return x
+            return (x, transitions)
         
         elseif x isa Expr && x.head == :block
-            return Expr(:block, map(_recurse, x.args)...)
+            result_exprs = []
+            result_transitions = transitions
+            for item in x.args
+                item_result, item_transitions = _recurse(item, result_transitions)
+                push!(result_exprs, item_result)
+                result_transitions = item_transitions
+            end
+            return (Expr(:block, result_exprs...), result_transitions)
             
         elseif x isa Expr && x.head == :let
             bindings = x.args[1]
             body = x.args[2]
+            body_result, body_transitions = _recurse(body, transitions)
+            bindings_result, _ = _recurse(bindings, [])
             
-            return Expr(:let, _recurse(bindings), _recurse(body))
+            return (Expr(:let, bindings_result, body_result), body_transitions)
 
-        # Handle the operator precedence: x, y ∈ R
+        # Transition rule: var → expr (detects the Unicode arrow operator)
+        elseif x isa Expr && x.head == :call && length(x.args) == 3 && 
+               (x.args[1] == :(→) || x.args[1] == Symbol("→"))
+            var = x.args[2]
+            expr = x.args[3]
+            # Collect as (var_expr, expr_expr) pair to be built into Pair later
+            new_transition = (var, expr)
+            return (:(nothing), vcat(transitions, Any[new_transition]))
+
+        # Handle the operator precedence: x, y ∈ R (tuple form)
         elseif x isa Expr && x.head == :tuple
             expanded_exprs = []
             current_set = nothing
             
             for item in reverse(x.args)
-                if item isa Expr && item.head == :call && (item.args[1] == :(∈) || item.args[1] == :in)
+                if item isa Expr && item.head == :call && 
+                   (item.args[1] == :(∈) || item.args[1] == :in)
                     var = item.args[2]
                     current_set = item.args[3]
                     push!(expanded_exprs, _make_var(var, current_set))
-                elseif (item isa Symbol || (item isa Expr && item.head == :escape)) && current_set !== nothing
+                elseif (item isa Symbol || (item isa Expr && item.head == :escape)) && 
+                       current_set !== nothing
                     push!(expanded_exprs, _make_var(item, current_set))
                 else
                     current_set = nothing
-                    push!(expanded_exprs, _recurse(item))
+                    item_result, transitions = _recurse(item, transitions)
+                    push!(expanded_exprs, item_result)
                 end
             end
-            return Expr(:block, reverse(expanded_exprs)...)
+            return (Expr(:block, reverse(expanded_exprs)...), transitions)
         end
 
         # Standard explicit single variable declaration: x ∈ R
-        if x isa Expr && x.head == :call && (x.args[1] == :(∈) || x.args[1] == :in)
+        if x isa Expr && x.head == :call && 
+           (x.args[1] == :(∈) || x.args[1] == :in)
             lhs = x.args[2]
             set = x.args[3]
             if lhs isa Expr && lhs.head == :tuple
-                return Expr(:block, [_make_var(v, set) for v in lhs.args]...)
+                return (Expr(:block, [_make_var(v, set) for v in lhs.args]...), 
+                        transitions)
             else
-                return _make_var(lhs, set)
+                return (_make_var(lhs, set), transitions)
             end
 
         # Match definitions: b = expr
         elseif x isa Expr && x.head == :(=)
-            lhs = esc(x.args[1])
-            rhs = esc(x.args[2])
             sym = QuoteNode(x.args[1])
-            return quote
-                $lhs = set_id(to_symbolic($rhs), $sym); nothing
-            end
+            # Build the assignment as plain AST: x.args[1] = set_id(to_symbolic(x.args[2]), sym)
+            rhs_expr = Expr(:call, :(AlgorithmAnalysis.set_id), 
+                           Expr(:call, :(AlgorithmAnalysis.to_symbolic), x.args[2]), 
+                           sym)
+            assign_expr = Expr(:(=), x.args[1], rhs_expr)
+            return (Expr(:block, assign_expr, :(nothing)), transitions)
 
-        # Fallback
+        # Fallback for other expressions
         else
-            return esc(x)
+            return (x, transitions)
         end
     end
 
-    quote
-        $(_recurse(ex)); nothing
+    code_expr, transitions = _recurse(ex, Any[])
+    
+    # If no transitions, just execute the code
+    if isempty(transitions)
+        # code_expr is already a properly formed AST, escape it for the calling scope
+        return esc(code_expr)
     end
+    
+    # Build the pairs array
+    pairs_construction = Expr(:vect)
+    for (var_expr, expr_expr) in transitions
+        pair_expr = Expr(:call, :(=>), var_expr, expr_expr)
+        push!(pairs_construction.args, pair_expr)
+    end
+    
+    # Build final block with proper AST construction
+    final_block = Expr(:block)
+    
+    if code_expr isa Expr && code_expr.head == :block
+        # If code_expr is already a block, copy its arguments
+        append!(final_block.args, code_expr.args)
+    else
+        # Otherwise wrap it
+        push!(final_block.args, code_expr)
+    end
+    
+    # Add __transition__ creation statement
+    transition_stmt = :(__transition__ = AlgorithmAnalysis.Transition($(pairs_construction)))
+    push!(final_block.args, transition_stmt)
+    push!(final_block.args, :(nothing))
+    
+    return esc(final_block)
 end

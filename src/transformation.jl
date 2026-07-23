@@ -173,6 +173,16 @@ function gram_transformation(opt::BasicSymbolic{Optimization})
 end
 
 # ------------------------------------------------------
+# LYAPUNOV ANALYSIS (forward declarations; full implementation in lyapunov.jl)
+# ------------------------------------------------------
+
+# Fallback — returns false until lyapunov.jl adds the LyapunovAnalysis method.
+lyapunov_transformation_is_applicable(::Any) = false
+
+# Stub — lyapunov.jl defines the LyapunovAnalysis method that does the real work.
+function lyapunov_transformation end
+
+# ------------------------------------------------------
 # THEORY
 # ------------------------------------------------------
 const theory = [
@@ -207,6 +217,11 @@ const theory = [
     @rule ~opt => convex_interpolation(~opt) where convex_interpolation_is_applicable(~opt)
     @rule ~opt => smooth_convex_interpolation(~opt) where smooth_convex_interpolation_is_applicable(~opt)
 
+
+    # --------------------------------------------------
+    # LYAPUNOV ANALYSIS
+    # --------------------------------------------------
+    @rule ~opt => lyapunov_transformation(~opt) where lyapunov_transformation_is_applicable(~opt)
 
     # --------------------------------------------------
     # GRAM TRANSFORMATION
