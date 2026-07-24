@@ -1,4 +1,5 @@
 export simplify, find_nodes, find_evaluation_points, replace_node
+export convex_interpolation, smooth_convex_interpolation, sector_bounded_interpolation
 
 using SymbolicUtils
 using SymbolicUtils.Rewriters: Chain, Postwalk, Fixpoint
@@ -14,25 +15,17 @@ are_vectors(xs...) = all(map(is_vector, xs))
 are_scalars(xs...) = all(map(is_scalar, xs))
 are_scalars_or_vectors(xs...) = all(map(is_scalar_or_vector, xs))
 
-function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
-    if is_feasibility(opt)
-        return Term{T}(operation(opt), [constraint(opt) ∧ con])
-    else
-        return Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
-    end
-end
-
 # ------------------------------------------------------
 # CONVEX INTERPOLATION
 # ------------------------------------------------------
 
 convex_interpolation_is_applicable(::Any) = false
 
-function convex_interpolation_is_applicable(opt::Node{Optimization})
+function convex_interpolation_is_applicable(opt::Node{<:Optimization})
     return !isempty(find_nodes(c -> isequal(symtype(c), Convex), opt))
 end
 
-function convex_interpolation(opt::Node{Optimization})
+function convex_interpolation(opt::Node{<:Optimization})
     
     cvx_cons = find_nodes(c -> isequal(symtype(c), Convex), opt)
 
@@ -48,7 +41,7 @@ function convex_interpolation(opt::Node{Optimization})
     return opt
 end
 
-function convex_interpolation(opt::Node{Optimization}, f::Node)
+function convex_interpolation(opt::Node{<:Optimization}, f::Node)
 
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
 
@@ -79,14 +72,14 @@ end
 
 smooth_convex_interpolation_is_applicable(::Any) = false
 
-function smooth_convex_interpolation_is_applicable(opt::Node{Optimization})
+function smooth_convex_interpolation_is_applicable(opt::Node{<:Optimization})
     predicate = function (c)
         isequal(symtype(c), Prop) && iscall(c) && isequal(operation(c), smooth_convex)
     end
     return !isempty(find_nodes(predicate, opt))
 end
 
-function smooth_convex_interpolation(opt::Node{Optimization})
+function smooth_convex_interpolation(opt::Node{<:Optimization})
     
     predicate = function (c)
         isequal(symtype(c), Prop) && iscall(c) && isequal(operation(c), smooth_convex)
@@ -105,7 +98,7 @@ function smooth_convex_interpolation(opt::Node{Optimization})
     return opt
 end
 
-function smooth_convex_interpolation(opt::Node{Optimization}, f::Node, L::Node)
+function smooth_convex_interpolation(opt::Node{<:Optimization}, f::Node, L::Node)
 
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
 
@@ -138,17 +131,17 @@ end
 
 sector_bound_is_applicable(::Any) = false
 
-function sector_bound_is_applicable(opt::Node{Optimization})
+function sector_bound_is_applicable(opt::Node{<:Optimization})
     predicate = function (c)
-        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), sector_bounded)
+        isequal(symtype(c), Prop) && iscall(c) && isequal(operation(c), sector_bounded)
     end
     return !isempty(find_nodes(predicate, opt))
 end
 
-function sector_bounded_interpolation(opt::Node{Optimization})
+function sector_bounded_interpolation(opt::Node{<:Optimization})
     
     predicate = function (c)
-        isequal(symtype(c), Constraint) && iscall(c) && isequal(operation(c), sector_bounded)
+        isequal(symtype(c), Prop) && iscall(c) && isequal(operation(c), sector_bounded)
     end
     cons = find_nodes(predicate, opt)
 
@@ -164,7 +157,7 @@ function sector_bounded_interpolation(opt::Node{Optimization})
     return opt
 end
 
-function sector_bounded_interpolation(opt::Node{Optimization}, f::Node, μ::Node, L::Node)
+function sector_bounded_interpolation(opt::Node{<:Optimization}, f::Node, μ::Node, L::Node)
 
     points = find_evaluation_points(f, opt) ∪ find_evaluation_points(f', opt)
 
@@ -180,14 +173,36 @@ function sector_bounded_interpolation(opt::Node{Optimization}, f::Node, μ::Node
     interp = satisfied()
 
     for x ∈ points
-        g = f'(x)
-        interp = interp ∧ ( (g - μ*x)'(g - L*x) ≤ 0 )
+        interp = interp ∧ ( (f'(x) - μ*x)'(f'(x) - L*x) ≤ zero(R) )
     end
 
-    new_opt = replace_node(opt, sector_bounded(f, μ, L), interp)
-    new_opt = flatten_evaluations(new_opt, [f, f'])
+    old = sector_bounded(f, μ, L)
 
-    return new_opt
+    if has_next(f, opt)
+        f₊ = next(f, opt)
+        for x ∈ points
+            if has_next(x, opt)
+                x₊ = next(x, opt)
+                interp = interp ∧ ( f(x) → f₊(x₊) )
+            end
+        end
+        old = old ∧ ( f → f₊ )
+    end
+    if has_next(f', opt)
+        ∇f₊ = next(f', opt)
+        for x ∈ points
+            if has_next(x, opt)
+                x₊ = next(x, opt)
+                interp = interp ∧ ( f'(x) → ∇f₊(x₊) )
+            end
+        end
+        old = old ∧ ( f' → ∇f₊ )
+    end
+
+    opt = replace_constraint(opt, old, interp)
+    opt = flatten_evaluations(opt, [f, f'])
+
+    return opt
 end
 
 # ------------------------------------------------------
@@ -198,7 +213,7 @@ export gram_transformation
 
 gram_transformation_is_applicable(::Any) = false
 
-function gram_transformation_is_applicable(opt::Node{Optimization})
+function gram_transformation_is_applicable(opt::Node{<:Optimization})
     if convex_interpolation_is_applicable(opt)
         return false
     elseif smooth_convex_interpolation_is_applicable(opt)
@@ -211,7 +226,7 @@ function gram_transformation_is_applicable(opt::Node{Optimization})
     return true
 end
 
-function gram_transformation(opt::Node{Optimization})
+function gram_transformation(opt::Node{<:Optimization})
 
     all_vecs = find_nodes(x -> symtype(x) <: VectorSpace, opt)
     vectorspaces = Set(symtype.(all_vecs))
@@ -226,11 +241,26 @@ function gram_transformation(opt::Node{Optimization})
 
         @info "Applying Gram transformation to vector space $vectorspace with vectors $vec_str"
 
-        opt = add_constraint(opt, G ⪰ 0)
+        new, old = satisfied(), satisfied()
+
+        for (i,v1) ∈ enumerate(vecs), (j,v2) ∈ enumerate(vecs)
+            if i ≤ j && has_next(v1, opt) && has_next(v2, opt)
+                new = new ∧ ( v1'(v2) → next(v1, opt)'( next(v2, opt) ) )
+            end
+        end
+        for v ∈ vecs
+            if has_next(v, opt)
+                old = old ∧ ( v → next(v, opt) )
+            end
+        end
+
+        opt = replace_constraint(opt, old, new)
 
         rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2)
         
         opt = rewrite(opt, [rule])
+
+        opt = add_constraint(opt, G ⪰ 0)
     end
 
     return opt
@@ -291,7 +321,7 @@ const theory = [
     # --------------------------------------------------
     # LYAPUNOV ANALYSIS
     # --------------------------------------------------
-    @rule ~opt => lyapunov_transformation(~opt) where lyapunov_transformation_is_applicable(~opt)
+    # @rule ~opt => lyapunov_transformation(~opt) where lyapunov_transformation_is_applicable(~opt)
 
     # --------------------------------------------------
     # GRAM TRANSFORMATION
@@ -301,7 +331,7 @@ const theory = [
     # --------------------------------------------------
     # LYAPUNOV CERTIFICATE TRANSFORMATION
     # --------------------------------------------------
-    @rule ~opt => lyapunov_certificate_transformation(~opt) where lyapunov_certificate_transformation_is_applicable(~opt)
+    # @rule ~opt => lyapunov_certificate_transformation(~opt) where lyapunov_certificate_transformation_is_applicable(~opt)
 ]
 
 simplify = Fixpoint(Postwalk(Chain(theory)))

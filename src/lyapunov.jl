@@ -2,97 +2,7 @@
 # LYAPUNOV ANALYSIS
 # ------------------------------------------------------
 
-export →, transitions, apply_transition, propagate_transition, propagate_transitions
-
-function transition end
-
-const → = function (x::T, y::T) where T
-    Term{Transition{T}}(transition, [x, y])
-end
-
-"Extract all transitions from a proposition."
-function transitions(con::Node{<:Prop})
-    foldl(∧, filter(t -> symtype(t) <: Transition, flatten_constraints(con)))
-end
-
-"""
-    apply_transition(trans::Node{Transition}, expr::Node) -> Node
-
-Substitute state variables in `expr` with their next-step expressions defined by `trans`.
-
-Each pair `(state_var => next_expr)` in `trans` is applied sequentially via a single-pass
-`replace_node` rewrite, so the result is the performance measure evaluated at the
-next-step state. Sequential application is correct for non-coupled transitions (e.g.
-gradient descent with a single state variable).
-
-# Example
-```julia
-@alg begin
-    x, xs ∈ Rⁿ
-    f ∈ F(Rⁿ)
-    α ∈ R
-    g = f'(x)
-end
-perf  = (x - xs)^2
-trans = Transition([x => x - α*g, xs => xs])
-perf_next = apply_transition(trans, perf)   # = ((x - α*g) - xs)^2
-```
-"""
-function apply_transition(trans::Node{<:Transition}, expr::Node)
-    result = expr
-    x, x₊ = arguments(trans)
-    return replace_node(result, x, x₊)
-end
-
-function apply_transitions(prop::Node{<:Prop}, expr::Node)
-    trans = transitions(prop)
-    result = expr
-    for tran in flatten_constraints(trans)
-        result = apply_transition(tran, result)
-    end
-    return result
-end
-
-
-# x → x₊, fₓ = f(x), and f₊ = f(x₊) implies fₓ → f₊
-function propagate_transition(t::Node{<:Transition}, expr::Node)
-    x, x₊ = arguments(t)
-
-    substitute_x(n) = n === x ? x₊ : n
-
-    expr₊ = postwalk_with_operators(expr) do node
-        if iscall(node)
-            # Check if x is present in the arguments or operation of this function node
-            has_source = (operation(node) === x) || any(arg -> arg === x, arguments(node))
-
-            if has_source
-                # Replace x with x₊ in both the operation and the arguments
-                new_op = substitute_x(operation(node))
-                new_args = map(substitute_x, arguments(node))
-
-                # Reconstruct this function call at the target state
-                return maketerm(typeof(node), new_op, new_args, nothing)
-            end
-        end
-
-        # Leave leaf nodes and non-matching nodes unchanged for higher-level passes
-        return node
-    end
-
-    if expr₊ !== expr
-        return t ∧ (expr → setmetadata(expr₊, ID, nothing))
-    else
-        return t
-    end
-end
-
-function propagate_transitions(props::Node{<:Prop}, f::Node)
-    mapreduce(
-        trans -> propagate_transition(trans, f),
-        ∧,
-        flatten_constraints(transitions(props))
-    )
-end
+export state
 
 # Override the forward declaration from transformation.jl
 lyapunov_transformation_is_applicable(::Node{LyapunovCertificate}) = true
@@ -130,7 +40,7 @@ function lyapunov_basis_candidates(perf::Node{R}, oracle_con::Node{<:Prop})
         push!(basis, node)
     end
 
-    for con in flatten_constraints(oracle_con)
+    for con in oracle_con
         T = symtype(con)
         if T <: LessThanOrEqualTo{R} || T <: Equality{R}
             lhs, rhs = arguments(con)
@@ -157,16 +67,14 @@ function lyapunov_certificate_transformation_is_applicable(opt::Node{Optimizatio
         return false
     end
 
-    cons = flatten_constraints(constraint(opt))
-    return any(c -> iscall(c) && isequal(operation(c), lyapunov_certificate), cons)
+    return any(c -> iscall(c) && isequal(operation(c), lyapunov_certificate), constraint(opt))
 end
 
 function scalar_constraints_without_marker(opt::Node{Optimization})
-    cons = flatten_constraints(constraint(opt))
     marker = nothing
     remaining = Any[]
 
-    for con in cons
+    for con in constraint(opt)
         if iscall(con) && isequal(operation(con), lyapunov_certificate)
             marker === nothing || error("Multiple Lyapunov certificate markers found")
             marker = con
@@ -445,12 +353,17 @@ function lyapunov_transformation(prob::Node{LyapunovCertificate})
     perf_next  = apply_transitions(trans, perf)
     basis      = lyapunov_basis_candidates(perf, con)
     basis_next = map(expr -> apply_transitions(trans, expr), basis)
-    state_strs = join([tostring(arguments(t)[1]) for t in flatten_constraints(trans)], ", ")
-    @show basis
+    state_strs = join([tostring(arguments(t)[1]) for t in trans], ", ")
     @info "Lyapunov: building parameterized certificate for rate ≤ $rate (state variables: [$state_strs], basis size: $(length(basis)))"
 
     # Stage 1: inject a marker. Interpolation + Gram simplify this into scalar space.
     # Stage 2: lyapunov_certificate_transformation converts marker into feasibility constraints.
     cert_marker = Term{LyapunovCertificate}(nothing, [perf, perf_next, rate, basis, basis_next])
     return feasible(con ∧ cert_marker)
+end
+
+function state(prob::Node{LyapunovCertificate})
+    con = arguments(prob)[1]
+    ts = transitions(con)
+    x = [ arguments(t)[1] for t ∈ ts ]
 end

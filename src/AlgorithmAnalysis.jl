@@ -10,8 +10,9 @@ using SymbolicUtils: symtype, @rule, iscall, issym, term
 using SymbolicUtils: hasmetadata, setmetadata, getmetadata
 using Printf
 
-import Base: +, -, *, /, ^, adjoint, show, ==, ≤, ≥, isless, <=, >=, zero, one, ∈
-import Base: iterate, getindex, size, iszero, isone
+import Base: +, -, *, /, ^, ==, ≤, ≥, <=, >=, ∈
+import Base: adjoint, show, isless, zero, one
+import Base: iterate, getindex, size, iszero, isone, length
 import LinearAlgebra as la
 import LinearAlgebra: dot, ⋅
 
@@ -19,8 +20,8 @@ import LinearAlgebra: dot, ⋅
 # INCLUDE
 # ------------------------------------------------------
 
-include("utils.jl")
 include("representation.jl")
+include("utils.jl")
 include("transformation.jl")
 include("lyapunov.jl")
 include("numeric.jl")

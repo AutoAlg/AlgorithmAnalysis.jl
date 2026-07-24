@@ -1,7 +1,22 @@
-export expand
 
-Base.show(io::IO, mime::MIME"text/plain", t::Node) = show(io, mime, semantic_ast(t))
-expand(t::Node) = show(IOContext(stdout, :use_id => false), MIME"text/plain"(), t)
+export semantic_ast
+
+function Base.show(io::IO, t::Node{<:NodeType})
+    if get(io, :compact, false)
+        show(IOContext(io, :use_id => true), semantic_ast(t))
+    else
+        show(IOContext(io, :use_id => false), semantic_ast(t))
+    end
+end
+
+# special show method for gradients since they are not subtypes of NodeType
+function Base.show(io::IO, t::Node{FnType{Tuple{T},T,Gradient}}) where T
+    if get(io, :compact, false)
+        show(IOContext(io, :use_id => true), semantic_ast(t))
+    else
+        show(IOContext(io, :use_id => false), semantic_ast(t))
+    end
+end
 
 # ------------------------------------------------------
 #  DISPLAY WRAPPERS & LAYOUT TYPES
@@ -70,6 +85,13 @@ struct Trans <: SemanticNode
     id::Union{Symbol, Nothing}
 end
 
+struct Lyap <: SemanticNode
+    perf::SemanticNode
+    rate::SemanticNode
+    cons::Vector{SemanticNode}
+    id::Union{Symbol, Nothing}
+end
+
 # ------------------------------------------------------
 #  SEMANTIC AST TRANSFORMATION
 # ------------------------------------------------------
@@ -78,6 +100,8 @@ function semantic_ast(t::Any)
     id = check_and_translate_identity(t)
     return id ≠ nothing ? id : error("Unknown semantics for $t")
 end
+
+semantic_ast(v::Vector) = semantic_ast.(v)
 
 semantic_ast(t::Real) = Leaf(Symbol(t))
 
@@ -96,15 +120,18 @@ function semantic_ast(t::Node{<:MatrixSpace})
     return Mat(reshape(args, n, n), id(t))
 end
 
-function semantic_ast(t::Node{Optimization})
+function semantic_ast(t::Node{<:Optimization})
     obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
-    con = semantic_ast.(flatten_constraints(constraint(t)))
+    con = semantic_ast.(arguments(constraint(t)))
     return OptimizationProblem(sense(t), obj, con, id(t))
 end
 
 function semantic_ast(t::Node{LyapunovCertificate})
-    con, perf, rate = semantic_ast.(arguments(t))
-    return Leaf(Symbol("Certification that performance $perf converges linearly with rate $rate subject to $con"))
+    con = arguments(t)[1]
+    cons = symtype(con) <: Conjunction ? semantic_ast.(arguments(con)) : [semantic_ast(con)]
+    perf = semantic_ast(arguments(t)[2])
+    rate = semantic_ast(arguments(t)[3])
+    return Lyap(perf, rate, cons, id(t))
 end
 
 function semantic_ast(t::Node{T}) where {T<:Prop}
@@ -221,6 +248,7 @@ Base.show(io::IO, f::FuncEval) = show(io, MIME"text/plain"(), f)
 Base.show(io::IO, op_node::InfixOp) = show(io, MIME"text/plain"(), op_node)
 Base.show(io::IO, x::Mat) = show(io, MIME"text/plain"(), x)
 Base.show(io::IO, t::Trans) = show(io, MIME"text/plain"(), t)
+Base.show(io::IO, t::Lyap) = show(io, MIME"text/plain"(), t)
 
 Base.show(io::IO, ::MIME"text/plain", op::Leaf) = print(io, string(op.id))
 Base.show(io::IO, op::Leaf) = print(io, string(op.id))
@@ -264,6 +292,19 @@ function Base.show(io::IO, mime::MIME"text/plain", opt::OptimizationProblem)
         println()
         prefix = (i == 1) ? "subject to   " : " "^13
         print(io, prefix)
+        show(io, mime, con)
+    end
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", opt::Lyap)
+    get(io, :use_id, true) && opt.id ≠ nothing && return print(io, opt.id)
+
+    print(io, "Lyapunov-based stability certification")
+    print(io, "\n  Rate:        "); show(io, mime, opt.rate)
+    print(io, "\n  Performance: "); show(io, mime, opt.perf)
+    print(io, "\n  Constraints: ")
+    for (i,con) in enumerate(opt.cons)
+        i > 1 && print(io, "\n", " "^15)
         show(io, mime, con)
     end
 end

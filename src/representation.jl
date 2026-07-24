@@ -1,4 +1,5 @@
-export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace, field, Prop
+export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace, field
+export Prop, Conjunction
 export zero, one, ∧, maximize, minimize, objective, constraint
 export is_function, function_category, Convex
 export @var, @alg, @def
@@ -11,6 +12,17 @@ export convex, smooth_convex, sector_bounded
 export leaf, branch, Transition
 export LyapunovCertificate, certify, rate
 export Optimization, Minimization, Maximization, Feasibility
+export Node, →, NodeType
+
+const Node{T} = SymbolicUtils.BasicSymbolic{T}
+
+const → = function (x, y)
+    T1, T2 = typeof(x), typeof(y)
+    if T1 ≠ T2
+        error("Transitions must be between nodes of the same type, got $T1 and $T2")
+    end
+    Term{Transition{T1}}(→, [x, y])
+end
 
 leaf(T, sym::Symbol) = Sym{T}(sym)
 branch(T, sym::Symbol, op, args) = (t=Term{T}(op, args); set_id(t, sym); t)
@@ -25,9 +37,11 @@ id(t::Node) = hasmetadata(t, ID) ? getmetadata(t, ID) : (hasproperty(t, :name) ?
 set_id(t::Node, sym::Symbol) = setmetadata(t, ID, sym)
 set_id(::Any, ::Symbol) = nothing
 
-abstract type Field end
-abstract type VectorSpace{F} end
-abstract type MatrixSpace{F} end
+abstract type NodeType end
+
+abstract type Field <: NodeType end
+abstract type VectorSpace{F} <: NodeType end
+abstract type MatrixSpace{F} <: NodeType end
 abstract type SymmetricMatrix{F} <: MatrixSpace{F} end
 abstract type R <: Field end
 abstract type Minimization <: R end
@@ -42,9 +56,10 @@ abstract type DifferentiableFunctional <: Category end
 abstract type Gradient <: Category end
 abstract type GramMatrix <: Category end
 
-abstract type Prop end
+abstract type Prop <: NodeType end
 abstract type Satisfied <: Prop end
 abstract type Unsatisfied <: Prop end
+abstract type Conjunction <: Prop end
 abstract type Equality{T} <: Prop end
 abstract type LessThanOrEqualTo{T} <: Prop end
 abstract type Convex <: Prop end
@@ -227,8 +242,10 @@ function ∧(args::Node{<:Prop}...)
             push!(flat_args, arg)
         end
     end
-    return Term{Prop}(∧, flat_args)
+    return Term{Conjunction}(∧, flat_args)
 end
+
+∧(x::Node{Conjunction}, y::Node{Conjunction}) = Term{Conjunction}(∧, [arguments(x)..., arguments(y)...])
 
 ∧(x::Node{<:Prop}, y::Bool) = y ? x : unsatisfied()
 ∧(x::Bool, y::Node{<:Prop}) = x ? y : unsatisfied()
@@ -250,6 +267,7 @@ function feasible(con::Node{<:Prop})
 end
 
 sense(opt::Node{<:Optimization}) = Symbol(operation(opt))
+sense(::Node{LyapunovCertificate}) = :feasible
 is_minimization(opt::Node{<:Optimization}) = isequal(sense(opt), :minimize)
 is_maximization(opt::Node{<:Optimization}) = isequal(sense(opt), :maximize)
 is_feasibility(opt::Node{<:Optimization}) = isequal(sense(opt), :feasible)
@@ -455,7 +473,7 @@ macro alg(ex)
                 dst = esc(raw_rhs.args[3])
                 
                 return quote
-                    $lhs = set_id(Term{Transition}(transition, [$src, $dst]), $sym); nothing
+                    $lhs = set_id(Term{Transition{symtype($src)}}(→, [$src, $dst]), $sym); nothing
                 end
             end
 
