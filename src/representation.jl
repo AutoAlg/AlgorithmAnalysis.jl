@@ -3,11 +3,15 @@ export zero, one, ∧, maximize, minimize, objective, constraint
 export is_function, function_category, Convex
 export @var, @alg, @def
 export Gradient, LinearFunctional, DifferentiableFunctional, ∇, Gram
-export PositiveSemidefinite, PositiveDefinite
+export PositiveSemidefinite
 export has_id, id, set_id, ID
 export satisfied, unsatisfied
 export ⪯, ⪰, ≺, ≻, to_symbolic, tr
 export convex, smooth_convex
+export LessThanOrEqualTo
+export outer
+
+function outer end
 
 leaf(sym::Symbol, T) = Sym{T}(sym)
 
@@ -58,7 +62,6 @@ abstract type Equality{T} <: Constraint end
 abstract type LessThanOrEqualTo{T} <: Constraint end
 abstract type Convex <: Constraint end
 abstract type PositiveSemidefinite <: Constraint end
-abstract type PositiveDefinite <: Constraint end
 
 abstract type Optimization end
 abstract type Minimization <: Optimization end
@@ -104,6 +107,12 @@ tr(A::Matrix) = la.tr(A)
 function *(A::BasicSymbolic{Sⁿ}, v::BasicSymbolic{V}) where {V<:VectorSpace{R}}
     return Term{V}(*, [A, v])
 end
+
+-(x::T) where {F<:Field,T<:BasicSymbolic{F}} = Term{F}(-, [x])
+-(x::T) where {T<:BasicSymbolic{<:MatrixSpace}} = Term{symtype(x)}(-, [x])
+
+*(scalar::Number, v::BasicSymbolic{V}) where {F,V<:VectorSpace{F}} = Term{V}(*, [R(scalar), v])
+*(v::BasicSymbolic{V}, scalar::Number) where {F,V<:VectorSpace{F}} = Term{V}(*, [R(scalar), v])
 
 +(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(+, [x, y])
 *(x::T, y::T) where {T<:BasicSymbolic{Sⁿ}} = Term{Sⁿ}(*, [x, y])
@@ -185,21 +194,13 @@ end
 # end
 
 function ⪯(a::Number, A::BasicSymbolic{<:MatrixSpace})
-    if iszero(a)
-        return Term{PositiveSemidefinite}(∈, [A])
-    else
-        error("Positive semidefinite constraint not implemented")
-    end
+    return Term{PositiveSemidefinite}(∈, [A, a])
 end
 
 ⪰(A::BasicSymbolic{<:MatrixSpace}, a::Number) = ⪯(a, A)
 
 function ≺(a::Number, A::BasicSymbolic{<:MatrixSpace})
-    if iszero(a)
-        return Term{PositiveDefinite}(∈, [A]);
-    else
-        error("general positive definte constraint not implemented")
-    end
+    error("positive definte constraints are unimplementable")
 end
 
 ≻(A::BasicSymbolic{<:MatrixSpace}, a::Number) = ≺(a, A)

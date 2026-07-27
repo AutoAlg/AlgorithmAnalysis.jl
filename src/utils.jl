@@ -136,7 +136,7 @@ function flatten_inner_product(v1, v2)
         elseif isequal(op, *)
             if symtype(args[1]) <: MatrixSpace
                 # tr(v1 P v2 rewriting)
-                return Term{R}(tr, [Term{symtype(args[1])}(*, [args[1], Term{symtype(args[1])}(:outer, [args[2], v1])])])
+                return Term{R}(tr, [Term{symtype(args[1])}(*, [args[1], Term{symtype(args[1])}(outer, [args[2], v1])])])
             else
                 return args[1] * flatten_inner_product(v1, args[2])
             end

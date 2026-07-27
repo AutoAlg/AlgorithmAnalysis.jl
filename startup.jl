@@ -1,36 +1,72 @@
 using Revise
 using AlgorithmAnalysis
 
+using SymbolicUtils: iscall, symtype, isempty, isequal
+
 # TODO
 # Lyapunov analysis
-# @var a = one(R) overwrites the id, which is how we identify the multiplicative identity
-# does show() actually need to construct a separate semantic_ast?
-
 @alg begin
-    α, L, ρ ∈ R, x, xn ∈ Rⁿ, f ∈ F(Rⁿ), P ∈ Sⁿ
+    α, L, ρ ∈ R, x, x_s ∈ Rⁿ, f ∈ F(Rⁿ), P ∈ Sⁿ
 
     c_f = smooth_convex(f, L)
-    c_p = P ≻ 0 # TODO: map this to ⪰ 1e-6 and then implement it in `representation.jl:191`
+    c_p = P ⪰ 1e-6
 
     u = f'(x) # g
-    c_xn = (xn == x - α * u) # X_{k+1} = Ax + Bu
-    # why tf is this a constraint just write `xn = x - α * u`
+    xn = x - α * u # X_{k+1} = Ax + Bu
 
+    c_opt = (f(x_s) == zero(R)) ∧ (f'(x_s) == zero(Rⁿ))
 
-    V = x'(P * x) # note, keep in mind that this will eventually be arbitarly argumented
-    Vn = xn'(P * xn)
+    V = (x - x_s)'(P * (x - x_s))
+    Vn = (xn - x_s)'(P * (xn - x_s))
 
     c_vnv = (Vn - ρ * V) ≤ zero(R)
 
-    cons = c_f ∧ c_p ∧ c_xn ∧ c_vnv
+    cons = c_f ∧ c_p ∧ c_opt ∧ c_vnv
     opt = feasible(cons)
 end
-topt1 = apply_interpolation_conditions(opt, ...)
-topt2 = apply_s_procedure(topt1, c_vnv) # -> c_vnv_with_τ_1...
-topt3 = apply_gram_transformation(topt2)
 
-with_numeric( inject ρ)
-    do_bisection_search(evaluate(topt3)) 
+topt1 = smooth_convex_interpolation(opt);
+topt2 = propagate_constants(topt1);
+topt3 = apply_s_procedure(topt2, c -> iscall(c) && symtype(c) <: LessThanOrEqualTo && !isempty(find_nodes(x -> isequal(x, ρ), c)))
+topt4 = extract_lmi_coefficients(topt3)
+
+# with_numerics(parameters=Dict(α => 0.1, L => 1.0, ρ => 0.9)) do
+#     evaluate(topt4)
+#     inspect(model())
+# end
+
+function find_optimal_convergence_rate(; alpha::Float64, L_const::Float64, tol::Float64=1e-5)
+    rho_low = 0.0
+    rho_high = 1.0
+    rho_opt = 1.0
+
+    while (rho_high - rho_low) > tol
+        rho_mid = (rho_low + rho_high) / 2.0
+
+        # Suppress verbose output during the bisection loop
+        is_feasible = with_verbose(false) do
+            with_numerics(parameters=Dict(α => alpha, L => L_const, ρ => rho_mid)) do
+                evaluate(topt4)
+            end
+        end
+
+        if is_feasible
+            rho_high = rho_mid
+            rho_opt = rho_mid
+        else
+            rho_low = rho_mid
+        end
+    end
+
+    return rho_opt
+end
+
+print(find_optimal_convergence_rate(alpha=0.1, L_const=1.0))
+
+# NOTE: flip steps 2 & 3
+
+# with_numeric( inject ρ)
+#     do_bisection_search(evaluate(topt3)) 
 
 # function w/ interpolation conditions
 # s procedure

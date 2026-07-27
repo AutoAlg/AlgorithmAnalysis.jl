@@ -2,7 +2,7 @@
 # NUMERIC
 # ------------------------------------------------------
 
-export with_numerics, evaluate, feasible
+export with_numerics, evaluate, feasible, model
 export inspect, inspect_constraints
 
 import JuMP, Hypatia
@@ -57,15 +57,22 @@ function evaluate(x::BasicSymbolic)
     eval_node = function (node)
         !(node isa BasicSymbolic) && return node
 
-        # if iscall(node) && operation(node) === :outer
-        #     vr, vl = arguments(node)
-        #     ir = findfirst(v -> isequal(v, vr), vecs)
-        #     il = findfirst(v -> isequal(v, vl), vecs)
-        #     (ir === nothing || il === nothing) && error("vector matrix mapping failed")
-        #     M = zeros(Float64, length(vecs), length(vecs))
-        #     M[ir, il] = 1.0
-        #     return M
-        # end
+        if iscall(node) && isequal(operation(node), outer)
+            vr, vl = arguments(node)
+            M = zeros(Float64, length(vecs), length(vecs))
+
+            if iszero(vr) || iszero(vl)
+                return M
+            end
+
+            ir = findfirst(v -> isequal(v, vr), vecs)
+            il = findfirst(v -> isequal(v, vl), vecs)
+
+            (ir === nothing || il === nothing) && error("vector matrix mapping failed for [$vr] and [$vl]")
+
+            M[ir, il] = 1.0
+            return M
+        end
 
         if iscall(node) && isequal(symtype(node), R)
             isequal(operation(node), zero) && return 0.0
@@ -105,7 +112,29 @@ function evaluate(x::BasicSymbolic)
 
             if isequal(op, constant)
                 return args[1]
-            elseif op ∈ [+, -, *, /]
+            elseif isequal(op, +)
+                contains_matrix_operand::Bool = any(operand -> operand isa AbstractArray, args)
+                if contains_matrix_operand
+                    first_matrix_operand::AbstractArray = first(filter(operand -> operand isa AbstractArray, args))
+                    matrix_dimension0::Int64 = size(first_matrix_operand, 1)
+                    return reduce(+, map(operand -> operand isa AbstractArray ? operand : operand * la.I(matrix_dimension0), args))
+                else
+                    return +(args...)
+                end
+            elseif isequal(op, -)
+                if length(args) == 2
+                    left_operand::Any = args[1]
+                    right_operand::Any = args[2]
+                    if left_operand isa AbstractArray && !(right_operand isa AbstractArray)
+                        matrix_dimension1::Int64 = size(left_operand, 1)
+                        return left_operand - (right_operand * la.I(matrix_dimension1))
+                    elseif !(left_operand isa AbstractArray) && right_operand isa AbstractArray
+                        matrix_dimension2::Int64 = size(right_operand, 1)
+                        return (left_operand * la.I(matrix_dimension2)) - right_operand
+                    end
+                end
+                return -(args...)
+            elseif op ∈ [*, /]
                 return op(args...)
             elseif isequal(op, tr)
                 verbose() && @info "Evaluating the trace of $(args[1])"
@@ -134,45 +163,94 @@ function evaluate(x::BasicSymbolic)
 
             elseif T <: PositiveSemidefinite
                 A = arguments(node)[1]
-                T_type = typeof(model()).parameters[1]
-                AA = convert.(JuMP.GenericAffExpr{T_type,JuMP.GenericVariableRef{T_type}}, A)
-                verbose() && @info "Enforcing positive semidefinite constraint 0 ⪯ $A"
-                return JuMP.@constraint(model(), AA in JuMP.PSDCone())
+                ϵ = arguments(node)[2]
+                verbose() && @info "Enforcing positive definite constraint $ϵ ⪯ $A"
 
-            elseif T <: PositiveDefinite
-                A = arguments(node)[1]
-                T_type = typeof(model()).parameters[1]
-                AA = convert.(JuMP.GenericAffExpr{T_type,JuMP.GenericVariableRef{T_type}}, A)
-                verbose() && @info "Enforcing positive definite constraint 0 ⪯ $A"
-                ϵ = 1e-6 #TODO: this should be scaled, how to do so...
-                return JuMP.@constraint(model(), AA - ϵ * la.I in JuMP.PSDCone())
+                function sanitize_jump_expr(val)
+                    if val isa JuMP.GenericQuadExpr
+                        JuMP.drop_zeros!(val)
+                        if isempty(val.terms)
+                            return val.aff
+                        else
+                            error("Strictly non-linear (bilinear/quadratic) term detected in LMI matrix. Offending term: $val")
+                        end
+                    elseif val isa AbstractArray
+                        return map(sanitize_jump_expr, val)
+                    end
+                    return val
+                end
 
+                eval_A = map(sanitize_jump_expr, A)
+                has_blocks = any(x -> x isa AbstractMatrix, eval_A)
+                T_type = typeof(model()).parameters[1]
+                AffExprType = JuMP.GenericAffExpr{T_type,JuMP.GenericVariableRef{T_type}}
+
+                if has_blocks
+                    block_dim = 1
+                    for x in eval_A
+                        if x isa AbstractMatrix
+                            block_dim = size(x, 1)
+                            break
+                        end
+                    end
+
+                    flat_dim = size(eval_A, 1) * block_dim
+                    flat_AA = Matrix{AffExprType}(undef, flat_dim, flat_dim)
+
+                    for i in 1:size(eval_A, 1)
+                        for j in 1:size(eval_A, 2)
+                            elem = eval_A[i, j]
+                            row_start = (i-1)*block_dim + 1
+                            row_end = i*block_dim
+                            col_start = (j-1)*block_dim + 1
+                            col_end = j*block_dim
+
+                            if elem isa AbstractMatrix
+                                flat_AA[row_start:row_end, col_start:col_end] = convert.(AffExprType, elem)
+                            else
+                                flat_AA[row_start:row_end, col_start:col_end] = convert.(AffExprType, elem * la.I(block_dim))
+                            end
+                        end
+                    end
+                    AA = flat_AA
+                else
+                    AA = convert.(AffExprType, eval_A)
+                end
+
+                symmetric_AA = la.Symmetric(AA)
+                matrix_dimension = size(symmetric_AA, 1)
+
+                if iszero(ϵ)
+                    return JuMP.@constraint(model(), symmetric_AA in JuMP.PSDCone())
+                else
+                    return JuMP.@constraint(model(), symmetric_AA - (ϵ * la.I(matrix_dimension)) in JuMP.PSDCone())
+                end
             elseif isequal(T, Optimization)
                 obj = objective(node)
                 con = constraint(node)
                 verbose() && @info "Optimizing $obj subject to $con"
 
-                try
-                    if is_minimization(node)
-                        JuMP.@objective(model(), Min, obj)
-                    elseif is_maximization(node)
-                        JuMP.@objective(model(), Max, obj)
-                    end
-                    JuMP.optimize!(model())
+                if is_minimization(node)
+                    JuMP.@objective(model(), Min, obj)
+                elseif is_maximization(node)
+                    JuMP.@objective(model(), Max, obj)
+                end
 
-                    if is_minimization(node) || is_maximization(node)
-                        status = JuMP.termination_status(model())
-                        if status == MOI.OPTIMAL || status == MOI.ALMOST_OPTIMAL
-                            return JuMP.value(obj)
-                        end
-                        @warn "Optimization terminated with status $status; numeric results are unreliable. Returning the JuMP model. Use `inspect(model)` to see the results."
-                        return model()
+                println("=== DEBUG: JUMP MODEL ===")
+                print(model())
+                println("=========================")
 
-                    elseif is_feasibility(node)
-                        return JuMP.is_solved_and_feasible(model())
+                JuMP.optimize!(model())
+
+                if is_minimization(node) || is_maximization(node)
+                    status = JuMP.termination_status(model())
+                    if status == MOI.OPTIMAL || status == MOI.ALMOST_OPTIMAL
+                        return JuMP.value(obj)
                     end
-                catch
-                    error("Failed to solve optimization problem. Consider first simplifying the problem symbolically using `simplify(opt)`")
+                    @warn "Optimization terminated with status $status; numeric results are unreliable. Returning the JuMP model. Use `inspect(model)` to see the results."
+                    return model()
+                elseif is_feasibility(node)
+                    return JuMP.is_solved_and_feasible(model())
                 end
             end
         end

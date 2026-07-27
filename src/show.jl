@@ -156,7 +156,7 @@ function semantic_ast(t::BasicSymbolic)
 
         if op ∈ [+, -, *, /, ∧, ==]
             return InfixOp(Leaf(Symbol(op)), pretty_args, id(t))
-        elseif op === :outer
+        elseif isequal(op, outer)
             return InfixOp(Leaf(:outer), pretty_args, id(t))
         elseif op === ≤
             return InfixOp(Leaf(:≤), pretty_args, id(t))

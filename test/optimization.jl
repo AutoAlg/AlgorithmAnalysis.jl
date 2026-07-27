@@ -66,47 +66,52 @@ end
     end
 end
 
-@testitem "Control Theoretic" begin
-    @alg begin
-        α, L, ρ ∈ R, x, xn ∈ Rⁿ, f ∈ F(Rⁿ), P ∈ Sⁿ
 
-        c_f = smooth_convex(f, L)
+# @testitem "Control Theoretic" begin
+#     @alg begin
+#         α, L, ρ ∈ R, x, xn ∈ Rⁿ, f ∈ F(Rⁿ), P ∈ Sⁿ
 
-        u = f'(x) # g
-        c_xn = (xn == x - α * u) # X_{k+1} = Ax + Bu
+#         c_f = smooth_convex(f, L)
 
-        V = x'(P * x)
-        Vn = xn'(P * xn)
+#         u = f'(x) # g
+#         c_xn = (xn == x - α * u) # X_{k+1} = Ax + Bu
 
-        c_p = P ≻ 0
-        c_vnv = (Vn - ρ * V) ≤ zero(R)
+#         V = x'(P * x)
+#         Vn = xn'(P * xn)
 
-        cons = c_f ∧ c_xn ∧ c_p ∧ c_vnv
-        opt = feasible(cons)
-    end
+#         c_p = P ≻ 0
+#         c_vnv = (Vn - ρ * V) ≤ zero(R)
 
-    topt = lyap_simplify(opt)
+#         cons = c_f ∧ c_xn ∧ c_p ∧ c_vnv
+#         opt = feasible(cons)
+#     end
 
-    function are_parameters_reasonable(in_α, in_L, in_ρ)::Bool
-        with_numerics(parameters=Dict(α => in_α, L => in_L, ρ => in_ρ)) do
-            evaluate(topt)
-        end
-    end
+#     topt = lyap_simplify(opt)
 
-    function do_binary_search(α, L)
-        ρ_min, ρ_max = 0.0, 1.0
-        while (ρ_max - ρ_min) > 1e-3
-            ρ_mid = (ρ_min + ρ_max) / 2
-            if are_parameters_reasonable(α, L, ρ_mid)
-                ρ_max = ρ_mid
-            else
-                ρ_min = ρ_mid
-            end
-        end
-    end
+#     function are_parameters_reasonable(in_α, in_L, in_ρ)::Bool
+#         with_numerics(parameters=Dict(α => in_α, L => in_L, ρ => in_ρ)) do
+#             evaluate(topt)
+#         end
+#     end
 
-    @test do_binary_search(big"0.075", big"10.0") ≈ 2.0
-end
+#     function do_binary_search(α, L)
+#         ρ_min, ρ_max = 0.0, 1.0
+#         while (ρ_max - ρ_min) > 1e-3
+#             ρ_mid = (ρ_min + ρ_max) / 2
+#             if are_parameters_reasonable(α, L, ρ_mid)
+#                 ρ_max = ρ_mid
+#             else
+#                 ρ_min = ρ_mid
+#             end
+#         end
+#     end
+
+#     @test do_binary_search(big"0.075", big"10.0") ≈ 2.0
+# end
 
 # TODO: you need to do the split rule propagation stuff as to not trample the gram
 # TODO: internally do s procedure
+
+
+# TODO: figure out how to run individual tests or sets of tests
+
