@@ -236,9 +236,9 @@ function evaluate(x::BasicSymbolic)
                     JuMP.@objective(model(), Max, obj)
                 end
 
-                println("=== DEBUG: JUMP MODEL ===")
-                print(model())
-                println("=========================")
+                # println("=== DEBUG: JUMP MODEL ===")
+                # print(model())
+                # println("=========================")
 
                 JuMP.optimize!(model())
 

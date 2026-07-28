@@ -106,6 +106,11 @@ function semantic_ast(t::BasicSymbolic{T}) where {T<:Constraint}
         f = semantic_ast(args[1])
         L = semantic_ast(args[2])
         return ConstraintSet(f, Leaf(Symbol("SmoothConvex($L)")), id(t))
+    elseif isequal(op, smooth_strongly_convex)
+        f = semantic_ast(args[1])
+        μ = semantic_ast(args[2])
+        L = semantic_ast(args[3])
+        return ConstraintSet(f, Leaf(Symbol("SmoothStronglyConvex($μ, $L)")), id(t))
     else
         f = semantic_ast(args[1])
         return ConstraintSet(f, Leaf(Symbol(T)), id(t))

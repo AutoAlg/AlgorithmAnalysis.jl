@@ -10,6 +10,7 @@ export ⪯, ⪰, ≺, ≻, to_symbolic, tr
 export convex, smooth_convex
 export LessThanOrEqualTo
 export outer
+export smooth_strongly_convex
 
 function outer end
 
@@ -187,6 +188,10 @@ end
 
 function smooth_convex(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}, L::BasicSymbolic{F}) where {F,V<:VectorSpace{F}}
     return Term{Constraint}(smooth_convex, [f, L])
+end
+
+function smooth_strongly_convex(f::BasicSymbolic{FnType{Tuple{V},F,DifferentiableFunctional}}, μ::BasicSymbolic{F}, L::BasicSymbolic{F})::BasicSymbolic{Constraint} where {F<:Field,V<:VectorSpace{F}}
+    return Term{Constraint}(smooth_strongly_convex, [f, μ, L])
 end
 
 # function ∈(G::BasicSymbolic{<:MatrixSpace}, ::Type{PositiveSemidefinite})
