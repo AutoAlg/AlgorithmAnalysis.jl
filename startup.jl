@@ -36,9 +36,9 @@ topt4 = extract_lmi_coefficients(topt3)
 # end
 
 function find_optimal_convergence_rate(; alpha::Float64, L_const::Float64, tol::Float64=1e-5)
-    rho_low = 0.0
-    rho_high = 1.0
-    rho_opt = 1.0
+    rho_low = -0.3
+    rho_high = 1.25
+    rho_opt = 1.2
 
     while (rho_high - rho_low) > tol
         rho_mid = (rho_low + rho_high) / 2.0
