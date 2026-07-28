@@ -365,5 +365,11 @@ end
 function state(prob::Node{LyapunovCertificate})
     con = arguments(prob)[1]
     ts = transitions(con)
-    x = [ arguments(t)[1] for t ∈ ts ]
+    if isnothing(ts)
+        return nothing, nothing
+    end
+    states = [ arguments(t)[1] for t ∈ ts ]
+    next_states = [ next(state, prob) for state ∈ states ]
+
+    return states, next_states
 end

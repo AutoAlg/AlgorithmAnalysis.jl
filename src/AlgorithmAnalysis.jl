@@ -29,7 +29,7 @@ include("show.jl")
 
 import Base: isequal, ==, hash
 
-function Base.isequal(a::Node, b::Node)
+function Base.isequal(a::Node{<:NodeType}, b::Node{<:NodeType})
     a === b && return true
 
     iscall(a) ≠ iscall(b) && return false
@@ -42,7 +42,7 @@ function Base.isequal(a::Node, b::Node)
     end
 end
 
-function Base.hash(a::Node, h::UInt)
+function Base.hash(a::Node{<:NodeType}, h::UInt)
     if iscall(a)
         h = hash(:iscall, h)
         h = hash(operation(a), h)

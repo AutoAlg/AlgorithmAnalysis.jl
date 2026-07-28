@@ -2,8 +2,9 @@
 # NUMERIC
 # ------------------------------------------------------
 
-export with_numerics, evaluate, feasible
+export with_numerics, with_parameters, evaluate
 export inspect, inspect_constraints
+export isparameter
 
 import JuMP, Hypatia
 import MathOptInterface as MOI
@@ -20,6 +21,8 @@ function default_model(T::DataType)
     JuMP.set_silent(model)
     return model
 end
+
+isparameter(x::Node) = x ∈ keys(parameters())
 
 function with_parameters(code::Function, params::Dict)
     return Base.ScopedValues.with(code, PARAMETERS => params)
@@ -169,6 +172,58 @@ function evaluate(x::Node)
     end
 
     return postwalk_with_operators(eval_node, x)
+end
+
+function evaluate(prob::Node{LyapunovCertificate})
+    !active_model() && error("Searching for a Lyapunov certificate requires numerics")
+
+    con, perf, rate = arguments(prob)
+
+    x, x₊ = state(prob)
+
+    cons = filter(c -> !(symtype(c) <: Transition), arguments(con))
+
+    dict = linear_decomposition(perf)
+    for con ∈ cons
+        if !iscall(con)
+            display("Unknown constraint $con")
+        end
+        T, op, args = symtype(con), operation(con), arguments(con)
+
+        if T <: Equality
+            @show linear_decomposition(args[1])
+        elseif T <: LessThanOrEqualTo
+            @show linear_decomposition(args[1])
+        end
+    end
+
+    # state update
+    X, X⁺, x, u = stateupdate(vars)
+
+    # number of states
+    n = length(x)
+
+    # Lyapunov candidate parameters
+    θ = JuMP.@variable(model(), [1:n])
+
+    # Lyapunov function
+    V  = X' * θ
+    V⁺ = X⁺' * θ
+
+    # performance measure
+    P = vec(linearform( [x; u] => performance ))
+
+    # negative linear forms
+    negative!(model(), [x; u], cons, P - V)
+    negative!(model(), [x; u], cons, V⁺ - ρ * V)
+
+    JuMP.optimize!(model())
+
+    if verbose
+        @info "Rate: $ρ, Termination status: $(JuMP.termination_status(model()))"
+    end
+
+    return JuMP.is_solved_and_feasible(model())
 end
 
 function inspect(model::JuMP.Model, tolerance = 1e-6)

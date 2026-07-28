@@ -215,7 +215,7 @@ function gram_transformation(opt::Node{<:Optimization})
         vecs = [v for v in all_vecs if isequal(symtype(v), vectorspace) && issym(v)]
         vecs = unique!(vecs)
 
-        G = Sⁿ([ x'(y) for x in vecs, y in vecs ])
+        G = Sⁿ([ x ⋅ y for x in vecs, y in vecs ])
 
         vec_str = join(tostring.(vecs), ", ")
 
@@ -234,35 +234,17 @@ function gram_transformation(opt::Node{<:Optimization})
             end
         end
 
-        @show old
-
         opt = replace_constraint(opt, old, new)
 
         opt = add_constraint(opt, G ⪰ 0)
 
-        rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2)
+        rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2) where is_inner_product(~v1,~v2)
         
         opt = rewrite(opt, [rule])
     end
 
     return opt
 end
-
-# ------------------------------------------------------
-# LYAPUNOV ANALYSIS (forward declarations; full implementation in lyapunov.jl)
-# ------------------------------------------------------
-
-# Fallback — returns false until lyapunov.jl adds the LyapunovAnalysis method.
-lyapunov_transformation_is_applicable(::Any) = false
-
-# Stub — lyapunov.jl defines the LyapunovAnalysis method that does the real work.
-function lyapunov_transformation end
-
-# Fallback — returns false until lyapunov.jl adds Optimization-specific method.
-lyapunov_certificate_transformation_is_applicable(::Any) = false
-
-# Stub — lyapunov.jl defines the Optimization method that builds certificate constraints.
-function lyapunov_certificate_transformation end
 
 # ------------------------------------------------------
 # THEORY
@@ -285,7 +267,8 @@ const theory = [
     # SCALAR MULTIPLICATION IDENTITIES
     # --------------------------------------------------
     @rule ~x * ~y => ~y where (is_scalar_and_vector(~x, ~y) && isequal(~x, one(symtype(~x))))
-    @rule ~x * ~y => ~y where (are_scalars(~x, ~y) && isequal(~x, one(symtype(~x))))
+    @rule ~x * ~y => ~y where isone(~x)
+    @rule ~x * ~y => ~x where isone(~y)
     @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && isequal(~x, zero(symtype(~x))))
 
     # @rule ~~x ∧ ~y => ~x where isequal(symtype(~y), Satisfied)
@@ -309,11 +292,6 @@ const theory = [
     # GRAM TRANSFORMATION
     # --------------------------------------------------
     @rule ~opt => gram_transformation(~opt) where gram_transformation_is_applicable(~opt)
-
-    # --------------------------------------------------
-    # LYAPUNOV CERTIFICATE TRANSFORMATION
-    # --------------------------------------------------
-    # @rule ~opt => lyapunov_certificate_transformation(~opt) where lyapunov_certificate_transformation_is_applicable(~opt)
 ]
 
 simplify = Fixpoint(Postwalk(Chain(theory)))

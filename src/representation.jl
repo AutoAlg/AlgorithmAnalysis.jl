@@ -12,7 +12,8 @@ export convex, smooth_convex, sector_bounded
 export leaf, branch, Transition
 export LyapunovCertificate, certify, rate
 export Optimization, Minimization, Maximization, Feasibility
-export Node, →, NodeType
+export Node, →, NodeType, ⋅, performance, feasible, isconstant
+export Equality, LessThanOrEqualTo
 
 const Node{T} = SymbolicUtils.BasicSymbolic{T}
 
@@ -81,8 +82,13 @@ for op in (:+, :-, :*, :/, :^, :≤, :≥, :(==))
     end
 end
 
+Base.:*(x::Number, y::Node{Rⁿ}) = R(x) * y
+
+
 field(::Type{<:VectorSpace{F}}) where F = F
 field(::Node{V}) where {F,V<:VectorSpace{F}} = F
+field(::Type{R}) = R
+field(::Node{R}) = R
 
 function constant end
 
@@ -96,6 +102,8 @@ one(::Type{R}) = Term{R}(one, [])
 R(val::Real) = Term{R}(constant, [val])
 satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
+
+isconstant(x::Node) = iscall(x) && isequal(operation(x), constant)
 
 iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
 isone(x::Node) = iscall(x) && isequal(operation(x), one)
@@ -130,6 +138,7 @@ tr(A::Matrix) = la.tr(A)
 *(x::T...) where {F<:Field, T<:Node{F}} = Term{F}(*, x)
 -(x::T, y::T) where {F<:Field, T<:Node{F}} = Term{F}(-, [x, y])
 /(x::T, y::T) where {F<:Field, T<:Node{F}} = Term{F}(/, [x, y])
+-(x::Node{F}) where {F<:Field} = Term{F}(-, [x])
 
 function F(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}
@@ -153,13 +162,7 @@ function *(scalar::Node{F}, v::Node{V}) where {F,V<:VectorSpace{F}}
     return Term{V}(*, [scalar, v])
 end
 
-# function *(scalar::F, v::Node{V}) where {F,V<:VectorSpace{F}}
-#     return Term{F}(*, [scalar, v])
-# end
-
-function ⋅(u::Node{V}, v::Node{V}) where {F,V<:VectorSpace{F}}
-    return Term{F}(⋅, [u, v])
-end
+(⋅)(u::Node{V}, v::Node{V}) where {F,V<:VectorSpace{F}} = u'(v)
 
 function adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
     iszero(x) && return Term{FnType{Tuple{V},F,LinearFunctional}}(zero, [])
@@ -300,6 +303,8 @@ end
 function rate(con::Node{<:Prop}, perf::Node{R})
     return Term{LyapunovAnalysis}(rate, Any[con, perf])
 end
+
+performance(con::Node{LyapunovCertificate}) = arguments(con)[2]
 
 constraint(t::Node{LyapunovCertificate}) = arguments(t)[1]
 

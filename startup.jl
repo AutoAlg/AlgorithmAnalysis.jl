@@ -41,7 +41,7 @@ import SymbolicUtils: Term, operation, arguments, symtype, iscall, substitute
 
 @alg begin
     α, μ, L, ρ ∈ R
-    x, xs ∈ Rⁿ
+    x, xs, y ∈ Rⁿ
     f ∈ F(Rⁿ)
     gs = f'(xs)
     g  = f'(x)
@@ -56,35 +56,42 @@ import SymbolicUtils: Term, operation, arguments, symtype, iscall, substitute
     prob = certify(con, perf, ρ)
 end
 
-@alg begin
-    α, ρ, μ, L ∈ R
-    x ∈ Rⁿ
-    f ∈ F(Rⁿ)
-    con = sector_bounded(f, μ, L)
-    perf = (x - α * f'(x))^2
-    prob = certify(con, perf, ρ)
-end
-
-
-transitions(con)
-
-next(x, con)
-
-cons = arguments(constraint(ttprob))
-symtype.(cons)
-
-remove_constraint(constraint(ttprob), t1)
+# @alg begin
+#     α, ρ, μ, L ∈ R
+#     x, y ∈ Rⁿ
+#     f ∈ F(Rⁿ)
+#     con = sector_bounded(f, μ, L)
+#     perf = (x - α * f'(x))^2
+#     prob = certify(con, perf, ρ)
+# end
 
 prob
 
 tprob = sector_bounded_interpolation(prob)
 
-# still contains vector transitions (e.g., x → x)
-ttprob = gram_transformation(prob)
-
-x = state(ttprob)
+ttprob = gram_transformation(tprob)
 
 
+with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
+    x, x₊ = state(ttprob)
+    con, perf, rate = arguments(ttprob)
+
+    cons = filter(c -> !(symtype(c) <: Transition), arguments(con))
+
+    dict = linear_decomposition(perf)
+    for con ∈ cons
+        if !iscall(con)
+            display("Unknown constraint $con")
+        end
+        T, op, args = symtype(con), operation(con), arguments(con)
+
+        if T <: Equality
+            @show linear_decomposition(args[1])
+        elseif T <: LessThanOrEqualTo
+            @show linear_decomposition(args[1])
+        end
+    end
+end
 
 # tprob = simplify(prob);
 

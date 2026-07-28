@@ -35,6 +35,12 @@ struct Postfixed <: SemanticNode
     id::Union{Symbol, Nothing}
 end
 
+struct Prefixed <: SemanticNode
+    expr::SemanticNode
+    op::Symbol
+    id::Union{Symbol, Nothing}
+end
+
 struct Leaf <: SemanticNode
     id::Symbol
 end
@@ -205,6 +211,9 @@ function semantic_ast(t::Node)
         pretty_args = map(arg -> semantic_ast(arg), args)
 
         if op ∈ [+, -, *, /, ∧, ==]
+            if isequal(op, -) && length(args) == 1
+                return Prefixed(pretty_args[1], :-, id(t))
+            end
             return InfixOp(Leaf(Symbol(op)), pretty_args, id(t))
         elseif op === ≤
             return InfixOp(Leaf(:≤), pretty_args, id(t))
@@ -242,6 +251,7 @@ Base.show(io::IO, x::Constant) = show(io, MIME"text/plain"(), x)
 Base.show(io::IO, n::NormSquared) = show(io, MIME"text/plain"(), n)
 Base.show(io::IO, con::PropSet) = show(io, MIME"text/plain"(), con)
 Base.show(io::IO, p::Postfixed) = show(io, MIME"text/plain"(), p)
+Base.show(io::IO, p::Prefixed) = show(io, MIME"text/plain"(), p)
 Base.show(io::IO, opt::OptimizationProblem) = show(io, MIME"text/plain"(), opt)
 Base.show(io::IO, ∇f::GradientOp) = show(io, MIME"text/plain"(), ∇f)
 Base.show(io::IO, f::FuncEval) = show(io, MIME"text/plain"(), f)
@@ -281,6 +291,18 @@ function Base.show(io::IO, ::MIME"text/plain", p::Postfixed)
         print("(")
         show(io, p.expr)
         print(io, ")", p.op)
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", p::Prefixed)
+    get(io, :use_id, true) && p.id ≠ nothing && return print(io, p.id)
+
+    if p.expr isa Leaf
+        print(io, p.op, p.expr)
+    else
+        print(p.op, "(")
+        show(io, p.expr)
+        print(io, ")")
     end
 end
 
@@ -356,7 +378,7 @@ function Base.show(io::IO, ::MIME"text/plain", op_node::InfixOp)
             child_op = Symbol(operation(child))
         end
 
-        if child_op !== nothing && parent_op in (:*, :∧, Symbol("'")) && child_op in (:+, :-, :≤, :≥, :(==))
+        if child_op !== nothing && parent_op in (:*, :∧, :-, Symbol("'")) && child_op in (:+, :-, :≤, :≥, :(==))
             return "($child_str)"
         end
         

@@ -4,6 +4,7 @@ export with_verbose, postwalk_with_operators
 export transitions, apply_transition, propagate_transition, propagate_transitions
 export has_next, next, tostring
 export add_constraint, remove_constraint, replace_constraint
+export flatten_inner_product, linear_decomposition
 
 function postwalk_with_operators(f, x)
     if iscall(x)
@@ -83,25 +84,18 @@ function flatten_evaluations(tree::Node, fs::Vector{Node})
     return tree
 end
 
-function flatten_inner_product(v1::Node, v2::Node)
+function is_inner_product(v1::Node, v2::Node)
+    V1, V2 = symtype(v1), symtype(v2)
+    return isequal(V1, V2) && V1 <: VectorSpace
+end
 
-    if symtype(v1) ≠ symtype(v2)
-        error("Inner product of $v1 and $v2 cannot be flattened since they are in different spaces")
-    end
+function flatten_inner_product(v1::Node{V}, v2::Node{V}) where {F, V<:VectorSpace{F}}
 
     if iszero(v1) || iszero(v2)
-        return zero(field(v1))
-    end
-
-    if iscall(v1) && isequal(operation(v1), -) && length(arguments(v1)) == 1
-        return -flatten_inner_product(arguments(v1)[1], v2)
-    end
-    if iscall(v2) && isequal(operation(v2), -) && length(arguments(v2)) == 1
-        return -flatten_inner_product(v1, arguments(v2)[1])
+        return zero(F)
     end
 
     if issym(v1) && issym(v2)
-        T = field(v1)
         s1 = tostring(v1)
         s2 = tostring(v2)
         if isequal(v1, v2)
@@ -110,37 +104,46 @@ function flatten_inner_product(v1::Node, v2::Node)
             first_str, second_str = s1 < s2 ? (s1, s2) : (s2, s1)
             sym = Symbol("⟨", first_str, ",", second_str, "⟩")
         end
-        return Sym{T}(sym)
+        return Sym{F}(sym)
     end
 
     if iscall(v1)
-        op = operation(v1)
-        args = arguments(v1)
+        op, args = operation(v1), arguments(v1)
         if isequal(op, +)
-            return sum(map(v -> flatten_inner_product(v, v2), args))
+            return mapreduce(v -> flatten_inner_product(v, v2), +, args)
         elseif isequal(op, -)
-            if length(args) == 2
-                return flatten_inner_product(args[1], v2) - flatten_inner_product(args[2], v2)
+            if length(args) == 1
+                return -flatten_inner_product(args[1], v2)
+            else
+                return flatten_inner_product(args[1], v2) - mapreduce(v -> flatten_inner_product(v, v2), +, args[2:end])
             end
-        elseif isequal(op, *)
-            # Assuming first arg is scalar, second is vector
-            return args[1] * flatten_inner_product(args[2], v2)
         end
     end
 
     if iscall(v2)
-        op = operation(v2)
-        args = arguments(v2)
+        op, args = operation(v2), arguments(v2)
         if isequal(op, +)
-            return sum(map(v -> flatten_inner_product(v1, v), args))
+            return mapreduce(v -> flatten_inner_product(v1, v), +, args)
         elseif isequal(op, -)
-            new_args = map(v -> flatten_inner_product(v1, v), args)
-            if length(args) == 2
-                return flatten_inner_product(v1, args[1]) - flatten_inner_product(v1, args[2])
+            if length(args) == 1
+                return -flatten_inner_product(v1, args[1])
+            else
+                return flatten_inner_product(v1, args[1]) - mapreduce(v -> flatten_inner_product(v1, v), +, args[2:end])
             end
-        elseif isequal(op, *)
-            # Assuming first arg is scalar, second is vector
-            return args[1] * flatten_inner_product(v1, args[2])
+        end
+    end
+
+    if iscall(v1)
+        op, args = operation(v1), arguments(v1)
+        if isequal(op, *) && isequal(symtype(args[1]), F)
+            return args[1] * mapreduce(v -> flatten_inner_product(v, v2), *, args[2:end])
+        end
+    end
+
+    if iscall(v2)
+        op, args = operation(v2), arguments(v2)
+        if isequal(op, *) && isequal(symtype(args[1]), F)
+            return args[1] * mapreduce(v -> flatten_inner_product(v1, v), *, args[2:end])
         end
     end
 
@@ -204,9 +207,10 @@ end
 
 "Extract all transitions from a proposition."
 function transitions(con::Node{Conjunction})
-    foldl(∧, filter(t -> symtype(t) <: Transition, arguments(con)))
+    foldl(∧, filter(t -> symtype(t) <: Transition, arguments(con)), init=satisfied())
 end
 transitions(t::Node{<:Transition}) = t
+transitions(t::Node{<:Prop}) = satisfied()
 
 has_next(::Node, ::Node{<:Prop}) = false
 has_next(node::Node, opt::Node{<:Optimization}) = has_next(node, constraint(opt))
@@ -293,7 +297,7 @@ function add_constraint(con::Node{<:Prop}, new::Node{<:Prop})
 end
 
 function remove_constraint(con::Node{<:Prop}, old::Node{<:Prop})
-    return con ∧ (¬ old)
+    isequal(con, old) ? satisfied() : con
 end
 
 function remove_constraint(con::Node{Conjunction}, old::Node{<:Prop})
@@ -333,3 +337,126 @@ end
 function replace_constraint(opt::Node{LyapunovCertificate}, old::Node{<:Prop}, new::Node{<:Prop})
     add_constraint(remove_constraint(opt, old), new)
 end
+
+
+
+function linear_decomposition(v::Node{T}) where {T<:Union{VectorSpace, Field}}
+    
+    F = field(T)
+    terms = Dict{Node, Node}()
+
+    function add_term!(terms::Dict, leaf::Node, coeff::Node)
+        if iszero(coeff)
+            return
+        end
+        if iscall(leaf)
+            error("Cannot add non-leaf term: $leaf")
+        end
+        if haskey(terms, leaf)
+            updated = simplify(terms[leaf] + coeff)
+            if iszero(updated)
+                delete!(terms, leaf)
+            else
+                terms[leaf] = updated
+            end
+        else
+            terms[leaf] = coeff
+        end
+    end
+
+    function _decompose!(terms::Dict, v::Node, scale::Node)
+        if iszero(v) || iszero(scale)
+            return
+        end
+
+        scale = simplify(scale)
+
+        F = field(v)
+
+        if !iscall(v)
+            if isconstant(v) || isparameter(v)
+                add_term!(terms, one(F), simplify(scale * v))
+            else
+                add_term!(terms, v, scale)
+            end
+            return
+        end
+
+        op, args = operation(v), arguments(v)
+
+        if isequal(op, +)
+            for arg in args
+                _decompose!(terms, arg, scale)
+            end
+        elseif isequal(op, -)
+            if length(args) == 1
+                _decompose!(terms, args[1], simplify(-scale))
+            else
+                _decompose!(terms, args[1], scale)
+                for arg in args[2:end]
+                    _decompose!(terms, arg, simplify(-scale))
+                end
+            end
+        elseif isequal(op, *)
+            const_scalars = filter(a -> (symtype(a) == F) && isconstant(a) || isparameter(a), args)
+            other_args = setdiff(args, const_scalars)
+
+            c_const = isempty(const_scalars) ? one(F) : prod(const_scalars)
+            new_scale = simplify(scale * c_const)
+
+            if isempty(other_args)
+                add_term!(terms, one(F), new_scale)
+            elseif length(other_args) == 1
+                _decompose!(terms, other_args[1], new_scale)
+            else
+                error("Composite leaf: $terms, $v, $scale")
+            end
+        end
+    end
+    
+    # Run in-place recursive decomposition starting with scale = 1
+    _decompose!(terms, v, one(F))
+    
+    return terms
+end
+
+"""
+    leaves(v::Node)
+
+Recursively collects all AST leaf nodes (nodes where `iscall(v)` is false) from an expression tree.
+Returns a `Set` of unique leaf nodes.
+"""
+function leaves(v::Node)
+
+    # In-place helper for tree traversal
+    function leaves!(leaves::Set, v::Node)
+        if !iscall(v)
+            push!(leaves, v)
+            return leaves
+        end
+
+        for arg in arguments(v)
+            collect_leaves!(leaves, arg)
+        end
+
+        return leaves
+    end
+
+    leaves = Set{Node}()
+    collect_leaves!(leaves, v)
+    return leaves
+end
+
+"""
+    negative!(model, vars, cons, f)
+
+Constrains a given linear form `f` with variables `vars` to be negative by adding nonnegative terms associated with the constraints `cons` and then setting the result to zero in the optimization `model`.
+"""
+# function negative!(model, vars, cons, f)
+#     for con ∈ cons
+#         λ = multiplier(model, con)
+#         e = expression(con)
+#         f += vec(linearform( vars => λ ⋅ e ))
+#     end
+#     JuMP.@constraint(model, f .== 0 )
+# end
