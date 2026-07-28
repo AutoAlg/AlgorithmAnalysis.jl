@@ -56,21 +56,35 @@ import SymbolicUtils: Term, operation, arguments, symtype, iscall, substitute
     prob = certify(con, perf, ρ)
 end
 
+@alg begin
+    α, ρ, μ, L ∈ R
+    x ∈ Rⁿ
+    f ∈ F(Rⁿ)
+    con = sector_bounded(f, μ, L)
+    perf = (x - α * f'(x))^2
+    prob = certify(con, perf, ρ)
+end
+
 
 transitions(con)
 
 next(x, con)
 
-symtype.(arguments(constraint(prob)))
+cons = arguments(constraint(ttprob))
+symtype.(cons)
+
+remove_constraint(constraint(ttprob), t1)
 
 prob
 
 tprob = sector_bounded_interpolation(prob)
 
 # still contains vector transitions (e.g., x → x)
-ttprob = gram_transformation(tprob)
+ttprob = gram_transformation(prob)
 
 x = state(ttprob)
+
+
 
 # tprob = simplify(prob);
 

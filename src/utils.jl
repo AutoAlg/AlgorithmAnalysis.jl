@@ -3,6 +3,7 @@ export rewrite, find_evaluation_points
 export with_verbose, postwalk_with_operators
 export transitions, apply_transition, propagate_transition, propagate_transitions
 export has_next, next, tostring
+export add_constraint, remove_constraint, replace_constraint
 
 function postwalk_with_operators(f, x)
     if iscall(x)
@@ -262,49 +263,44 @@ function apply_transitions(prop::Node{<:Prop}, expr::Node)
 end
 
 
-# x → x₊, fₓ = f(x), and f₊ = f(x₊) implies fₓ → f₊
-function propagate_transition(t::Node{<:Transition}, expr::Node)
-    x, x₊ = arguments(t)
-
-    substitute_x(n) = n === x ? x₊ : n
-
-    expr₊ = postwalk_with_operators(expr) do node
-        if iscall(node)
-            # Check if x is present in the arguments or operation of this function node
-            has_source = (operation(node) === x) || any(arg -> arg === x, arguments(node))
-
-            if has_source
-                # Replace x with x₊ in both the operation and the arguments
-                new_op = substitute_x(operation(node))
-                new_args = map(substitute_x, arguments(node))
-
-                # Reconstruct this function call at the target state
-                return maketerm(typeof(node), new_op, new_args, nothing)
+function propagate_transitions(ctx::Node, f::Node)
+    points = find_evaluation_points(f, ctx)
+    old, new = satisfied(), satisfied()
+    if has_next(f, ctx)
+        f₊ = next(f, ctx)
+        for x ∈ points
+            if has_next(x, ctx)
+                x₊ = next(x, ctx)
+                new = new ∧ ( f(x) → f₊(x₊) )
             end
         end
-
-        # Leave leaf nodes and non-matching nodes unchanged for higher-level passes
-        return node
+        old = old ∧ ( f → f₊ )
     end
-
-    if expr₊ !== expr
-        return t ∧ (expr → setmetadata(expr₊, ID, nothing))
-    else
-        return t
-    end
+    ctx = replace_constraint(ctx, old, new)
+    return ctx
 end
 
-function propagate_transitions(props::Node{Conjunction}, node::Node)
-    mapreduce(
-        trans -> propagate_transition(trans, node),
-        ∧,
-        arguments(transitions(props))
-    )
+function propagate_transitions(ctx::Node, fs::Vector{<:Node})
+    for f ∈ fs
+        ctx = propagate_transitions(ctx, f)
+    end
+    return ctx
 end
 
-propagate_transitions(t::Node{Transition}, node::Node) = propagate_transition(t, node)
 
+function add_constraint(con::Node{<:Prop}, new::Node{<:Prop})
+    return con ∧ new
+end
 
+function remove_constraint(con::Node{<:Prop}, old::Node{<:Prop})
+    return con ∧ (¬ old)
+end
+
+function remove_constraint(con::Node{Conjunction}, old::Node{<:Prop})
+    cons = collect(arguments(con))
+    filter!(c -> !isequal(old, c), cons)
+    cons = foldl(∧, cons)
+end
 
 function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
     Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
@@ -324,14 +320,7 @@ end
 function remove_constraint(opt::Node{LyapunovCertificate}, old_con::Node{<:Prop})
     con, perf, rate = arguments(opt)
     op = operation(opt)
-    if symtype(con) <: Conjunction
-        cons = collect(arguments(con))
-        filter!(c -> !isequal(old_con, c), cons)
-        cons = foldl(∧, cons)
-    else
-        cons = con
-    end
-    Term{LyapunovCertificate}(op, [cons, perf, rate])
+    Term{LyapunovCertificate}(op, [remove_constraint(con, old_con), perf, rate])
 end
 
 function remove_constraint(opt::Node{LyapunovCertificate}, old_con::Node{Conjunction})

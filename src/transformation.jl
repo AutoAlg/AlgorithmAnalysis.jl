@@ -178,28 +178,8 @@ function sector_bounded_interpolation(opt::Node{<:Optimization}, f::Node, μ::No
 
     old = sector_bounded(f, μ, L)
 
-    if has_next(f, opt)
-        f₊ = next(f, opt)
-        for x ∈ points
-            if has_next(x, opt)
-                x₊ = next(x, opt)
-                interp = interp ∧ ( f(x) → f₊(x₊) )
-            end
-        end
-        old = old ∧ ( f → f₊ )
-    end
-    if has_next(f', opt)
-        ∇f₊ = next(f', opt)
-        for x ∈ points
-            if has_next(x, opt)
-                x₊ = next(x, opt)
-                interp = interp ∧ ( f'(x) → ∇f₊(x₊) )
-            end
-        end
-        old = old ∧ ( f' → ∇f₊ )
-    end
-
     opt = replace_constraint(opt, old, interp)
+    opt = propagate_transitions(opt, [f, f'])
     opt = flatten_evaluations(opt, [f, f'])
 
     return opt
@@ -254,13 +234,15 @@ function gram_transformation(opt::Node{<:Optimization})
             end
         end
 
+        @show old
+
         opt = replace_constraint(opt, old, new)
+
+        opt = add_constraint(opt, G ⪰ 0)
 
         rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2)
         
         opt = rewrite(opt, [rule])
-
-        opt = add_constraint(opt, G ⪰ 0)
     end
 
     return opt
