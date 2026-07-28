@@ -4,7 +4,8 @@
 
 export with_numerics, with_parameters, evaluate
 export inspect, inspect_constraints
-export isparameter
+export isparameter, get_parameter_value, multiplier
+export value, hasvalue
 
 import JuMP, Hypatia
 import MathOptInterface as MOI
@@ -23,6 +24,18 @@ function default_model(T::DataType)
 end
 
 isparameter(x::Node) = x ∈ keys(parameters())
+
+hasvalue(x::Node) = isconstant(x) || isparameter(x)
+
+function value(x::Node)
+    if isconstant(x)
+        return arguments(x)[1]
+    elseif isparameter(x)
+        return parameters()[x]
+    else
+        error("$x has no value")
+    end
+end
 
 function with_parameters(code::Function, params::Dict)
     return Base.ScopedValues.with(code, PARAMETERS => params)
@@ -46,6 +59,12 @@ function model()
         JUMP_MODEL[]
     else
         error("No JuMP model instantiated. Use with_numerics() to run code inside of an optimizer.")
+    end
+end
+
+function get_parameter_value(node::Node)
+    if node ∈ keys(parameters())
+        return parameters()[node]
     end
 end
 
@@ -177,28 +196,29 @@ end
 function evaluate(prob::Node{LyapunovCertificate})
     !active_model() && error("Searching for a Lyapunov certificate requires numerics")
 
-    con, perf, rate = arguments(prob)
+    vars = filter(node -> !isconstant(node) && !isparameter(node), leaves(prob))
+
+    nonreal = filter(v -> !(v isa Node{R}), vars)
+
+    if !isempty(nonreal)
+        error("Problem has variables not in R: $nonreal")
+    end
+
+    basis = collect(Node{R}, vars)
+
+    @info "Basis: $basis"
+
+    con, performance, rate = arguments(prob)
 
     x, x₊ = state(prob)
 
+    @info "State: $x"
+
     cons = filter(c -> !(symtype(c) <: Transition), arguments(con))
 
-    dict = linear_decomposition(perf)
-    for con ∈ cons
-        if !iscall(con)
-            display("Unknown constraint $con")
-        end
-        T, op, args = symtype(con), operation(con), arguments(con)
-
-        if T <: Equality
-            @show linear_decomposition(args[1])
-        elseif T <: LessThanOrEqualTo
-            @show linear_decomposition(args[1])
-        end
-    end
-
-    # state update
-    X, X⁺, x, u = stateupdate(vars)
+    X  = evaluate.(as_matrix(basis => x))
+    X₊ = evaluate.(as_matrix(basis => x₊))
+    P  = evaluate.(as_matrix(basis => performance))
 
     # number of states
     n = length(x)
@@ -206,16 +226,16 @@ function evaluate(prob::Node{LyapunovCertificate})
     # Lyapunov candidate parameters
     θ = JuMP.@variable(model(), [1:n])
 
+    @show X
+    @show X₊
+
     # Lyapunov function
     V  = X' * θ
-    V⁺ = X⁺' * θ
-
-    # performance measure
-    P = vec(linearform( [x; u] => performance ))
+    V₊ = X₊' * θ
 
     # negative linear forms
-    negative!(model(), [x; u], cons, P - V)
-    negative!(model(), [x; u], cons, V⁺ - ρ * V)
+    negative!(basis, cons, P - V)
+    negative!(basis, cons, V₊ - rate * V)
 
     JuMP.optimize!(model())
 
@@ -224,6 +244,42 @@ function evaluate(prob::Node{LyapunovCertificate})
     end
 
     return JuMP.is_solved_and_feasible(model())
+end
+
+"""
+    negative!(model, vars, cons, f)
+
+Constrains a given linear form `f` with variables `vars` to be negative by adding nonnegative terms associated with the constraints `cons` and then setting the result to zero in the optimization `model`.
+"""
+function negative!(basis, cons, f)
+    for con ∈ cons
+        @show expression(con)
+        # f += as_matrix( basis => multiplier(con) ⋅ expression(con) )
+        e = expression(con)
+        λ = multiplier(con)
+        T = symtype(con)
+
+        if T <: Equality || T <: LessThanOrEqualTo
+            f += λ ⋅ evaluate.(as_matrix(basis => e))
+        elseif T <: PositiveSemidefinite
+            f += λ ⋅ evaluate.(as_matrix(basis => e))
+        else
+            error("Unknown constraint type $T")
+        end
+    end
+    JuMP.@constraint(model(), f .== 0 )
+end
+
+multiplier(::Node{Equality{R}}) = JuMP.@variable(model())
+
+function multiplier(::Node{LessThanOrEqualTo{R}})
+    JuMP.@variable(model(), Nonnegative)
+end
+
+function multiplier(c::Node{PositiveSemidefinite})
+    A = arguments(c)[1]
+    n = size(A,1)
+    JuMP.@variable(model(), [1:n, 1:n], PSD)
 end
 
 function inspect(model::JuMP.Model, tolerance = 1e-6)

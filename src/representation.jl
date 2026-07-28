@@ -13,7 +13,7 @@ export leaf, branch, Transition
 export LyapunovCertificate, certify, rate
 export Optimization, Minimization, Maximization, Feasibility
 export Node, →, NodeType, ⋅, performance, feasible, isconstant
-export Equality, LessThanOrEqualTo
+export Equality, LessThanOrEqualTo, expression
 
 const Node{T} = SymbolicUtils.BasicSymbolic{T}
 
@@ -75,6 +75,18 @@ Base.convert(::Type{<:Node}, val::Number) = R(val)
 Base.convert(::Type{Node{R}}, val::Number) = R(val)
 Base.promote_rule(::Type{Node{R}}, ::Type{<:Number}) = Node{R}
 
+function Base.convert(::Type{T}, val::Node{R}) where {T<:Real}
+    if isone(val)
+        one(T)
+    elseif iszero(val)
+        zero(T)
+    elseif isconstant(val)
+        arguments(val)[1]
+    else
+        error("Cannot convert $val to a real.")
+    end
+end
+
 for op in (:+, :-, :*, :/, :^, :≤, :≥, :(==))
     @eval begin
         Base.$op(x::Number, y::Node{R}) = $op(promote(x, y)...)
@@ -104,9 +116,9 @@ satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
 
 isconstant(x::Node) = iscall(x) && isequal(operation(x), constant)
-
 iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
 isone(x::Node) = iscall(x) && isequal(operation(x), one)
+value(x::Node) = isconstant(x) ? arguments(val)[1] : error("$x is not a constant")
 
 function Sⁿ(A::Matrix{Node{R}})
     size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
@@ -233,6 +245,18 @@ end
 function ≥(x::Node{T}, y::Node{T}) where {T}
     return Term{LessThanOrEqualTo{T}}(≤, [y, x])
 end
+
+function expression(x::Node{<:Equality})
+    args = arguments(x)
+    if iszero(args[1])
+        return args[2]
+    elseif iszero(args[2])
+        return args[1]
+    else
+        return args[2] - args[1]
+    end
+end
+expression(x::Node{<:LessThanOrEqualTo}) = arguments(x)[2] - arguments(x)[1]
 
 function ∧(args::Node{<:Prop}...)
     flat_args = Any[]

@@ -23,7 +23,6 @@ import LinearAlgebra: dot, ⋅
 include("representation.jl")
 include("utils.jl")
 include("transformation.jl")
-include("lyapunov.jl")
 include("numeric.jl")
 include("show.jl")
 

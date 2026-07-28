@@ -72,25 +72,14 @@ tprob = sector_bounded_interpolation(prob)
 ttprob = gram_transformation(tprob)
 
 
-with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
-    x, x₊ = state(ttprob)
-    con, perf, rate = arguments(ttprob)
+with_numerics(parameters = Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
+    
+    evaluate(ttprob)
 
-    cons = filter(c -> !(symtype(c) <: Transition), arguments(con))
+end
 
-    dict = linear_decomposition(perf)
-    for con ∈ cons
-        if !iscall(con)
-            display("Unknown constraint $con")
-        end
-        T, op, args = symtype(con), operation(con), arguments(con)
-
-        if T <: Equality
-            @show linear_decomposition(args[1])
-        elseif T <: LessThanOrEqualTo
-            @show linear_decomposition(args[1])
-        end
-    end
+with_numerics() do
+    multiplier(α ≤ 0)
 end
 
 # tprob = simplify(prob);

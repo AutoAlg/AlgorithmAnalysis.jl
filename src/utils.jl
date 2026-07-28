@@ -5,6 +5,7 @@ export transitions, apply_transition, propagate_transition, propagate_transition
 export has_next, next, tostring
 export add_constraint, remove_constraint, replace_constraint
 export flatten_inner_product, linear_decomposition
+export leaves, as_matrix, state
 
 function postwalk_with_operators(f, x)
     if iscall(x)
@@ -420,6 +421,22 @@ function linear_decomposition(v::Node{T}) where {T<:Union{VectorSpace, Field}}
     return terms
 end
 
+function as_matrix(p::Pair{<:Vector{<:Node}, <:Node})
+    basis, term = p
+
+    F = field(term)
+
+    dict = linear_decomposition(term)
+
+    [ get(dict, v, zero(F)) for v ∈ basis ]
+end
+
+function as_matrix(p::Pair{<:Vector{<:Node}, <:Vector{<:Node}})
+    basis, terms = p
+
+    [ get(linear_decomposition(term), v, zero(field(term))) for term ∈ terms, v ∈ basis ]
+end
+
 """
     leaves(v::Node)
 
@@ -429,7 +446,7 @@ Returns a `Set` of unique leaf nodes.
 function leaves(v::Node)
 
     # In-place helper for tree traversal
-    function leaves!(leaves::Set, v::Node)
+    function collect_leaves!(leaves::Set, v::Node)
         if !iscall(v)
             push!(leaves, v)
             return leaves
@@ -447,16 +464,14 @@ function leaves(v::Node)
     return leaves
 end
 
-"""
-    negative!(model, vars, cons, f)
+function state(prob::Node{LyapunovCertificate})
+    con = arguments(prob)[1]
+    ts = transitions(con)
+    if isnothing(ts)
+        return nothing, nothing
+    end
+    states = [ arguments(t)[1] for t ∈ ts ]
+    next_states = [ next(state, prob) for state ∈ states ]
 
-Constrains a given linear form `f` with variables `vars` to be negative by adding nonnegative terms associated with the constraints `cons` and then setting the result to zero in the optimization `model`.
-"""
-# function negative!(model, vars, cons, f)
-#     for con ∈ cons
-#         λ = multiplier(model, con)
-#         e = expression(con)
-#         f += vec(linearform( vars => λ ⋅ e ))
-#     end
-#     JuMP.@constraint(model, f .== 0 )
-# end
+    return states, next_states
+end
