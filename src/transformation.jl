@@ -267,8 +267,8 @@ const theory = [
     # SCALAR MULTIPLICATION IDENTITIES
     # --------------------------------------------------
     @rule ~x * ~y => ~y where (is_scalar_and_vector(~x, ~y) && isequal(~x, one(symtype(~x))))
-    @rule ~x * ~y => ~y where isone(~x) # TODO: these produce Sym{Real}!!!
-    @rule ~x * ~y => ~x where isone(~y)
+    # @rule ~x * ~y => ~y where isone(~x) # TODO: these produce Sym{Real}!!!
+    # @rule ~x * ~y => ~x where isone(~y)
     @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && isequal(~x, zero(symtype(~x))))
 
     # @rule ~~x ∧ ~y => ~x where isequal(symtype(~y), Satisfied)

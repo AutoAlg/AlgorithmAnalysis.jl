@@ -1,6 +1,6 @@
 using Revise
 using AlgorithmAnalysis
-import SymbolicUtils: Term, operation, arguments, symtype, iscall, substitute
+import SymbolicUtils: Term, operation, arguments, symtype, iscall, substitute, @rule
 
 # TODO
 # Lyapunov analysis
@@ -77,6 +77,46 @@ with_numerics(parameters = Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
     evaluate(ttprob)
 
 end
+
+# basis = [x, y]
+# as_matrix(basis => 2x - 3y)
+
+# from_matrix(basis, [2, -3])
+
+# A = SymbolicOperator(v -> isequal(v, x) ? 2x + 3y : -y, basis)
+# M = as_matrix(A)
+
+# A'(x)
+
+# # 1. Extract 3D tensor representation
+# @alg a, b, λ1, λ2, λ3 ∈ R
+# @alg A = [a b; b zero(R)]
+# @alg Λ = [λ1 λ2; λ2 λ3]
+# T = as_matrix([x, y] => A)  # Size: (2, 2, 2)
+
+# # 2. Evaluate Adjoint A*(Λ)
+# adj_expr = evaluate_adjoint(T, [x, y], [1 2; 2 3])
+
+
+# import SymbolicUtils: promote_symtype
+
+# # Retain R across operations and scalar products
+# promote_symtype(::typeof(*), ::Type{<:Number}, ::Type{R}) = R
+# promote_symtype(::typeof(*), ::Type{R}, ::Type{<:Number}) = R
+# promote_symtype(::typeof(*), ::Type{<:R}, ::Type{<:R}) = R
+
+# simp = SymbolicUtils.Rewriters.Fixpoint(
+#     SymbolicUtils.Rewriters.Prewalk(
+#         SymbolicUtils.Rewriters.Chain(
+#             [
+#                 @rule ~x::isone * ~y::(y -> symtype(y) <: R) => R(~y)
+#             ]
+#         )
+#     )
+# )
+
+# z = simp( one(R) * R(2) )
+
 
 # tprob = simplify(prob);
 

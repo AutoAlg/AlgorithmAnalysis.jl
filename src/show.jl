@@ -18,6 +18,15 @@ function Base.show(io::IO, t::Node{FnType{Tuple{T},T,Gradient}}) where T
     end
 end
 
+# special show method for gradients since they are not subtypes of NodeType
+function Base.show(io::IO, t::Node{R})
+    if get(io, :compact, false)
+        show(IOContext(io, :use_id => true), semantic_ast(t))
+    else
+        show(IOContext(io, :use_id => false), semantic_ast(t))
+    end
+end
+
 # ------------------------------------------------------
 #  DISPLAY WRAPPERS & LAYOUT TYPES
 # ------------------------------------------------------
@@ -128,7 +137,7 @@ end
 
 function semantic_ast(t::Node{<:Optimization})
     obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
-    con = semantic_ast.(arguments(constraint(t)))
+    con = semantic_ast.(c for c ∈ constraint(t))
     return OptimizationProblem(sense(t), obj, con, id(t))
 end
 

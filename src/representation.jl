@@ -114,6 +114,8 @@ zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
 zero(::Type{R}) = Term{R}(zero, [])
 one(::Type{R}) = Term{R}(one, [])
 R(val::Real) = Term{R}(constant, [val])
+R(x::Node{<:Real}) = R(value(x))
+R(x::Node{R}) = x
 satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
 
@@ -139,13 +141,14 @@ function Base.convert(::Type{<:Node}, A::Matrix)
 end
 
 tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
+⋅(A::Node{Sⁿ}, B::Node{Sⁿ}) = arguments(A) ⋅ arguments(B) # tr(A*B)
 
 function size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
     n = Integer(sqrt(length(arguments(A))))
-    if i == 1 || i == 2
-        n
-    elseif ismissing(i)
+    if ismissing(i)
         (n,n)
+    elseif i == 1 || i == 2
+        n
     else
         error("Invalid index $i")
     end
@@ -155,13 +158,13 @@ end
 *(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(*, [x, y])
 -(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(-, [x, y])
 /(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(/, [x, y])
-⋅(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(⋅, [x, y])
 
 +(x::T...) where {F<:Field, T<:Node{F}} = Term{F}(+, x)
 *(x::T...) where {F<:Field, T<:Node{F}} = Term{F}(*, x)
 -(x::T, y::T) where {F<:Field, T<:Node{F}} = Term{F}(-, [x, y])
 /(x::T, y::T) where {F<:Field, T<:Node{F}} = Term{F}(/, [x, y])
 -(x::Node{F}) where {F<:Field} = Term{F}(-, [x])
+⋅(x::T...) where {F<:Field, T<:Node{F}} = *(x...)
 
 function F(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}

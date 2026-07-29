@@ -204,43 +204,54 @@ function evaluate(prob::Node{LyapunovCertificate})
         error("Problem has variables not in R: $nonreal")
     end
 
-    basis = collect(Node{R}, vars)
-
-    @info "Basis: $basis"
-
     con, performance, rate = arguments(prob)
 
     x, x₊ = state(prob)
-
-    @info "State: $x"
-
-    cons = filter(c -> !(symtype(c) <: Transition), arguments(con))
-
-    X  = evaluate.(as_matrix(basis => x))            # n x b
-    X₊ = evaluate.(as_matrix(basis => x₊))           # n x b
-    P  = evaluate.(as_matrix(basis => performance))  # 1 x b
 
     # number of states
     n = length(x)
 
     # Lyapunov candidate parameters
-    θ = JuMP.@variable(model(), [1:n])
+    θ = [ leaf(R, Symbol(:θ, subscript(i))) for i = 1:n ]
 
-    # Lyapunov function
-    V  = θ' * X
-    V₊ = θ' * X₊
+    # Lyapunov candidate
+    V  = θ ⋅ x
+    V₊ = θ ⋅ x₊
 
-    # negative linear forms
-    negative!(basis, cons, P' - V')
-    negative!(basis, cons, V₊' - rate * V')
+    L₁, c₁ = s_procedure(prob, performance - V)
+    L₂, c₂ = s_procedure(prob, V₊ - rate * V)
 
-    JuMP.optimize!(model())
+    @show c₁
 
-    if verbose
-        @info "Rate: $ρ, Termination status: $(JuMP.termination_status(model()))"
+    basis = collect(Node{R}, vars)
+
+    push!(basis, one(R))
+
+    @info "Basis: $basis"
+
+    M₁ = as_matrix(basis => L₁)
+    M₂ = as_matrix(basis => L₂)
+
+    opt = feasible(c₁ ∧ c₂ ∧ mapreduce(c -> c == 0, ∧, M₁) ∧ mapreduce(c -> c == 0, ∧, M₂))
+
+    return evaluate(opt)
+end
+
+
+"""
+    negative!(model, vars, cons, f)
+
+Constrains a given linear form `f` with variables `vars` to be negative by adding nonnegative terms associated with the constraints `cons` and then setting the result to zero in the optimization `model`.
+"""
+function s_procedure(ctx::Node, f)
+    con = satisfied()
+    for c ∈ constraint(ctx)
+        symtype(c) <: Transition && continue
+        λ, λ_con = multiplier(c)
+        f += λ ⋅ expression(c)
+        con = con ∧ λ_con
     end
-
-    return JuMP.is_solved_and_feasible(model())
+    return f, con
 end
 
 """
@@ -250,11 +261,13 @@ Constrains a given linear form `f` with variables `vars` to be negative by addin
 """
 function negative!(basis, cons, f)
     for con ∈ cons
-        @show expression(con)
         # f += as_matrix( basis => multiplier(con) ⋅ expression(con) )
         e = expression(con)
         λ = multiplier(con)
         T = symtype(con)
+        @show e
+        @show typeof(e)
+        @show as_matrix(basis => e)
         A = evaluate.(as_matrix(basis => e))
 
         @show size(A)
@@ -262,7 +275,11 @@ function negative!(basis, cons, f)
         if T <: Equality || T <: LessThanOrEqualTo
             f += A' * λ
         elseif T <: PositiveSemidefinite
-            f += A' * λ
+            n = size(A, 1)
+            K = length(basis)
+            coords = [ sum(A[:, :, k] .* λ) for k in 1:K ]
+            @show coords
+            f += from_matrix(basis, coords)
         else
             error("Unknown constraint type $T")
         end
@@ -270,20 +287,37 @@ function negative!(basis, cons, f)
     JuMP.@constraint(model(), f .== 0 )
 end
 
-multiplier(::Node{Equality{R}}) = JuMP.@variable(model())
+export evaluate_adjoint
+"""
+    evaluate_adjoint(T::AbstractArray{<:Any, 3}, basis::Vector{<:Node}, Λ::AbstractMatrix)
 
-function multiplier(::Node{LessThanOrEqualTo{R}})
-    λ = JuMP.@variable(model())
-    JuMP.@constraint(model(), λ in JuMP.Nonnegatives())
-    return λ
+Evaluates the adjoint A*(Λ) for a matrix operator represented by 3D tensor T (n × n × K).
+Returns a simplified symbolic Node expression in terms of `basis`.
+"""
+function evaluate_adjoint(T::AbstractArray{<:Any, 3}, basis::Vector{<:Node}, Λ::AbstractMatrix)
+    n, m, K = size(T)
+    @assert n == m == size(Λ, 1) == size(Λ, 2) "Matrix dimensions must be square and match."
+    @assert K == length(basis) "Third tensor dimension must match basis length."
+
+    # Compute coordinate c_k = tr(A_k^T * Λ) = sum_{i,j} T[i,j,k] * Λ[i,j]
+    coords = [ sum(T[:, :, k] .* Λ) for k in 1:K ]
+
+    # Reconstruct the symbolic vector
+    return from_matrix(basis, coords)
+end
+
+multiplier(con::Node{Equality{R}}) = (leaf(R, Symbol("λ_", id(con))), satisfied())
+
+function multiplier(c::Node{LessThanOrEqualTo{R}})
+    λ = leaf(R, Symbol("λ_", isnothing(id(c)) ? gensym() : id(c)))
+    return λ, λ ≥ zero(R)
 end
 
 function multiplier(c::Node{PositiveSemidefinite})
     A = arguments(c)[1]
     n = size(A,1)
-    λ = JuMP.@variable(model(), [1:n, 1:n], Symmetric)
-    JuMP.@constraint(model(), λ in JuMP.PSDCone())
-    return λ
+    @alg λ = [ leaf(R, Symbol(:λ, subscript(i), ",", subscript(j))) for i in 1:n, j in 1:n ]
+    return λ, λ ⪰ 0
 end
 
 function inspect(model::JuMP.Model, tolerance = 1e-6)
