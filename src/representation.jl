@@ -11,6 +11,7 @@ export convex, smooth_convex
 export LessThanOrEqualTo
 export outer
 export smooth_strongly_convex
+export get_all_constraints_of_optimization
 
 function outer end
 
@@ -243,10 +244,6 @@ end
 ∧(x::BasicSymbolic{<:Constraint}, y::Bool) = y ? x : unsatisfied()
 ∧(x::Bool, y::BasicSymbolic{<:Constraint}) = x ? y : unsatisfied()
 
-# function Gram(vecs::BasicSymbolic{T}...) where {F,T<:VectorSpace{F}}
-#     return Term{MatrixSpace{F}}(Gram, vecs)
-# end
-
 function maximize(obj::BasicSymbolic, con::BasicSymbolic{<:Constraint})
     return Term{Optimization}(maximize, [obj, con])
 end
@@ -271,6 +268,8 @@ end
 function constraint(opt::BasicSymbolic{Optimization})
     is_feasibility(opt) ? arguments(opt)[1] : arguments(opt)[2]
 end
+
+get_all_constraints_of_optimization(opt::BasicSymbolic{Optimization}) = flatten_constraints(constraint(opt))
 
 is_function(t) = t isa BasicSymbolic && typeof(t).parameters[1] <: FnType
 

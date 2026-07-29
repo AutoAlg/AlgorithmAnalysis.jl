@@ -1,8 +1,8 @@
-using Revise
-using AlgorithmAnalysis
-using JuMP
+# using Revise
+# using AlgorithmAnalysis
+# using JuMP
 
-# using SymbolicUtils: iscall, symtype, isempty, isequal
+# using AlgorithmAnalysis.SymbolicUtils: iscall, symtype, isempty, isequal
 
 # @alg begin
 #     α, L, μ, ρ ∈ R, x, x_s ∈ Rⁿ, f ∈ F(Rⁿ), P ∈ Sⁿ
@@ -26,43 +26,36 @@ using JuMP
 
 # topt1 = smooth_strongly_convex_interpolation(opt)
 # topt2 = propagate_constants(topt1)
-# topt3 = apply_s_procedure(topt2, c -> iscall(c) && symtype(c) <: LessThanOrEqualTo && !isempty(find_nodes(x -> isequal(x, ρ), c)))
+# topt3 = apply_s_procedure_to_single_constraint(topt2, c -> iscall(c) && symtype(c) <: LessThanOrEqualTo && !isempty(find_nodes(v -> isequal(v, ρ), c)))
 # topt4 = extract_lmi_coefficients(topt3)
 
+# function find_optimal_convergence_rate(
+#     opt,
+#     alpha_parameter::Float64,
+#     lipschitz_constant::Float64,
+#     strong_convexity_constant::Float64,
+#     tolerance::Float64
+# )::Float64
+#     rho_lower_bound::Float64 = 0.0
+#     rho_upper_bound::Float64 = 1.25
+#     rho_optimal::Float64 = 1.0
 
-# function find_optimal_convergence_rate(; alpha::Float64, L_const::Float64, mu_const::Float64, tol::Float64=1e-5)::Float64
-#     rho_low::Float64 = -0.3
-#     rho_high::Float64 = 1.25
-#     rho_opt::Float64 = 1.2
+#     while (rho_upper_bound - rho_lower_bound) > tolerance
+#         rho_midpoint::Float64 = (rho_lower_bound + rho_upper_bound) / 2.0
 
-#     while (rho_high - rho_low) > tol
-#         rho_mid::Float64 = (rho_low + rho_high) / 2.0
-
-#         is_feasible::Bool = with_verbose(false) do
-#             with_numerics(parameters=Dict(α => alpha, L => L_const, μ => mu_const, ρ => rho_mid)) do
-#                 evaluate(topt4)
+#         is_strictly_feasible::Bool = with_verbose(false) do
+#             with_numerics(parameters=Dict(α => alpha_parameter, L => lipschitz_constant, μ => strong_convexity_constant, ρ => rho_midpoint)) do
+#                 evaluate(opt)
 #             end
 #         end
 
-#         if is_feasible
-#             rho_high = rho_mid
-#             rho_opt = rho_mid
+#         if is_strictly_feasible
+#             rho_upper_bound = rho_midpoint
+#             rho_optimal = rho_midpoint
 #         else
-#             rho_low = rho_mid
+#             rho_lower_bound = rho_midpoint
 #         end
 #     end
 
-#     return rho_opt
-# end
-
-# print(find_optimal_convergence_rate(alpha=0.2, L_const=10.0, mu_const=1.0))
-# with_verbose(false) do
-#     with_numerics(parameters=Dict(α=>0.19, L=>10.0, μ=>1.0, ρ=>0.75)) do
-#         result = evaluate(topt4)
-#         inspect(model())
-
-#         println("T_1 = ", JuMP.value(model()[:T_1]))
-#         println("T_2 = ", JuMP.value(model()[:T_2]))
-#         println("P = ", JuMP.value.(model()[:P]))
-#     end
+#     return rho_optimal
 # end

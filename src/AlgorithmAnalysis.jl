@@ -21,6 +21,16 @@ import LinearAlgebra: dot, ⋅
 
 include("utils.jl")
 include("representation.jl")
+
+# transformations
+include("transformations/convex.jl")
+include("transformations/extract_lmi_coefficients.jl")
+include("transformations/gram.jl")
+include("transformations/propagate_constants.jl")
+include("transformations/s_procedure.jl")
+include("transformations/smooth_convex.jl")
+include("transformations/smooth_strongly_convex.jl")
+
 include("transformation.jl")
 include("numeric.jl")
 include("show.jl")

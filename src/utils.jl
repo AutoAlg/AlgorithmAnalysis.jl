@@ -157,7 +157,7 @@ function find_evaluation_points(f, node)
     map(x -> arguments(x)[1], collect(evals))
 end
 
-function flatten_constraints(node)
+function flatten_constraints(node)::Vector{BasicSymbolic{<:Constraint}}
     list = []
     flatten_constraints!(list, node)
     return list

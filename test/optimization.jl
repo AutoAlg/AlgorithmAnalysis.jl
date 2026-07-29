@@ -1,70 +1,70 @@
-# @testitem "Linear programming" begin
-#     @alg let
-#         x, y ∈ R
-#         c1 = 50x + 24y ≤ 2400
-#         c2 = 30x + 33y ≤ 2100
-#         c3 = x ≥ 45
-#         c4 = y ≥ 5
-#         cons = c1 ∧ c2 ∧ c3 ∧ c4
-#         obj = x + y - 50
-#         opt = maximize(obj, cons)
-#         @test with_numerics() do
-#             evaluate(opt) ≈ 1.25 && evaluate(x) ≈ 45.0 && evaluate(y) ≈ 6.25
-#         end
-#     end
-# end
+@testitem "Linear programming" begin
+    @alg let
+        x, y ∈ R
+        c1 = 50x + 24y ≤ 2400
+        c2 = 30x + 33y ≤ 2100
+        c3 = x ≥ 45
+        c4 = y ≥ 5
+        cons = c1 ∧ c2 ∧ c3 ∧ c4
+        obj = x + y - 50
+        opt = maximize(obj, cons)
+        @test with_numerics() do
+            evaluate(opt) ≈ 1.25 && evaluate(x) ≈ 45.0 && evaluate(y) ≈ 6.25
+        end
+    end
+end
 
-# @testitem "Semidefinite programming" begin
-#     @alg let
-#         x ∈ R
-#         A = [2 x; x 2]
-#         opt = maximize(x, A ⪰ 0)
-#         @test with_numerics() do
-#             evaluate(opt) ≈ 2.0
-#         end
-#     end
+@testitem "Semidefinite programming" begin
+    @alg let
+        x ∈ R
+        A = [2 x; x 2]
+        opt = maximize(x, A ⪰ 0)
+        @test with_numerics() do
+            evaluate(opt) ≈ 2.0
+        end
+    end
 
-#     @alg let
-#         x1, x2, x3 ∈ R
-#         X = [x1 x2; x2 x3]
-#         A = [1.0 0.0; 0.0 0.0]
-#         B = [0.0 0.0; 0.0 1.0]
-#         C = [0.0 1.0; 1.0 0.0]
-#         c1 = X ⪰ 0
-#         c2 = tr(A * X) == one(R)
-#         c3 = tr(B * X) ≤ one(R)
-#         con = c1 ∧ c2 ∧ c3
-#         obj = tr(C * X)
-#         opt = minimize(obj, con)
-#         @test with_numerics() do
-#             evaluate(opt) ≈ -2.0 && evaluate(X) ≈ [1 -1; -1 1]
-#         end
-#     end
-# end
+    @alg let
+        x1, x2, x3 ∈ R
+        X = [x1 x2; x2 x3]
+        A = [1.0 0.0; 0.0 0.0]
+        B = [0.0 0.0; 0.0 1.0]
+        C = [0.0 1.0; 1.0 0.0]
+        c1 = X ⪰ 0
+        c2 = tr(A * X) == one(R)
+        c3 = tr(B * X) ≤ one(R)
+        con = c1 ∧ c2 ∧ c3
+        obj = tr(C * X)
+        opt = minimize(obj, con)
+        @test with_numerics() do
+            evaluate(opt) ≈ -2.0 && evaluate(X) ≈ [1 -1; -1 1]
+        end
+    end
+end
 
-# @testitem "Performance estimation" begin
-#     @alg begin
-#         α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
+@testitem "Performance estimation" begin
+    @alg begin
+        α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
 
-#         gs = f'(xs)
-#         g = f'(x)
-#         init = (x - xs)'(x - xs)
-#         x⁺ = x - α * g
-#         f⁺ = f(x⁺)
-#         c1 = smooth_convex(f, L)
-#         c2 = gs'(gs) == zero(R)
-#         c3 = init ≤ one(R)
-#         con = c1 ∧ c2 ∧ c3
-#         obj = f⁺ - f(xs)
-#         opt = maximize(obj, con)
-#     end
+        gs = f'(xs)
+        g = f'(x)
+        init = (x - xs)'(x - xs)
+        x⁺ = x - α * g
+        f⁺ = f(x⁺)
+        c1 = smooth_convex(f, L)
+        c2 = gs'(gs) == zero(R)
+        c3 = init ≤ one(R)
+        con = c1 ∧ c2 ∧ c3
+        obj = f⁺ - f(xs)
+        opt = maximize(obj, con)
+    end
 
-#     topt = pep_simplify(opt)
+    topt = pep_simplify(opt)
 
-#     @test with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
-#         evaluate(topt) ≈ 2.0
-#     end
-# end
+    @test with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
+        evaluate(topt) ≈ 2.0
+    end
+end
 
 
 @testitem "Strongly Convex Convergence Rate" begin
@@ -93,11 +93,11 @@
 
     topt1 = smooth_strongly_convex_interpolation(opt)
     topt2 = propagate_constants(topt1)
-    topt3 = apply_s_procedure(topt2, c -> iscall(c) && symtype(c) <: LessThanOrEqualTo && !isempty(find_nodes(v -> isequal(v, ρ), c)))
+    topt3 = apply_s_procedure_to_single_constraint(topt2, c -> iscall(c) && symtype(c) <: LessThanOrEqualTo && !isempty(find_nodes(v -> isequal(v, ρ), c)))
     topt4 = extract_lmi_coefficients(topt3)
 
     function find_optimal_convergence_rate(
-        compiled_optimization_problem,
+        opt,
         alpha_parameter::Float64,
         lipschitz_constant::Float64,
         strong_convexity_constant::Float64,
@@ -112,7 +112,7 @@
 
             is_strictly_feasible::Bool = with_verbose(false) do
                 with_numerics(parameters=Dict(α => alpha_parameter, L => lipschitz_constant, μ => strong_convexity_constant, ρ => rho_midpoint)) do
-                    evaluate(compiled_optimization_problem)
+                    evaluate(opt)
                 end
             end
 
@@ -130,24 +130,24 @@
     tight_rate(α, L, μ) = max(abs(1 - α*μ), abs(1 - α*L))^2
 
     cases = [
-        # (α, L, μ)  — description
-        (0.05, 10.0, 1.0),  # κ=10, μ-side dominant, small step
-        (2/11, 10.0, 1.0),  # κ=10, optimal step (crossover) — matches original test
-        (0.15, 10.0, 1.0),  # κ=10, μ-side, near crossover
-        (0.19, 10.0, 1.0),  # κ=10, L-side dominant
-        (0.20, 10.0, 1.0),  # κ=10, L-side, boundary α=2/L → ρ=1
-        (0.02, 10.0, 1.0),  # κ=10, very small step
-        (0.10, 4.0, 2.0),  # κ=2, μ-side
-        (1/3, 4.0, 2.0),  # κ=2, optimal step
-        (0.25, 4.0, 2.0),  # κ=2, α=1/L
-        (0.50, 4.0, 2.0),  # κ=2, boundary α=2/L → ρ=1
-        (0.005, 100.0, 1.0),  # κ=100, ill-conditioned, tiny step
-        (2/101, 100.0, 1.0),  # κ=100, optimal step
-        (0.015, 100.0, 1.0),  # κ=100, μ-side dominant
-        (0.01, 100.0, 1.0),  # κ=100, α=1/L
-        (0.30, 1.5, 1.0),  # κ=1.5, well-conditioned, μ-side
-        (0.80, 1.5, 1.0),  # κ=1.5, optimal step (small ρ, tests near-zero rates)
-        (1.00, 2.0, 1.0),  # κ=2 at different absolute scale, boundary α=2/L
+        # (α, L, μ) 
+        (0.05, 10.0, 1.0),
+        (2/11, 10.0, 1.0),
+        (0.15, 10.0, 1.0),
+        (0.19, 10.0, 1.0),
+        (0.20, 10.0, 1.0),
+        (0.02, 10.0, 1.0),
+        (0.10, 4.0, 2.0),
+        (1/3, 4.0, 2.0),
+        (0.25, 4.0, 2.0),
+        (0.50, 4.0, 2.0),
+        (0.005, 100.0, 1.0),
+        (2/101, 100.0, 1.0),
+        (0.015, 100.0, 1.0),
+        (0.01, 100.0, 1.0),
+        (0.30, 1.5, 1.0),
+        (0.80, 1.5, 1.0),
+        (1.00, 2.0, 1.0),
     ]
 
     for (α_val, L_val, μ_val) in cases
