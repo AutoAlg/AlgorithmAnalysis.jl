@@ -101,6 +101,8 @@ field(::Type{<:VectorSpace{F}}) where F = F
 field(::Node{V}) where {F,V<:VectorSpace{F}} = F
 field(::Type{R}) = R
 field(::Node{R}) = R
+field(::Type{Sⁿ}) = R
+field(::Node{Sⁿ}) = R
 
 function constant end
 
@@ -118,7 +120,6 @@ unsatisfied() = Sym{Unsatisfied}()
 isconstant(x::Node) = iscall(x) && isequal(operation(x), constant)
 iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
 isone(x::Node) = iscall(x) && isequal(operation(x), one)
-value(x::Node) = isconstant(x) ? arguments(val)[1] : error("$x is not a constant")
 
 function Sⁿ(A::Matrix{Node{R}})
     size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
@@ -138,7 +139,17 @@ function Base.convert(::Type{<:Node}, A::Matrix)
 end
 
 tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
-tr(A::Matrix) = la.tr(A)
+
+function size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
+    n = Integer(sqrt(length(arguments(A))))
+    if i == 1 || i == 2
+        n
+    elseif ismissing(i)
+        (n,n)
+    else
+        error("Invalid index $i")
+    end
+end
 
 +(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(+, [x, y])
 *(x::T, y::T) where {T<:Node{Sⁿ}} = Term{Sⁿ}(*, [x, y])
@@ -216,10 +227,6 @@ function sector_bounded(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}, μ
     return Term{Prop}(sector_bounded, [f, μ, L])
 end
 
-# function ∈(G::Node{<:MatrixSpace}, ::Type{PositiveSemidefinite})
-#     return Term{PositiveSemidefinite}(∈, [G])
-# end
-
 function ⪯(a::Number, A::Node{<:MatrixSpace})
     if iszero(a)
         return Term{PositiveSemidefinite}(∈, [A])
@@ -257,6 +264,7 @@ function expression(x::Node{<:Equality})
     end
 end
 expression(x::Node{<:LessThanOrEqualTo}) = arguments(x)[2] - arguments(x)[1]
+expression(x::Node{<:PositiveSemidefinite}) = arguments(x)[1]
 
 function ∧(args::Node{<:Prop}...)
     flat_args = Any[]

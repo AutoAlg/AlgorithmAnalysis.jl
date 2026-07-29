@@ -78,10 +78,6 @@ with_numerics(parameters = Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
 
 end
 
-with_numerics() do
-    multiplier(α ≤ 0)
-end
-
 # tprob = simplify(prob);
 
 # # Evaluate feasibility of the Lyapunov certificate.

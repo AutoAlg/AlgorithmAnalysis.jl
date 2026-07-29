@@ -341,7 +341,7 @@ end
 
 
 
-function linear_decomposition(v::Node{T}) where {T<:Union{VectorSpace, Field}}
+function linear_decomposition(v::Node{T}) where {T<:Union{VectorSpace, Field, MatrixSpace}}
     
     F = field(T)
     terms = Dict{Node, Node}()
@@ -428,7 +428,7 @@ function as_matrix(p::Pair{<:Vector{<:Node}, <:Node})
 
     dict = linear_decomposition(term)
 
-    [ get(dict, v, zero(F)) for v ∈ basis ]
+    [ get(dict, v, zero(F)) for _ in 1:1, v ∈ basis ]
 end
 
 function as_matrix(p::Pair{<:Vector{<:Node}, <:Vector{<:Node}})

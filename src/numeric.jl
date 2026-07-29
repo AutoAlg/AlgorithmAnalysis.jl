@@ -216,9 +216,9 @@ function evaluate(prob::Node{LyapunovCertificate})
 
     cons = filter(c -> !(symtype(c) <: Transition), arguments(con))
 
-    X  = evaluate.(as_matrix(basis => x))
-    X₊ = evaluate.(as_matrix(basis => x₊))
-    P  = evaluate.(as_matrix(basis => performance))
+    X  = evaluate.(as_matrix(basis => x))            # n x b
+    X₊ = evaluate.(as_matrix(basis => x₊))           # n x b
+    P  = evaluate.(as_matrix(basis => performance))  # 1 x b
 
     # number of states
     n = length(x)
@@ -226,16 +226,13 @@ function evaluate(prob::Node{LyapunovCertificate})
     # Lyapunov candidate parameters
     θ = JuMP.@variable(model(), [1:n])
 
-    @show X
-    @show X₊
-
     # Lyapunov function
-    V  = X' * θ
-    V₊ = X₊' * θ
+    V  = θ' * X
+    V₊ = θ' * X₊
 
     # negative linear forms
-    negative!(basis, cons, P - V)
-    negative!(basis, cons, V₊ - rate * V)
+    negative!(basis, cons, P' - V')
+    negative!(basis, cons, V₊' - rate * V')
 
     JuMP.optimize!(model())
 
@@ -258,11 +255,14 @@ function negative!(basis, cons, f)
         e = expression(con)
         λ = multiplier(con)
         T = symtype(con)
+        A = evaluate.(as_matrix(basis => e))
+
+        @show size(A)
 
         if T <: Equality || T <: LessThanOrEqualTo
-            f += λ ⋅ evaluate.(as_matrix(basis => e))
+            f += A' * λ
         elseif T <: PositiveSemidefinite
-            f += λ ⋅ evaluate.(as_matrix(basis => e))
+            f += A' * λ
         else
             error("Unknown constraint type $T")
         end
@@ -273,13 +273,17 @@ end
 multiplier(::Node{Equality{R}}) = JuMP.@variable(model())
 
 function multiplier(::Node{LessThanOrEqualTo{R}})
-    JuMP.@variable(model(), Nonnegative)
+    λ = JuMP.@variable(model())
+    JuMP.@constraint(model(), λ in JuMP.Nonnegatives())
+    return λ
 end
 
 function multiplier(c::Node{PositiveSemidefinite})
     A = arguments(c)[1]
     n = size(A,1)
-    JuMP.@variable(model(), [1:n, 1:n], PSD)
+    λ = JuMP.@variable(model(), [1:n, 1:n], Symmetric)
+    JuMP.@constraint(model(), λ in JuMP.PSDCone())
+    return λ
 end
 
 function inspect(model::JuMP.Model, tolerance = 1e-6)
