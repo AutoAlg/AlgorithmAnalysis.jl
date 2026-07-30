@@ -5,7 +5,7 @@
 export with_numerics, with_parameters, evaluate
 export inspect, inspect_constraints
 export isparameter, get_parameter_value, multiplier
-export value, hasvalue
+export value, hasvalue, evaluate_node
 
 import JuMP, Hypatia
 import MathOptInterface as MOI
@@ -68,132 +68,130 @@ function get_parameter_value(node::Node)
     end
 end
 
-function evaluate(x::Node)
-    
-    eval_node = function (node)
+evaluate(x::Node) = postwalk_with_operators(evaluate_node, x)
 
-        !(node isa Node) && return node
+evaluate_node(node::Any) = node
 
-        if iscall(node) && isequal(symtype(node), R)
-            isequal(operation(node), zero) && return 0.0
-            isequal(operation(node), one) && return 1.0
-        end
+function evaluate_node(node::Node)
 
-        # ---------------------------------------------------------
-        # LEAF TERMINALS
-        # ---------------------------------------------------------
-        if node ∈ keys(parameters())
-            verbose() && @info "Object $node is a parameter"
-            return parameters()[node]
-        end
-        
-        if active_model() && has_id(node) && id(node) ∈ keys(JuMP.object_dictionary(model()))
-            verbose() && @info "Object $node exists in the JuMP model"
-            val = model()[id(node)]
-            return JuMP.has_values(model()) ? JuMP.value(val) : val
-        end
-
-        # Handle initialization of raw variables (leaves) in JuMP
-        if active_model() && !iscall(node)
-            T = symtype(node)
-            sym = id(node)
-            if isequal(T, R)
-                model()[sym] = JuMP.@variable(model(), base_name = string(sym))
-                verbose() && @info "Object $node is in R, so initializing in JuMP as $(model()[sym])"
-                return model()[sym]
-            elseif isequal(T, Sⁿ)
-                n = size(node)
-                model()[sym] = JuMP.@variable(model(), [1:n,1:n], Symmetric, base_name = string(sym))
-                verbose() && @info "Object $node is in Sⁿ, so initializing in JuMP as $(model()[sym])"
-                return model()[sym]
-            end
-        end
-
-        # ---------------------------------------------------------
-        # OPERATORS
-        # ---------------------------------------------------------
-        if iscall(node)
-            op = operation(node)
-            args = arguments(node)
-            T = symtype(node)
-
-            if isequal(op, constant)
-                return args[1]
-            elseif op ∈ [+, -, *, /]
-                return op(args...)
-            elseif isequal(op, tr)
-                verbose() && @info "Evaluating the trace of $(args[1])"
-                return tr(args[1])
-            elseif isequal(T, Sⁿ)
-                return mat(node)
-            end
-        end
-
-        # ---------------------------------------------------------
-        # CONSTRAINTS & METAFUNCTIONS
-        # ---------------------------------------------------------
-        T = symtype(node)
-
-        if T <: Prop && isequal(operation(node), ∧)
-            return arguments(node)
-        end
-
-        if active_model()
-            if T <: Equality
-                lhs, rhs = arguments(node)
-                verbose() && @info "Enforcing equality constraint $lhs = $rhs"
-                return isequal(T, Equality{R}) ? 
-                    JuMP.@constraint(model(), lhs == rhs) : 
-                    JuMP.@constraint(model(), lhs .== rhs)
-
-            elseif T <: LessThanOrEqualTo{R}
-                lhs, rhs = arguments(node)
-                verbose() && @info "Enforcing inequality constraint $lhs ≤ $rhs"
-                return JuMP.@constraint(model(), lhs ≤ rhs)
-
-            elseif T <: PositiveSemidefinite
-                A = arguments(node)[1]
-                T = typeof(model()).parameters[1]
-                AA = convert.(JuMP.GenericAffExpr{T, JuMP.GenericVariableRef{T}}, A)
-                verbose() && @info "Enforcing positive semidefinite constraint 0 ⪯ $A"
-                return JuMP.@constraint(model(), AA in JuMP.PSDCone())
-
-            elseif isequal(T, Optimization)
-                obj = objective(node)
-                con = constraint(node)
-                verbose() && @info "Optimizing $obj subject to $con"
-
-                try
-                    if is_minimization(node)
-                        JuMP.@objective(model(), Min, obj)
-                    elseif is_maximization(node)
-                        JuMP.@objective(model(), Max, obj)
-                    end
-                    JuMP.optimize!(model())
-                    
-                    if is_minimization(node) || is_maximization(node)
-                        status = JuMP.termination_status(model())
-                        if status == MOI.OPTIMAL || status == MOI.ALMOST_OPTIMAL
-                            return JuMP.value(obj)
-                        end
-                        @warn "Optimization terminated with status $status; numeric results are unreliable. Returning the JuMP model. Use `inspect(model)` to see the results."
-                        return model()
-
-                    elseif is_feasibility(node)
-                        return JuMP.is_solved_and_feasible(model())
-                    end
-                catch
-                    error("Failed to solve optimization problem. Consider first simplifying the problem symbolically using `simplify(opt)`")
-                end
-            end
-        end
-        return node
+    if iscall(node) && isequal(symtype(node), R)
+        isequal(operation(node), zero) && return 0.0
+        isequal(operation(node), one) && return 1.0
     end
 
-    return postwalk_with_operators(eval_node, x)
+    # ---------------------------------------------------------
+    # LEAF TERMINALS
+    # ---------------------------------------------------------
+    if node ∈ keys(parameters())
+        verbose() && @info "Object $node is a parameter"
+        return parameters()[node]
+    end
+    
+    if active_model() && has_id(node) && id(node) ∈ keys(JuMP.object_dictionary(model()))
+        verbose() && @info "Object $node exists in the JuMP model"
+        val = model()[id(node)]
+        return JuMP.has_values(model()) ? JuMP.value(val) : val
+    end
+
+    # Handle initialization of raw variables (leaves) in JuMP
+    if active_model() && !iscall(node)
+        T = symtype(node)
+        sym = id(node)
+        if isequal(T, R)
+            model()[sym] = JuMP.@variable(model(), base_name = string(sym))
+            verbose() && @info "Object $node is in R, so initializing in JuMP as $(model()[sym])"
+            return model()[sym]
+        elseif isequal(T, Sⁿ)
+            n = size(node)
+            model()[sym] = JuMP.@variable(model(), [1:n,1:n], Symmetric, base_name = string(sym))
+            verbose() && @info "Object $node is in Sⁿ, so initializing in JuMP as $(model()[sym])"
+            return model()[sym]
+        end
+    end
+
+    # ---------------------------------------------------------
+    # OPERATORS
+    # ---------------------------------------------------------
+    if iscall(node)
+        op = operation(node)
+        args = arguments(node)
+        T = symtype(node)
+
+        if isequal(op, constant)
+            return args[1]
+        elseif op ∈ [+, -, *, /]
+            return op(args...)
+        elseif isequal(op, tr)
+            verbose() && @info "Evaluating the trace of $(args[1])"
+            return tr(args[1])
+        elseif isequal(T, Sⁿ)
+            return mat(node)
+        end
+    end
+
+    # ---------------------------------------------------------
+    # CONSTRAINTS & METAFUNCTIONS
+    # ---------------------------------------------------------
+    T = symtype(node)
+
+    if T <: Prop && isequal(operation(node), ∧)
+        return arguments(node)
+    end
+
+    if active_model()
+        if T <: Equality
+            lhs, rhs = arguments(node)
+            verbose() && @info "Enforcing equality constraint $lhs = $rhs"
+            return isequal(T, Equality{R}) ? 
+                JuMP.@constraint(model(), lhs == rhs) : 
+                JuMP.@constraint(model(), lhs .== rhs)
+
+        elseif T <: LessThanOrEqualTo{R}
+            lhs, rhs = arguments(node)
+            verbose() && @info "Enforcing inequality constraint $lhs ≤ $rhs"
+            return JuMP.@constraint(model(), lhs ≤ rhs)
+
+        elseif T <: PositiveSemidefinite
+            A = arguments(node)[1]
+            T = typeof(model()).parameters[1]
+            AA = convert.(JuMP.GenericAffExpr{T, JuMP.GenericVariableRef{T}}, A)
+            verbose() && @info "Enforcing positive semidefinite constraint 0 ⪯ $A"
+            return JuMP.@constraint(model(), AA in JuMP.PSDCone())
+
+        elseif isequal(T, Optimization)
+            obj = objective(node)
+            con = constraint(node)
+            verbose() && @info "Optimizing $obj subject to $con"
+
+            try
+                if is_minimization(node)
+                    JuMP.@objective(model(), Min, obj)
+                elseif is_maximization(node)
+                    JuMP.@objective(model(), Max, obj)
+                end
+                JuMP.optimize!(model())
+                
+                if is_minimization(node) || is_maximization(node)
+                    status = JuMP.termination_status(model())
+                    if status == MOI.OPTIMAL || status == MOI.ALMOST_OPTIMAL
+                        return JuMP.value(obj)
+                    end
+                    @warn "Optimization terminated with status $status; numeric results are unreliable. Returning the JuMP model. Use `inspect(model)` to see the results."
+                    return model()
+
+                elseif is_feasibility(node)
+                    return JuMP.is_solved_and_feasible(model())
+                end
+            catch
+                error("Failed to solve optimization problem. Consider first simplifying the problem symbolically using `simplify(opt)`")
+            end
+        end
+    end
+    return node
 end
 
-function evaluate(prob::Node{LyapunovCertificate})
+function evaluate_node(prob::Node{LyapunovCertificate})
+    
     !active_model() && error("Searching for a Lyapunov certificate requires numerics")
 
     vars = filter(node -> !isconstant(node) && !isparameter(node), leaves(prob))
@@ -203,6 +201,8 @@ function evaluate(prob::Node{LyapunovCertificate})
     if !isempty(nonreal)
         error("Problem has variables not in R: $nonreal")
     end
+
+    basis = collect(Node{R}, vars)
 
     con, performance, rate = arguments(prob)
 
@@ -221,10 +221,6 @@ function evaluate(prob::Node{LyapunovCertificate})
     L₁, c₁ = s_procedure(prob, performance - V)
     L₂, c₂ = s_procedure(prob, V₊ - rate * V)
 
-    @show c₁
-
-    basis = collect(Node{R}, vars)
-
     push!(basis, one(R))
 
     @info "Basis: $basis"
@@ -234,7 +230,7 @@ function evaluate(prob::Node{LyapunovCertificate})
 
     opt = feasible(c₁ ∧ c₂ ∧ mapreduce(c -> c == 0, ∧, M₁) ∧ mapreduce(c -> c == 0, ∧, M₂))
 
-    return evaluate(opt)
+    return opt
 end
 
 
@@ -306,7 +302,7 @@ function evaluate_adjoint(T::AbstractArray{<:Any, 3}, basis::Vector{<:Node}, Λ:
     return from_matrix(basis, coords)
 end
 
-multiplier(con::Node{Equality{R}}) = (leaf(R, Symbol("λ_", id(con))), satisfied())
+multiplier(c::Node{Equality{R}}) = (leaf(R, Symbol("λ_", isnothing(id(c)) ? gensym() : id(c))), satisfied())
 
 function multiplier(c::Node{LessThanOrEqualTo{R}})
     λ = leaf(R, Symbol("λ_", isnothing(id(c)) ? gensym() : id(c)))
@@ -316,7 +312,8 @@ end
 function multiplier(c::Node{PositiveSemidefinite})
     A = arguments(c)[1]
     n = size(A,1)
-    @alg λ = [ leaf(R, Symbol(:λ, subscript(i), ",", subscript(j))) for i in 1:n, j in 1:n ]
+    g = gensym()
+    @alg λ = [ leaf(R, Symbol(:λ, g, subscript(i), ",", subscript(j))) for i in 1:n, j in 1:n ]
     return λ, λ ⪰ 0
 end
 

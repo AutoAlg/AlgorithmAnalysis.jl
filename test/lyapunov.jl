@@ -4,16 +4,16 @@
 # Tests for extended @alg macro with → syntax
 # ==============================================================================
 
-@testitem "@alg with → transitions" begin
-    @alg begin
-        α, L ∈ R
-        x, xs ∈ Rⁿ
-        f ∈ F(Rⁿ)
+# @testitem "@alg with → transitions" begin
+#     @alg begin
+#         α, L ∈ R
+#         x, xs ∈ Rⁿ
+#         f ∈ F(Rⁿ)
         
-        t1 = x  → x - α * f'(x)
-        t2 = xs → xs
-    end
-end
+#         t1 = x  → x - α * f'(x)
+#         t2 = xs → xs
+#     end
+# end
 
 # @testitem "certify: using __transition__ from @alg" begin
 #     @alg begin

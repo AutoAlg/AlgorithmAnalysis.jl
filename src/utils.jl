@@ -656,25 +656,15 @@ end
 Recursively collects all AST leaf nodes (nodes where `iscall(v)` is false) from an expression tree.
 Returns a `Set` of unique leaf nodes.
 """
-function leaves(v::Node)
-
-    # In-place helper for tree traversal
-    function collect_leaves!(leaves::Set, v::Node)
-        if !iscall(v)
-            push!(leaves, v)
-            return leaves
-        end
-
-        for arg in arguments(v)
-            collect_leaves!(leaves, arg)
-        end
-
-        return leaves
+function leaves(node::Node, nodes::Set = Set{Node}())
+    if !iscall(node)
+        push!(nodes, node)
+        return nodes
     end
-
-    leaves = Set{Node}()
-    collect_leaves!(leaves, v)
-    return leaves
+    for arg in arguments(node)
+        leaves(arg, nodes)
+    end
+    return nodes
 end
 
 function state(prob::Node{LyapunovCertificate})

@@ -72,33 +72,21 @@ tprob = sector_bounded_interpolation(prob)
 ttprob = gram_transformation(tprob)
 
 
-with_numerics(parameters = Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
-    
-    evaluate(ttprob)
-
+opt = with_numerics(parameters = Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
+    evaluate_node(ttprob)
 end
 
-# basis = [x, y]
-# as_matrix(basis => 2x - 3y)
+cons = arguments(constraint(opt))
 
-# from_matrix(basis, [2, -3])
+with_numerics(parameters = Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
+    evaluate(opt)
+end
 
-# A = SymbolicOperator(v -> isequal(v, x) ? 2x + 3y : -y, basis)
-# M = as_matrix(A)
-
-# A'(x)
-
-# # 1. Extract 3D tensor representation
-# @alg a, b, λ1, λ2, λ3 ∈ R
-# @alg A = [a b; b zero(R)]
-# @alg Λ = [λ1 λ2; λ2 λ3]
-# T = as_matrix([x, y] => A)  # Size: (2, 2, 2)
-
-# # 2. Evaluate Adjoint A*(Λ)
-# adj_expr = evaluate_adjoint(T, [x, y], [1 2; 2 3])
-
-
-# import SymbolicUtils: promote_symtype
+with_verbose() do
+    with_numerics() do
+        evaluate(feasible(cons[1]))
+    end
+end
 
 # # Retain R across operations and scalar products
 # promote_symtype(::typeof(*), ::Type{<:Number}, ::Type{R}) = R
@@ -116,29 +104,6 @@ end
 # )
 
 # z = simp( one(R) * R(2) )
-
-
-# tprob = simplify(prob);
-
-# # Evaluate feasibility of the Lyapunov certificate.
-# with_numerics(parameters = Dict(α => 0.1, L => 1.0)) do
-#     evaluate(tprob)
-# end
-
-
-# tprob = AlgorithmAnalysis.lyapunov_transformation(prob);
-
-# trans = transitions(con)
-
-# basis      = AlgorithmAnalysis.lyapunov_basis_candidates(perf, con)
-
-# basis_next = AlgorithmAnalysis.map(expr -> AlgorithmAnalysis.apply_transitions(trans, expr), basis)
-
-# AlgorithmAnalysis.apply_transitions(trans, perf)
-
-# propagate_transitions(trans, (x-xs)^2)
-
-# tprob = propagate_transitions(t1, perf)
 
 
 # @alg begin
@@ -159,4 +124,13 @@ end
 # with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
 #     evaluate(topt)
 # end
+
+
+@alg begin
+    x ∈ R
+    A = [-2 x; x -2]
+end
+with_numerics() do
+    evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
+end
 

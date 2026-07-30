@@ -137,7 +137,12 @@ end
 
 function semantic_ast(t::Node{<:Optimization})
     obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
-    con = semantic_ast.(c for c ∈ constraint(t))
+    # con = [ semantic_ast(c) for c ∈ constraint(t) ]
+    if constraint(t) isa Conjunction
+        con = semantic_ast.(arguments(constraint(t)))
+    else
+        con = semantic_ast(constraint(t))
+    end
     return OptimizationProblem(sense(t), obj, con, id(t))
 end
 
