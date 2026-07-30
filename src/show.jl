@@ -149,11 +149,11 @@ function semantic_ast(t::Node{<:Optimization})
 end
 
 function semantic_ast(t::Node{LyapunovCertificate})
-    con = arguments(t)[1]
+    con = constraint(t)
     cons = symtype(con) <: Conjunction ? semantic_ast.(arguments(con)) : [semantic_ast(con)]
-    perf = semantic_ast(arguments(t)[2])
-    rate = semantic_ast(arguments(t)[3])
-    return Lyap(perf, rate, cons, id(t))
+    perf = semantic_ast(performance(t))
+    ρ    = isnothing(rate(t)) ? Leaf(:ρₒₚₜ) : semantic_ast(rate(t))
+    return Lyap(perf, ρ, cons, id(t))
 end
 
 function semantic_ast(t::Node{T}) where {T<:Prop}

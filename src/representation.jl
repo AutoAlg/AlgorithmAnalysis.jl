@@ -141,6 +141,7 @@ function Base.convert(::Type{<:Node}, A::Matrix)
 end
 
 tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
+tr(A::Matrix) = la.tr(A)
 ⋅(A::Node{Sⁿ}, B::Node{Sⁿ}) = arguments(A) ⋅ arguments(B) # tr(A*B)
 
 function size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
@@ -340,12 +341,12 @@ function certify(con::Node{<:Prop}, perf::Node{R}, rate::Node{R})
 end
 
 function rate(con::Node{<:Prop}, perf::Node{R})
-    return Term{LyapunovAnalysis}(rate, Any[con, perf])
+    return Term{LyapunovCertificate}(rate, Any[con, perf, nothing])
 end
 
-performance(con::Node{LyapunovCertificate}) = arguments(con)[2]
-
 constraint(t::Node{LyapunovCertificate}) = arguments(t)[1]
+performance(con::Node{LyapunovCertificate}) = arguments(con)[2]
+rate(t::Node{LyapunovCertificate}) = arguments(t)[3]
 
 is_function(t) = t isa Node && typeof(t).parameters[1] <: FnType
 

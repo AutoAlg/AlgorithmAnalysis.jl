@@ -5,9 +5,10 @@
 export with_numerics, with_parameters, evaluate
 export inspect, inspect_constraints
 export isparameter, get_parameter_value, multiplier
-export value, hasvalue, evaluate_node
+export value, hasvalue, evaluate_node, get_parameters
+export with_additional_parameters
 
-import JuMP, Hypatia
+import JuMP, Hypatia, Clarabel
 import MathOptInterface as MOI
 
 
@@ -15,15 +16,19 @@ const JUMP_MODEL = Base.ScopedValues.ScopedValue{JuMP.GenericModel}()
 const PARAMETERS = Base.ScopedValues.ScopedValue{Dict}(Dict())
 
 active_model() = isassigned(JUMP_MODEL)
-parameters() = PARAMETERS[]
+get_parameters() = PARAMETERS[]
 
 function default_model(T::DataType)
-    model = JuMP.GenericModel{T}(Hypatia.Optimizer{T})
+    if isequal(T, Float64)
+        model = JuMP.Model(Clarabel.Optimizer)
+    else
+        model = JuMP.GenericModel{T}(Hypatia.Optimizer{T})
+    end
     JuMP.set_silent(model)
     return model
 end
 
-isparameter(x::Node) = x ∈ keys(parameters())
+isparameter(x::Node) = x ∈ keys(get_parameters())
 
 hasvalue(x::Node) = isconstant(x) || isparameter(x)
 
@@ -31,26 +36,30 @@ function value(x::Node)
     if isconstant(x)
         return arguments(x)[1]
     elseif isparameter(x)
-        return parameters()[x]
+        return get_parameters()[x]
     else
         error("$x has no value")
     end
 end
 
-function with_parameters(code::Function, params::Dict)
-    return Base.ScopedValues.with(code, PARAMETERS => params)
+function with_parameters(code::Function, parameters::Dict)
+    return Base.ScopedValues.with(code, PARAMETERS => parameters)
 end
 
-function with_numerics(code::Function; T::DataType = Float64, model_constructor::Function = () -> default_model(T), parameters::Dict = Dict())
-    with_parameters(parameters) do
-        if active_model()
-            code()
-        else
-            verbose() && @info "Initializing JuMP model..."
-            val = Base.ScopedValues.with(code, JUMP_MODEL => model_constructor())
-            verbose() && @info "JuMP model complete!"
-            return val
-        end
+function with_additional_parameters(code::Function, parameters::Dict)
+    return with_parameters(code, merge(parameters, get_parameters()))
+end
+
+function with_numerics(code::Function;
+    T::DataType = Float64,
+    model_constructor::Function = () -> default_model(T),
+    parameters::Dict = Dict()
+    )
+    with_additional_parameters(parameters) do
+        verbose() && @info "Initializing JuMP model with parameters $(get_parameters())"
+        val = Base.ScopedValues.with(code, JUMP_MODEL => model_constructor())
+        verbose() && @info "JuMP model complete!"
+        return val
     end
 end
 
@@ -63,8 +72,8 @@ function model()
 end
 
 function get_parameter_value(node::Node)
-    if node ∈ keys(parameters())
-        return parameters()[node]
+    if node ∈ keys(get_parameters())
+        return get_parameters()[node]
     end
 end
 
@@ -82,9 +91,9 @@ function evaluate_node(node::Node)
     # ---------------------------------------------------------
     # LEAF TERMINALS
     # ---------------------------------------------------------
-    if node ∈ keys(parameters())
+    if node ∈ keys(get_parameters())
         verbose() && @info "Object $node is a parameter"
-        return parameters()[node]
+        return get_parameters()[node]
     end
     
     if active_model() && has_id(node) && id(node) ∈ keys(JuMP.object_dictionary(model()))
@@ -201,17 +210,17 @@ function evaluate_node(prob::Node{LyapunovCertificate})
     
     !active_model() && error("Searching for a Lyapunov certificate requires numerics")
 
+    con, perf, ρ = constraint(prob), performance(prob), rate(prob)
+
     vars = filter(node -> !isconstant(node) && !isparameter(node), leaves(prob))
 
     nonreal = filter(v -> !(v isa Node{R}), vars)
 
     if !isempty(nonreal)
-        error("Problem has variables not in R: $nonreal")
+        error("Problem has variables not in R: $nonreal\nConsider first simplifying the problem.")
     end
 
     basis = collect(Node{R}, vars)
-
-    con, performance, rate = arguments(prob)
 
     x, x₊ = state(prob)
 
@@ -219,6 +228,15 @@ function evaluate_node(prob::Node{LyapunovCertificate})
     n = length(x)
 
     ctx = Set{Symbol}()
+
+    if isnothing(ρ)
+        sym = get_safe_symbol(:ρ, ctx)
+        ρ = leaf(R, sym)
+        push!(ctx, sym)
+        bisect_rate = true
+    else
+        bisect_rate = false
+    end
 
     # Lyapunov candidate parameters
     θ = Node{R}[]
@@ -232,8 +250,8 @@ function evaluate_node(prob::Node{LyapunovCertificate})
     V  = θ ⋅ x
     V₊ = θ ⋅ x₊
 
-    L₁, c₁, ctx = s_procedure(con, ctx, performance - V)
-    L₂, c₂, ctx = s_procedure(con, ctx, V₊ - rate * V)
+    L₁, c₁, ctx = s_procedure(con, ctx, perf - V)
+    L₂, c₂, ctx = s_procedure(con, ctx, V₊ - ρ * V)
 
     push!(basis, one(R))
 
@@ -247,6 +265,13 @@ function evaluate_node(prob::Node{LyapunovCertificate})
         @info "Basis: $basis"
         show(opt)
         println()
+    end
+
+    if bisect_rate
+        f(ρval) = with_numerics(parameters = Dict(ρ => ρval)) do
+            evaluate(opt)
+        end
+        return bsmin(f, 0.0, 1.0)
     end
 
     return evaluate(opt)

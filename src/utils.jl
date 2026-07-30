@@ -196,6 +196,7 @@ Returns the smallest x in [a,b] (within tol) such that f(x)==true.
 """
 function bsmin(f, a::T, b::T; tol=T(1e-5), verbose=false) where T
     a, b = a > b ? (b, a) : (a, b)
+    !f(b) && error("Top of bisection interval returns false")
     i = 0
     while (b - a) > tol
         i += 1
@@ -317,9 +318,9 @@ function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Feasibility}
 end
 
 function add_constraint(opt::Node{LyapunovCertificate}, new_con::Node{<:Prop})
-    con, perf, rate = arguments(opt)
+    con, perf, ρ = constraint(opt), performance(opt), rate(opt)
     op = operation(opt)
-    Term{LyapunovCertificate}(op, [con ∧ new_con, perf, rate])
+    Term{LyapunovCertificate}(op, [con ∧ new_con, perf, ρ])
 end
 
 
@@ -575,11 +576,11 @@ function linear_decomposition(
     one_node = one(F)
     
     # 1. Pre-simplify basis elements to ensure AST normalization matches simplify(expr)
-    simplified_basis = map(simplify, basis)
+    # simplified_basis = map(simplify, basis)
     terms = Dict{Node, Node}()
 
     # Robust check for basis membership via isequal
-    in_basis(a) = any(b -> isequal(a, b), simplified_basis)
+    in_basis(a) = any(b -> isequal(a, b), basis)
 
     # 2. Recursive helper to flatten nested * AST nodes (e.g., a * (b * x) -> [a, b, x])
     function flatten_mul(arg::Node)
@@ -595,7 +596,6 @@ function linear_decomposition(
     end
 
     function add_term!(terms::Dict, leaf::Node, coeff::Node)
-        coeff = simplify(coeff)
         if iszero(coeff)
             return
         end
@@ -610,7 +610,7 @@ function linear_decomposition(
         end
 
         if existing_key !== nothing
-            updated = simplify(terms[existing_key] + coeff)
+            updated = terms[existing_key] + coeff
             if iszero(updated)
                 delete!(terms, existing_key)
             else
@@ -622,7 +622,7 @@ function linear_decomposition(
     end
 
     function _decompose!(terms::Dict, expr::Node, scale::Node)
-        v = simplify(expr)
+        v = expr
         scale = simplify(scale)
 
         if iszero(v) || iszero(scale)
@@ -638,7 +638,7 @@ function linear_decomposition(
         # Leaf Node Handling
         if !iscall(v)
             if isconstant(v) || isparameter(v)
-                c_val = simplify(scale * v)
+                c_val = scale * v
                 if in_basis(one_node)
                     add_term!(terms, one_node, c_val)
                 elseif !iszero(c_val)
@@ -660,11 +660,11 @@ function linear_decomposition(
 
         elseif isequal(op, -)
             if length(raw_args) == 1
-                _decompose!(terms, raw_args[1], simplify(-scale))
+                _decompose!(terms, raw_args[1], -scale)
             else
                 _decompose!(terms, raw_args[1], scale)
                 for arg in raw_args[2:end]
-                    _decompose!(terms, arg, simplify(-scale))
+                    _decompose!(terms, arg, -scale)
                 end
             end
 
@@ -692,11 +692,11 @@ function linear_decomposition(
                     end
                 elseif isequal(sum_op, -)
                     if length(sum_children) == 1
-                        _decompose!(terms, sum_children[1] * other_factor, simplify(-scale))
+                        _decompose!(terms, sum_children[1] * other_factor, -scale)
                     else
                         _decompose!(terms, sum_children[1] * other_factor, scale)
                         for child in sum_children[2:end]
-                            _decompose!(terms, child * other_factor, simplify(-scale))
+                            _decompose!(terms, child * other_factor, -scale)
                         end
                     end
                 end
@@ -712,7 +712,7 @@ function linear_decomposition(
                 
                 # All non-basis factors (e.g. `a` and `b` in `a * b * x`) combine into the coefficient
                 coeff_factor = isempty(non_basis_args) ? one_node : (length(non_basis_args) == 1 ? non_basis_args[1] : foldl(*, non_basis_args))
-                add_term!(terms, basis_term, simplify(scale * coeff_factor))
+                add_term!(terms, basis_term, scale * coeff_factor)
                 return
 
             elseif length(basis_args) > 1
@@ -720,14 +720,14 @@ function linear_decomposition(
 
             else
                 # D. No individual factor matched directly. Check if composite non-basis factors match (e.g. x * y)
-                composite_candidate = simplify(length(non_basis_args) == 1 ? non_basis_args[1] : foldl(*, non_basis_args))
+                composite_candidate = length(non_basis_args) == 1 ? non_basis_args[1] : foldl(*, non_basis_args)
                 
                 if in_basis(composite_candidate) && !isequal(composite_candidate, one_node)
                     add_term!(terms, composite_candidate, scale)
                     return
                 else
                     # Pure scalar product fallback
-                    c_val = simplify(scale * v)
+                    c_val = scale * v
                     if in_basis(one_node)
                         add_term!(terms, one_node, c_val)
                         return
@@ -853,6 +853,8 @@ function leaves(node::Node, nodes::Set = Set{Node}())
     end
     return nodes
 end
+
+leaves(::Any, nodes::Set) = nodes
 
 function state(prob::Node{LyapunovCertificate})
     con = arguments(prob)[1]
