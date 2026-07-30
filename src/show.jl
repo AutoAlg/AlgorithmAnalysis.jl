@@ -138,11 +138,13 @@ end
 function semantic_ast(t::Node{<:Optimization})
     obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
     # con = [ semantic_ast(c) for c ∈ constraint(t) ]
-    if constraint(t) isa Conjunction
-        con = semantic_ast.(arguments(constraint(t)))
-    else
-        con = semantic_ast(constraint(t))
-    end
+    con = semantic_ast.(flatten(constraint(t)))
+    # if constraint(t) isa Node{Conjunction}
+    #     con = [ semantic_ast(c) for c ∈ arguments(constraint(t)) ]
+    # else
+    #     @show constraint(t)
+    #     con = semantic_ast(constraint(t))
+    # end
     return OptimizationProblem(sense(t), obj, con, id(t))
 end
 
@@ -405,7 +407,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", t::Mat)
     get(io, :use_id, true) && t.id ≠ nothing && return print(io, t.id)
-    show(io, mime, t.args)
+    print(io, t.args)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", t::Trans)

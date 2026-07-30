@@ -13,7 +13,7 @@ export leaf, branch, Transition
 export LyapunovCertificate, certify, rate
 export Optimization, Minimization, Maximization, Feasibility
 export Node, →, NodeType, ⋅, performance, feasible, isconstant
-export Equality, LessThanOrEqualTo, expression
+export Equality, LessThanOrEqualTo, expression, flatten
 
 const Node{T} = SymbolicUtils.BasicSymbolic{T}
 
@@ -269,9 +269,9 @@ end
 expression(x::Node{<:LessThanOrEqualTo}) = arguments(x)[2] - arguments(x)[1]
 expression(x::Node{<:PositiveSemidefinite}) = arguments(x)[1]
 
-function ∧(args::Node{<:Prop}...)
-    flat_args = Any[]
-    for arg in args
+function flatten(props::Node{<:Prop}...)
+    flat_args = Node{<:Prop}[]
+    for arg in props
         if iscall(arg) && operation(arg) === ∧
             append!(flat_args, arguments(arg))
         elseif isequal(arg, unsatisfied())
@@ -280,7 +280,11 @@ function ∧(args::Node{<:Prop}...)
             push!(flat_args, arg)
         end
     end
-    return Term{Conjunction}(∧, flat_args)
+    return flat_args
+end
+
+function ∧(args::Node{<:Prop}...)
+    return Term{Conjunction}(∧, flatten(args...))
 end
 
 ∧(x::Node{Conjunction}, y::Node{Conjunction}) = Term{Conjunction}(∧, [arguments(x)..., arguments(y)...])
@@ -300,7 +304,7 @@ function minimize(obj::Node, con::Node{<:Prop})
     return Term{Minimization}(minimize, [obj, con])
 end
 
-function feasible(con::Node{<:Prop})
+function feasible(con::Node{<:Prop} = satisfied())
     return Term{Feasibility}(feasible, [con])
 end
 

@@ -158,7 +158,19 @@ function evaluate_node(node::Node)
             verbose() && @info "Enforcing positive semidefinite constraint 0 ⪯ $A"
             return JuMP.@constraint(model(), AA in JuMP.PSDCone())
 
-        elseif isequal(T, Optimization)
+        elseif T <: Feasibility
+            con = constraint(node)
+            verbose() && @info "Solving feasibility of $con"
+
+            try
+                JuMP.optimize!(model())
+            catch
+                error("Failed to solve optimization problem. Consider first simplifying the problem symbolically using `simplify($node)`")
+            end
+
+            return JuMP.is_solved_and_feasible(model())
+
+        elseif T <: Optimization
             obj = objective(node)
             con = constraint(node)
             verbose() && @info "Optimizing $obj subject to $con"
@@ -171,19 +183,14 @@ function evaluate_node(node::Node)
                 end
                 JuMP.optimize!(model())
                 
-                if is_minimization(node) || is_maximization(node)
-                    status = JuMP.termination_status(model())
-                    if status == MOI.OPTIMAL || status == MOI.ALMOST_OPTIMAL
-                        return JuMP.value(obj)
-                    end
-                    @warn "Optimization terminated with status $status; numeric results are unreliable. Returning the JuMP model. Use `inspect(model)` to see the results."
-                    return model()
-
-                elseif is_feasibility(node)
-                    return JuMP.is_solved_and_feasible(model())
+                status = JuMP.termination_status(model())
+                if status == MOI.OPTIMAL
+                    return JuMP.value(obj)
                 end
+                @warn "Optimization terminated with status $status; numeric results are unreliable. Returning the JuMP model. Use `inspect(model)` to see the results."
+                return model()
             catch
-                error("Failed to solve optimization problem. Consider first simplifying the problem symbolically using `simplify(opt)`")
+                error("Failed to solve optimization problem. Consider first simplifying the problem symbolically using `simplify($node)`")
             end
         end
     end
@@ -211,26 +218,38 @@ function evaluate_node(prob::Node{LyapunovCertificate})
     # number of states
     n = length(x)
 
-    # Lyapunov candidate parameters
-    θ = [ leaf(R, Symbol(:θ, subscript(i))) for i = 1:n ]
+    ctx = Set{Symbol}()
 
+    # Lyapunov candidate parameters
+    θ = Node{R}[]
+    for _ in 1:n
+        sym = get_safe_symbol(:θ, ctx, force_subscript = true)
+        push!(θ, leaf(R, sym))
+        push!(ctx, sym)
+    end
+    
     # Lyapunov candidate
     V  = θ ⋅ x
     V₊ = θ ⋅ x₊
 
-    L₁, c₁ = s_procedure(prob, performance - V)
-    L₂, c₂ = s_procedure(prob, V₊ - rate * V)
+    L₁, c₁, ctx = s_procedure(con, ctx, performance - V)
+    L₂, c₂, ctx = s_procedure(con, ctx, V₊ - rate * V)
 
     push!(basis, one(R))
-
-    @info "Basis: $basis"
 
     M₁ = as_matrix(basis => L₁)
     M₂ = as_matrix(basis => L₂)
 
     opt = feasible(c₁ ∧ c₂ ∧ mapreduce(c -> c == 0, ∧, M₁) ∧ mapreduce(c -> c == 0, ∧, M₂))
 
-    return opt
+    if verbose()
+        @info "Formulating the search for a Lyapunov certificate"
+        @info "Basis: $basis"
+        show(opt)
+        println()
+    end
+
+    return evaluate(opt)
 end
 
 
@@ -239,15 +258,15 @@ end
 
 Constrains a given linear form `f` with variables `vars` to be negative by adding nonnegative terms associated with the constraints `cons` and then setting the result to zero in the optimization `model`.
 """
-function s_procedure(ctx::Node, f)
+function s_procedure(constraint::Node{<:Prop}, ctx, f)
     con = satisfied()
-    for c ∈ constraint(ctx)
+    for c ∈ constraint
         symtype(c) <: Transition && continue
-        λ, λ_con = multiplier(c)
+        λ, λ_con, ctx = multiplier(ctx, c)
         f += λ ⋅ expression(c)
         con = con ∧ λ_con
     end
-    return f, con
+    return f, con, ctx
 end
 
 """
@@ -302,19 +321,36 @@ function evaluate_adjoint(T::AbstractArray{<:Any, 3}, basis::Vector{<:Node}, Λ:
     return from_matrix(basis, coords)
 end
 
-multiplier(c::Node{Equality{R}}) = (leaf(R, Symbol("λ_", isnothing(id(c)) ? gensym() : id(c))), satisfied())
-
-function multiplier(c::Node{LessThanOrEqualTo{R}})
-    λ = leaf(R, Symbol("λ_", isnothing(id(c)) ? gensym() : id(c)))
-    return λ, λ ≥ zero(R)
+function multiplier(ctx, ::Node{Equality{R}})
+    sym = get_safe_symbol(:λ, ctx, force_subscript = true)
+    λ = leaf(R, sym)
+    push!(ctx, sym)
+    return λ, satisfied(), ctx
 end
 
-function multiplier(c::Node{PositiveSemidefinite})
+function multiplier(ctx, ::Node{LessThanOrEqualTo{R}})
+    sym = get_safe_symbol(:λ, ctx, force_subscript = true)
+    λ = leaf(R, sym)
+    push!(ctx, sym)
+    return λ, λ ≥ zero(R), ctx
+end
+
+function multiplier(ctx, c::Node{PositiveSemidefinite})
     A = arguments(c)[1]
     n = size(A,1)
-    g = gensym()
-    @alg λ = [ leaf(R, Symbol(:λ, g, subscript(i), ",", subscript(j))) for i in 1:n, j in 1:n ]
-    return λ, λ ⪰ 0
+    λ = Matrix{Node{R}}(undef, (n,n))
+    for i ∈ 1:n, j ∈ i:n
+        sym = get_safe_symbol(:λ, ctx, force_subscript = true)
+        λ[i,j] = leaf(R, sym)
+        push!(ctx, sym)
+    end
+    for i ∈ 1:n, j ∈ 1:i-1
+        λ[i,j] = λ[j,i]
+    end
+    # g = gensym()
+    # @alg λ = [ leaf(R, Symbol(:λ, g, subscript(min(i, j)), ",", subscript(max(i, j)))) for i in 1:n, j in 1:n ]
+    Λ = Sⁿ(λ)
+    return Λ, Λ ⪰ 0, ctx
 end
 
 function inspect(model::JuMP.Model, tolerance = 1e-6)

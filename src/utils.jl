@@ -307,6 +307,7 @@ function remove_constraint(con::Node{Conjunction}, old::Node{<:Prop})
     cons = foldl(∧, cons)
 end
 
+# TODO: these should use similarterm to keep metadata
 function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
     Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
 end
@@ -341,85 +342,229 @@ end
 
 
 
-function linear_decomposition(v::Node{T}) where {T<:Union{VectorSpace, Field, MatrixSpace}}
+# function linear_decomposition(v::Node{T}) where {T<:Union{VectorSpace, Field, MatrixSpace}}
     
-    F = field(T)
-    terms = Dict{Node, Node}()
+#     F = field(T)
+#     terms = Dict{Node, Node}()
 
-    function add_term!(terms::Dict, leaf::Node, coeff::Node)
-        if iszero(coeff)
-            return
-        end
-        if iscall(leaf)
-            error("Cannot add non-leaf term: $leaf")
-        end
-        if haskey(terms, leaf)
-            updated = simplify(terms[leaf] + coeff)
-            if iszero(updated)
-                delete!(terms, leaf)
-            else
-                terms[leaf] = updated
-            end
-        else
-            terms[leaf] = coeff
-        end
-    end
+#     function add_term!(terms::Dict, leaf::Node, coeff::Node)
+#         if iszero(coeff)
+#             return
+#         end
+#         if iscall(leaf)
+#             error("Cannot add non-leaf term: $leaf")
+#         end
+#         if haskey(terms, leaf)
+#             updated = terms[leaf] + coeff
+#             if iszero(updated)
+#                 delete!(terms, leaf)
+#             else
+#                 terms[leaf] = updated
+#             end
+#         else
+#             terms[leaf] = coeff
+#         end
+#     end
 
-    function _decompose!(terms::Dict, v::Node, scale::Node)
-        if iszero(v) || iszero(scale)
-            return
-        end
+#     function _decompose!(terms::Dict, v::Node, scale::Node)
+#         if iszero(v) || iszero(scale)
+#             return
+#         end
 
-        scale = simplify(scale)
+#         scale = simplify(scale)
 
-        F = field(v)
+#         F = field(v)
 
-        if !iscall(v)
-            if isconstant(v) || isparameter(v)
-                add_term!(terms, one(F), simplify(scale * v))
-            else
-                add_term!(terms, v, scale)
-            end
-            return
-        end
+#         if !iscall(v)
+#             if isconstant(v) || isparameter(v)
+#                 add_term!(terms, one(F), simplify(scale * v))
+#             else
+#                 add_term!(terms, v, scale)
+#             end
+#             return
+#         end
 
-        op, args = operation(v), arguments(v)
+#         op, args = operation(v), arguments(v)
 
-        if isequal(op, +)
-            for arg in args
-                _decompose!(terms, arg, scale)
-            end
-        elseif isequal(op, -)
-            if length(args) == 1
-                _decompose!(terms, args[1], simplify(-scale))
-            else
-                _decompose!(terms, args[1], scale)
-                for arg in args[2:end]
-                    _decompose!(terms, arg, simplify(-scale))
-                end
-            end
-        elseif isequal(op, *)
-            const_scalars = filter(a -> (symtype(a) == F) && isconstant(a) || isparameter(a), args)
-            other_args = setdiff(args, const_scalars)
+#         if isequal(op, +)
+#             for arg in args
+#                 _decompose!(terms, arg, scale)
+#             end
+#         elseif isequal(op, -)
+#             if length(args) == 1
+#                 _decompose!(terms, args[1], simplify(-scale))
+#             else
+#                 _decompose!(terms, args[1], scale)
+#                 for arg in args[2:end]
+#                     _decompose!(terms, arg, simplify(-scale))
+#                 end
+#             end
+#         elseif isequal(op, *)
+#             const_scalars = filter(a -> (symtype(a) == F) && isconstant(a) || isparameter(a), args)
+#             other_args = setdiff(args, const_scalars)
 
-            c_const = isempty(const_scalars) ? one(F) : prod(const_scalars)
-            new_scale = simplify(scale * c_const)
+#             c_const = isempty(const_scalars) ? one(F) : prod(const_scalars)
+#             new_scale = simplify(scale * c_const)
 
-            if isempty(other_args)
-                add_term!(terms, one(F), new_scale)
-            elseif length(other_args) == 1
-                _decompose!(terms, other_args[1], new_scale)
-            else
-                error("Composite leaf: $terms, $v, $scale")
-            end
-        end
-    end
+#             if isempty(other_args)
+#                 add_term!(terms, one(F), new_scale)
+#             elseif length(other_args) == 1
+#                 _decompose!(terms, other_args[1], new_scale)
+#             else
+#                 error("Composite leaf: $terms, $v, $scale")
+#             end
+#         end
+#     end
     
-    # Run in-place recursive decomposition starting with scale = 1
-    _decompose!(terms, v, one(F))
+#     # Run in-place recursive decomposition starting with scale = 1
+#     _decompose!(terms, v, one(F))
     
-    return terms
-end
+#     return terms
+# end
+
+
+# function linear_decomposition(
+#     term::Node{T}, 
+#     basis::AbstractVector{<:Node}
+# ) where {T<:Union{VectorSpace, Field, MatrixSpace}}
+    
+#     F = field(T)
+#     basis_set = Set(basis)
+#     terms = Dict{Node, Node}()
+
+#     function add_term!(terms::Dict, leaf::Node, coeff::Node)
+#         coeff = simplify(coeff)
+#         if iszero(coeff)
+#             return
+#         end
+#         if haskey(terms, leaf)
+#             updated = simplify(terms[leaf] + coeff)
+#             if iszero(updated)
+#                 delete!(terms, leaf)
+#             else
+#                 terms[leaf] = updated
+#             end
+#         else
+#             terms[leaf] = coeff
+#         end
+#     end
+
+#     in_basis(a) = any(b -> isequal(a,b), basis_set)
+
+#     function _decompose!(terms::Dict, v::Node, scale::Node)
+#         if iszero(v) || iszero(scale)
+#             return
+#         end
+
+#         F = field(v)
+
+#         if in_basis(v)
+#             add_term!(terms, v, scale)
+#             return
+#         end
+
+#         if isconstant(v) || isparameter(v)
+#             c_val = scale * v
+#             one_node = one(F)
+#             if one_node ∈ basis_set
+#                 add_term!(terms, one_node, c_val)
+#             elseif !iszero(c_val)
+#                 error("Scalar term $c_val present in expression, but unit 1 ($one_node) is not in the provided basis.")
+#             end
+#             return
+#         end
+
+#         if !iscall(v)
+#             error("Variable leaf $v is not in the provided basis.")
+#         end
+
+#         op, args = operation(v), arguments(v)
+
+#         if isequal(op, +)
+#             for arg in args
+#                 _decompose!(terms, arg, scale)
+#             end
+#         elseif isequal(op, -)
+#             if length(args) == 1
+#                 _decompose!(terms, args[1], -scale)
+#             else
+#                 _decompose!(terms, args[1], scale)
+#                 for arg in args[2:end]
+#                     _decompose!(terms, arg, -scale)
+#                 end
+#             end
+#         elseif isequal(op, *)
+#             # A. Check if any non-basis factor is a sum/difference requiring distribution: c * (A + B)
+#             sum_idx = findfirst(a -> iscall(a) && (isequal(+, operation(a)) || isequal(-, operation(a))) && a ∉ basis_set, args)
+
+#             if sum_idx !== nothing
+#                 sum_arg = args[sum_idx]
+#                 other_args = deleteat!(copy(args), sum_idx)
+#                 other_factor = isempty(other_args) ? one(F) : (length(other_args) == 1 ? other_args[1] : foldl(*, other_args))
+
+#                 sum_op = operation(sum_arg)
+#                 sum_children = arguments(sum_arg)
+
+#                 if isequal(+, sum_op)
+#                     for child in sum_children
+#                         _decompose!(terms, child * other_factor, scale)
+#                     end
+#                 elseif isequal(-, sum_op)
+#                     if length(sum_children) == 1
+#                         _decompose!(terms, sum_children[1] * other_factor, -scale)
+#                     else
+#                         _decompose!(terms, sum_children[1] * other_factor, scale)
+#                         for child in sum_children[2:end]
+#                             _decompose!(terms, child * other_factor, -scale)
+#                         end
+#                     end
+#                 end
+#                 return
+#             end
+
+#             # B. Partition factors into basis vs non-basis
+#             basis_args = filter(in_basis, args)
+#             non_basis_args = filter(!in_basis, args)
+
+#             @show args
+#             @show basis_args
+
+#             # Multiply all non-basis factors together into the scale factor
+#             non_basis_factor = isempty(non_basis_args) ? one(F) : (length(non_basis_args) == 1 ? non_basis_args[1] : foldl(*, non_basis_args))
+#             new_scale = simplify(scale * non_basis_factor)
+
+#             if length(basis_args) == 1
+#                 # Exactly one basis element found in product
+#                 basis_term = basis_args[1]
+#                 add_term!(terms, basis_term, new_scale)
+#                 return
+
+#             elseif length(basis_args) == 0
+#                 # No individual factor is in basis. If unit 1 is in basis, map the whole product as a scalar
+#                 one_node = one(F)
+#                 if one_node ∈ basis_set
+#                     add_term!(terms, one_node, new_scale)
+#                     return
+#                 else
+#                     error("Composite term $v is not in the provided basis, and unit 1 ($one_node) is not in the basis.")
+#                 end
+
+#             else
+#                 # Multiple basis terms multiplied together: e.g. x * y when both x and y are basis elements
+#                 error("Non-linear product of basis elements in $v: $basis_args")
+#             end
+#         else
+#             error("Term $v is not in the provided basis and cannot be decomposed further.")
+#         end
+#     end
+
+#     # Run in-place recursive decomposition starting with scale = 1
+#     _decompose!(terms, term, one(F))
+
+#     return terms
+# end
+
+using SymbolicUtils
 
 function linear_decomposition(
     v::Node{T}, 
@@ -427,88 +572,125 @@ function linear_decomposition(
 ) where {T<:Union{VectorSpace, Field, MatrixSpace}}
     
     F = field(T)
-    basis_set = Set(basis)
+    one_node = one(F)
+    
+    # 1. Pre-simplify basis elements to ensure AST normalization matches simplify(expr)
+    simplified_basis = map(simplify, basis)
     terms = Dict{Node, Node}()
+
+    # Robust check for basis membership via isequal
+    in_basis(a) = any(b -> isequal(a, b), simplified_basis)
+
+    # 2. Recursive helper to flatten nested * AST nodes (e.g., a * (b * x) -> [a, b, x])
+    function flatten_mul(arg::Node)
+        if iscall(arg) && isequal(operation(arg), *) && !in_basis(arg)
+            res = Node[]
+            for child in arguments(arg)
+                append!(res, flatten_mul(child))
+            end
+            return res
+        else
+            return Node[arg]
+        end
+    end
 
     function add_term!(terms::Dict, leaf::Node, coeff::Node)
         coeff = simplify(coeff)
         if iszero(coeff)
             return
         end
-        if haskey(terms, leaf)
-            updated = simplify(terms[leaf] + coeff)
+        
+        # Look for existing key using isequal structural match
+        existing_key = nothing
+        for k in keys(terms)
+            if isequal(k, leaf)
+                existing_key = k
+                break
+            end
+        end
+
+        if existing_key !== nothing
+            updated = simplify(terms[existing_key] + coeff)
             if iszero(updated)
-                delete!(terms, leaf)
+                delete!(terms, existing_key)
             else
-                terms[leaf] = updated
+                terms[existing_key] = updated
             end
         else
             terms[leaf] = coeff
         end
     end
 
-    in_basis(a) = a ∈ basis_set
+    function _decompose!(terms::Dict, expr::Node, scale::Node)
+        v = simplify(expr)
+        scale = simplify(scale)
 
-    function _decompose!(terms::Dict, v::Node, scale::Node)
         if iszero(v) || iszero(scale)
             return
         end
 
-        scale = simplify(scale)
-        F = field(v)
-
-        if in_basis(v)
+        # Direct Basis Match (excluding unit 1)
+        if in_basis(v) && !isequal(v, one_node)
             add_term!(terms, v, scale)
             return
         end
 
-        if isconstant(v) || isparameter(v)
-            c_val = simplify(scale * v)
-            one_node = one(F)
-            if one_node ∈ basis_set
-                add_term!(terms, one_node, c_val)
-            elseif !iszero(c_val)
-                error("Scalar term $c_val present in expression, but unit 1 ($one_node) is not in the provided basis.")
-            end
-            return
-        end
-
+        # Leaf Node Handling
         if !iscall(v)
-            error("Variable leaf $v is not in the provided basis.")
+            if isconstant(v) || isparameter(v)
+                c_val = simplify(scale * v)
+                if in_basis(one_node)
+                    add_term!(terms, one_node, c_val)
+                elseif !iszero(c_val)
+                    error("Scalar term $c_val present in expression, but unit 1 is not in the provided basis.")
+                end
+                return
+            else
+                error("Variable leaf $v is not in the provided basis.")
+            end
         end
 
-        op, args = operation(v), arguments(v)
+        # Composite Expressions (+, -, *)
+        op, raw_args = operation(v), arguments(v)
 
         if isequal(op, +)
-            for arg in args
+            for arg in raw_args
                 _decompose!(terms, arg, scale)
             end
+
         elseif isequal(op, -)
-            if length(args) == 1
-                _decompose!(terms, args[1], simplify(-scale))
+            if length(raw_args) == 1
+                _decompose!(terms, raw_args[1], simplify(-scale))
             else
-                _decompose!(terms, args[1], scale)
-                for arg in args[2:end]
+                _decompose!(terms, raw_args[1], scale)
+                for arg in raw_args[2:end]
                     _decompose!(terms, arg, simplify(-scale))
                 end
             end
+
         elseif isequal(op, *)
-            # A. Check if any non-basis factor is a sum/difference requiring distribution: c * (A + B)
-            sum_idx = findfirst(a -> iscall(a) && (isequal(+, operation(a)) || isequal(-, operation(a))) && a ∉ basis_set, args)
+            # A. Un-nest multiplication AST nodes into a flat array of factors
+            args = Node[]
+            for arg in raw_args
+                append!(args, flatten_mul(arg))
+            end
+
+            # B. Distribute products over sums: c * (A + B)
+            sum_idx = findfirst(a -> iscall(a) && (isequal(operation(a), +) || isequal(operation(a), -)) && !in_basis(a), args)
 
             if sum_idx !== nothing
                 sum_arg = args[sum_idx]
                 other_args = deleteat!(copy(args), sum_idx)
-                other_factor = isempty(other_args) ? one(F) : (length(other_args) == 1 ? other_args[1] : foldl(*, other_args))
+                other_factor = isempty(other_args) ? one_node : (length(other_args) == 1 ? other_args[1] : foldl(*, other_args))
 
                 sum_op = operation(sum_arg)
                 sum_children = arguments(sum_arg)
 
-                if isequal(+, sum_op)
+                if isequal(sum_op, +)
                     for child in sum_children
                         _decompose!(terms, child * other_factor, scale)
                     end
-                elseif isequal(-, sum_op)
+                elseif isequal(sum_op, -)
                     if length(sum_children) == 1
                         _decompose!(terms, sum_children[1] * other_factor, simplify(-scale))
                     else
@@ -521,41 +703,46 @@ function linear_decomposition(
                 return
             end
 
-            # B. Partition factors into basis vs non-basis
-            basis_args = filter(a -> a ∈ basis_set, args)
-            non_basis_args = filter(a -> a ∉ basis_set, args)
-
-            # Multiply all non-basis factors together into the scale factor
-            non_basis_factor = isempty(non_basis_args) ? one(F) : (length(non_basis_args) == 1 ? non_basis_args[1] : foldl(*, non_basis_args))
-            new_scale = simplify(scale * non_basis_factor)
+            # C. Partition flattened factors into direct basis elements vs non-basis factors
+            basis_args = filter(a -> in_basis(a) && !isequal(a, one_node), args)
+            non_basis_args = filter(a -> !in_basis(a) || isequal(a, one_node), args)
 
             if length(basis_args) == 1
-                # Exactly one basis element found in product
                 basis_term = basis_args[1]
-                add_term!(terms, basis_term, new_scale)
+                
+                # All non-basis factors (e.g. `a` and `b` in `a * b * x`) combine into the coefficient
+                coeff_factor = isempty(non_basis_args) ? one_node : (length(non_basis_args) == 1 ? non_basis_args[1] : foldl(*, non_basis_args))
+                add_term!(terms, basis_term, simplify(scale * coeff_factor))
                 return
 
-            elseif length(basis_args) == 0
-                # No individual factor is in basis. If unit 1 is in basis, map the whole product as a scalar
-                one_node = one(F)
-                if one_node ∈ basis_set
-                    add_term!(terms, one_node, new_scale)
-                    return
-                else
-                    error("Composite term $v is not in the provided basis, and unit 1 ($one_node) is not in the basis.")
-                end
+            elseif length(basis_args) > 1
+                error("Non-linear product of basis elements in $v: $basis_args")
 
             else
-                # Multiple basis terms multiplied together: e.g. x * y when both x and y are basis elements
-                error("Non-linear product of basis elements in $v: $basis_args")
+                # D. No individual factor matched directly. Check if composite non-basis factors match (e.g. x * y)
+                composite_candidate = simplify(length(non_basis_args) == 1 ? non_basis_args[1] : foldl(*, non_basis_args))
+                
+                if in_basis(composite_candidate) && !isequal(composite_candidate, one_node)
+                    add_term!(terms, composite_candidate, scale)
+                    return
+                else
+                    # Pure scalar product fallback
+                    c_val = simplify(scale * v)
+                    if in_basis(one_node)
+                        add_term!(terms, one_node, c_val)
+                        return
+                    else
+                        error("Composite term $v is not in the provided basis.")
+                    end
+                end
             end
         else
-            error("Term $v is not in the provided basis and cannot be decomposed further.")
+            error("Unsupported operation $op in term $v.")
         end
     end
 
     # Run in-place recursive decomposition starting with scale = 1
-    _decompose!(terms, v, one(F))
+    _decompose!(terms, v, one_node)
 
     return terms
 end
@@ -573,7 +760,7 @@ end
 function as_matrix(p::Pair{<:Vector{<:Node}, <:Vector{<:Node}})
     basis, terms = p
 
-    [ get(linear_decomposition(term), v, zero(field(term))) for term ∈ terms, v ∈ basis ]
+    [ get(linear_decomposition(term, basis), v, zero(field(term))) for term ∈ terms, v ∈ basis ]
 end
 
 function as_matrix(p::Pair{<:Vector{<:Node}, Node{Sⁿ}})
@@ -583,7 +770,7 @@ function as_matrix(p::Pair{<:Vector{<:Node}, Node{Sⁿ}})
 
     F = field(A[1,1])
 
-    [ get(linear_decomposition(A[i,j]), v, zero(F)) for i ∈ 1:n, j ∈ 1:n, v ∈ basis ]
+    [ get(linear_decomposition(A[i,j], basis), v, zero(F)) for i ∈ 1:n, j ∈ 1:n, v ∈ basis ]
 end
 
 """
@@ -701,4 +888,69 @@ function superscript(i::Integer)
         end
         for d in reverse(digits(i))
     )
+end
+
+
+
+export extract_symbols, get_safe_symbol
+
+"""
+    extract_symbols!(symbols::Set{Symbol}, expr)
+
+Recursively collects all Symbol names used across a BasicSymbolic expression 
+or array of expressions.
+"""
+function extract_symbols(node, symbols::Set{Symbol} = Set{Symbol}())
+    if has_id(node)
+        push!(symbols, id(node))
+    end
+    if iscall(node)
+        op = operation(node)
+        if op isa Node
+            extract_symbols(op, symbols)
+        elseif op isa Symbol
+            push!(symbols, op)
+        end
+        for arg in arguments(node)
+            extract_symbols(arg, symbols)
+        end
+    end
+    return symbols
+end
+
+# Overload for Arrays of Nodes (e.g., basis vectors, matrix operators)
+function extract_symbols(collection::AbstractArray, symbols::Set{Symbol} = Set{Symbol}())
+    for item in collection
+        extract_symbols(item, symbols)
+    end
+    return symbols
+end
+
+extract_symbols(sym::Symbol, symbols::Set{Symbol} = Set{Symbol}()) = symbols ∪ Set([sym])
+
+"""
+    is_symbol_safe(candidate::Symbol, expr)
+
+Returns `true` if `candidate` does not appear anywhere inside `expr`.
+"""
+is_safe(candidate::Symbol, ctx::Node) = candidate ∉ extract_symbols(ctx)
+
+"""
+    get_safe_symbol(base::Symbol, expr; subscript_fn = subscript)
+
+Returns `base` if safe, otherwise appends subscript indices (e.g. λ -> λ₁ -> λ₂) 
+until a collision-free symbol is found.
+"""
+function get_safe_symbol(base::Symbol, used::Set{Symbol}; force_subscript::Bool = false)
+    if !force_subscript && base ∉ used
+        return base
+    end
+    i = 1
+    while true
+        candidate = Symbol(base, subscript(i))
+        if candidate ∉ used
+            return candidate
+        end
+        i += 1
+    end
 end
