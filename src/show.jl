@@ -120,6 +120,8 @@ semantic_ast(v::Vector) = semantic_ast.(v)
 
 semantic_ast(t::Real) = Leaf(Symbol(t))
 
+semantic_ast(t::JuMP.VariableRef) = Leaf(Symbol("JuMP(", JuMP.name(t), ")"))
+
 function semantic_ast(t::Node{<:Transition})
     x, x₊ = semantic_ast.(arguments(t))
     return Trans(x, x₊, id(t))
@@ -137,14 +139,7 @@ end
 
 function semantic_ast(t::Node{<:Optimization})
     obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
-    # con = [ semantic_ast(c) for c ∈ constraint(t) ]
     con = semantic_ast.(flatten(constraint(t)))
-    # if constraint(t) isa Node{Conjunction}
-    #     con = [ semantic_ast(c) for c ∈ arguments(constraint(t)) ]
-    # else
-    #     @show constraint(t)
-    #     con = semantic_ast(constraint(t))
-    # end
     return OptimizationProblem(sense(t), obj, con, id(t))
 end
 

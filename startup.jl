@@ -27,12 +27,12 @@ import SymbolicUtils: Term, operation, arguments, symtype, iscall, substitute, @
 end
 
 tprob = simplify(prob)
-with_numerics(parameters = Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
+with_parameters(Dict(ρ => 0.9, α => 0.1, μ => 1.0, L => 10.0)) do
     evaluate_node(tprob)
 end
 
 topt = simplify(opt)
 
-isapprox(with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0), T=BigFloat) do
+isapprox(with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
     evaluate_node(topt)
 end, 0.81, rtol = 1e-5)

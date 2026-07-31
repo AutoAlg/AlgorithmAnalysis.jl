@@ -12,7 +12,7 @@ export convex, smooth_convex, sector_bounded
 export leaf, branch, Transition
 export LyapunovCertificate, certify, rate
 export Optimization, Minimization, Maximization, Feasibility
-export Node, →, NodeType, ⋅, performance, feasible, isconstant
+export Node, →, NodeType, ⋅, performance, feasible, is_constant
 export Equality, LessThanOrEqualTo, expression, flatten
 
 const Node{T} = SymbolicUtils.BasicSymbolic{T}
@@ -80,7 +80,7 @@ function Base.convert(::Type{T}, val::Node{R}) where {T<:Real}
         one(T)
     elseif iszero(val)
         zero(T)
-    elseif isconstant(val)
+    elseif is_constant(val)
         arguments(val)[1]
     else
         error("Cannot convert $val to a real.")
@@ -119,7 +119,7 @@ R(x::Node{R}) = x
 satisfied() = Sym{Satisfied}()
 unsatisfied() = Sym{Unsatisfied}()
 
-isconstant(x::Node) = iscall(x) && isequal(operation(x), constant)
+is_constant(x::Node) = iscall(x) && isequal(operation(x), constant)
 iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
 isone(x::Node) = iscall(x) && isequal(operation(x), one)
 
