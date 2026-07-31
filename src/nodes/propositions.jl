@@ -1,0 +1,76 @@
+export Prop, Conjunction, satisfied, unsatisfied, ∧, ⪯, ⪰, flatten
+export Equality, LessThanOrEqualTo, PositiveSemidefinite, Transition
+export expression
+
+abstract type Prop <: NodeType end
+abstract type Satisfied <: Prop end
+abstract type Unsatisfied <: Prop end
+abstract type Conjunction <: Prop end
+abstract type Equality{T} <: Prop end
+abstract type LessThanOrEqualTo{T} <: Prop end
+abstract type Convex <: Prop end
+abstract type PositiveSemidefinite <: Prop end
+abstract type Transition{T} <: Prop end
+abstract type Feasibility <: Prop end
+abstract type LyapunovCertificate <: Feasibility end
+
+satisfied() = Sym{Satisfied}()
+unsatisfied() = Sym{Unsatisfied}()
+
+function ==(x::Node{T}, y::Node{T}) where {T}
+    return Term{Equality{T}}(==, [x, y])
+end
+
+function ≤(x::Node{T}, y::Node{T}) where {T}
+    return Term{LessThanOrEqualTo{T}}(≤, [x, y])
+end
+
+function ≥(x::Node{T}, y::Node{T}) where {T}
+    return Term{LessThanOrEqualTo{T}}(≤, [y, x])
+end
+
+function ⪯(a::Number, A::Node{<:MatrixSpace})
+    if iszero(a)
+        return Term{PositiveSemidefinite}(∈, [A])
+    else
+        error("Positive semidefinite constraint not implemented")
+    end
+end
+
+⪰(A::Node{<:MatrixSpace}, a::Number) = ⪯(a,A)
+
+function expression(x::Node{<:Equality})
+    args = arguments(x)
+    if iszero(args[1])
+        return args[2]
+    elseif iszero(args[2])
+        return args[1]
+    else
+        return args[2] - args[1]
+    end
+end
+expression(x::Node{<:LessThanOrEqualTo}) = arguments(x)[2] - arguments(x)[1]
+expression(x::Node{<:PositiveSemidefinite}) = arguments(x)[1]
+
+function flatten(props::Node{<:Prop}...)
+    flat_args = Node{<:Prop}[]
+    for arg in props
+        if iscall(arg) && operation(arg) === ∧
+            append!(flat_args, arguments(arg))
+        elseif isequal(arg, unsatisfied())
+            return unsatisfied()
+        elseif !isequal(arg, satisfied())
+            push!(flat_args, arg)
+        end
+    end
+    return flat_args
+end
+
+function ∧(args::Node{<:Prop}...)
+    return Term{Conjunction}(∧, flatten(args...))
+end
+
+∧(x::Node{Conjunction}, y::Node{Conjunction}) = Term{Conjunction}(∧, [arguments(x)..., arguments(y)...])
+
+∧(x::Node{<:Prop}, y::Bool) = y ? x : unsatisfied()
+∧(x::Bool, y::Node{<:Prop}) = x ? y : unsatisfied()

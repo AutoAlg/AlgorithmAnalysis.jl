@@ -18,19 +18,28 @@
         opt = rate(con, perf)
     end
 
-    tprob = simplify(prob)
-    topt = simplify(opt)
+    with_parameters(Dict(ρ => 0.81, α => 0.1, μ => 1.0, L => 10.0)) do
+        
+        tprob = simplify(prob)
 
-    @test with_numerics(parameters = Dict(ρ => 0.81, α => 0.1, μ => 1.0, L => 10.0)) do
-        evaluate_node(tprob)
+        with_numerics() do
+            @test evaluate(tprob)
+        end
     end
 
-    @test !with_numerics(parameters = Dict(ρ => 0.8, α => 0.1, μ => 1.0, L => 10.0)) do
-        evaluate_node(tprob)
+    with_parameters(Dict(ρ => 0.8, α => 0.1, μ => 1.0, L => 10.0)) do
+        
+        tprob = simplify(prob)
+
+        with_numerics() do
+            @test !evaluate(tprob)
+        end
     end
 
-    @test isapprox(with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
-        evaluate_node(topt)
-    end, 0.81, rtol = 1e-5)
+    with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
+        
+        topt = simplify(opt)
 
+        @test evaluate(topt) ≈ 0.81
+    end
 end
