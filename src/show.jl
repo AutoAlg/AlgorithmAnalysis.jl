@@ -1,423 +1,311 @@
-
-export semantic_ast
-
 function Base.show(io::IO, t::Node{<:NodeType})
-    if get(io, :compact, false)
-        show(IOContext(io, :use_id => true), semantic_ast(t))
-    else
-        show(IOContext(io, :use_id => false), semantic_ast(t))
-    end
+    show_node(io, t, get(io, :compact, false), nothing)
 end
 
-# special show method for gradients since they are not subtypes of NodeType
-function Base.show(io::IO, t::Node{FnType{Tuple{T},T,Gradient}}) where T
-    if get(io, :compact, false)
-        show(IOContext(io, :use_id => true), semantic_ast(t))
-    else
-        show(IOContext(io, :use_id => false), semantic_ast(t))
-    end
+function Base.show(io::IO, ::MIME"text/plain", t::Node{<:NodeType})
+    show_node(io, t, get(io, :compact, false), nothing)
 end
 
-# special show method for gradients since they are not subtypes of NodeType
-function Base.show(io::IO, t::Node{R})
-    if get(io, :compact, false)
-        show(IOContext(io, :use_id => true), semantic_ast(t))
-    else
-        show(IOContext(io, :use_id => false), semantic_ast(t))
-    end
+function Base.show(io::IO, t::Node{FnType{Tuple{X}, Y, Z}}) where {X, Y, Z<:Category}
+    show_node(io, t, get(io, :compact, false), nothing)
 end
 
-# ------------------------------------------------------
-#  DISPLAY WRAPPERS & LAYOUT TYPES
-# ------------------------------------------------------
-
-abstract type SemanticNode end
-
-struct Constant <: SemanticNode
-    value::Any
-    id::Union{Symbol, Nothing}
+function Base.show(io::IO, ::MIME"text/plain", t::Node{FnType{Tuple{X}, Y, Z}}) where {X, Y, Z<:Category}
+    show_node(io, t, get(io, :compact, false), nothing)
 end
 
-struct Postfixed <: SemanticNode
-    expr::SemanticNode
-    op::Symbol
-    id::Union{Symbol, Nothing}
-end
-
-struct Prefixed <: SemanticNode
-    expr::SemanticNode
-    op::Symbol
-    id::Union{Symbol, Nothing}
-end
-
-struct Leaf <: SemanticNode
-    id::Symbol
-end
-
-struct NormSquared <: SemanticNode
-    expr::SemanticNode
-    id::Union{Symbol, Nothing}
-end
-
-struct PropSet <: SemanticNode
-    obj::SemanticNode
-    set::SemanticNode
-    id::Union{Symbol, Nothing}
-end
-
-struct OptimizationProblem <: SemanticNode
-    sense::Symbol  # :maximize or :minimize or :feasible
-    objective::SemanticNode
-    constraints::Vector{SemanticNode}
-    id::Union{Symbol, Nothing}
-end
-
-struct InfixOp <: SemanticNode
-    op::SemanticNode
-    args::Vector{SemanticNode}
-    id::Union{Symbol, Nothing}
-end
-
-struct GradientOp <: SemanticNode
-    func::SemanticNode
-    id::Union{Symbol, Nothing}
-end
-
-struct FuncEval <: SemanticNode
-    func::SemanticNode
-    args::Vector{<:SemanticNode}
-    id::Union{Symbol, Nothing}
-end
-
-struct Mat <: SemanticNode
-    args::Matrix
-    id::Union{Symbol, Nothing}
-end
-
-struct Trans <: SemanticNode
-    src::SemanticNode
-    dst::SemanticNode
-    id::Union{Symbol, Nothing}
-end
-
-struct Lyap <: SemanticNode
-    perf::SemanticNode
-    rate::SemanticNode
-    cons::Vector{SemanticNode}
-    id::Union{Symbol, Nothing}
-end
-
-# ------------------------------------------------------
-#  SEMANTIC AST TRANSFORMATION
-# ------------------------------------------------------
-
-function semantic_ast(t::Any)
-    id = check_and_translate_identity(t)
-    return id ≠ nothing ? id : error("Unknown semantics for $t")
-end
-
-semantic_ast(v::Vector) = semantic_ast.(v)
-
-semantic_ast(t::Real) = Leaf(Symbol(t))
-
-semantic_ast(t::JuMP.VariableRef) = Leaf(Symbol("JuMP(", JuMP.name(t), ")"))
-
-function semantic_ast(t::Node{<:Transition})
-    x, x₊ = semantic_ast.(arguments(t))
-    return Trans(x, x₊, id(t))
-end
-
-function semantic_ast(t::Node{<:MatrixSpace})
-    op = operation(t)
-    args = semantic_ast.(arguments(t))
-    if op ∈ [+, -, *, /]
-        return InfixOp(Leaf(Symbol(op)), args, id(t))
-    end
-    n = Int(sqrt(length(args)))
-    return Mat(reshape(args, n, n), id(t))
-end
-
-function semantic_ast(t::Node{<:Optimization})
-    obj = is_feasibility(t) ? Leaf(Symbol("")) : semantic_ast(objective(t))
-    con = semantic_ast.(flatten(constraint(t)))
-    return OptimizationProblem(sense(t), obj, con, id(t))
-end
-
-function semantic_ast(t::Node{LyapunovCertificate})
-    con = constraint(t)
-    cons = symtype(con) <: Conjunction ? semantic_ast.(arguments(con)) : [semantic_ast(con)]
-    perf = semantic_ast(performance(t))
-    ρ    = isnothing(rate(t)) ? Leaf(:ρₒₚₜ) : semantic_ast(rate(t))
-    return Lyap(perf, ρ, cons, id(t))
-end
-
-function semantic_ast(t::Node{T}) where {T<:Prop}
-    isequal(T, Satisfied) && return Leaf(Symbol(true))
-    isequal(T, Unsatisfied) && return Leaf(Symbol(false))
-    op = operation(t)
-    args = arguments(t)
-    pretty_args = map(arg -> semantic_ast(arg), args)
-
-    if isequal(op, ==)
-        return InfixOp(Leaf(:(==)), pretty_args, id(t))
-    elseif isequal(op, ≤)
-        return InfixOp(Leaf(:≤), pretty_args, id(t))
-    elseif isequal(op, ∧)
-        return InfixOp(Leaf(:∧), pretty_args, id(t))
-    elseif isequal(op, smooth_convex)
-        f = semantic_ast(args[1])
-        L = semantic_ast(args[2])
-        return PropSet(f, Leaf(Symbol("SmoothConvex($L)")), id(t))
-    elseif isequal(op, sector_bounded)
-        f = semantic_ast(args[1])
-        μ = semantic_ast(args[2])
-        L = semantic_ast(args[3])
-        return PropSet(f, Leaf(Symbol("SectorBounded($μ,$L)")), id(t))
-    else
-        f = semantic_ast(args[1])
-        return PropSet(f, Leaf(Symbol(T)), id(t))
-    end
-end
-
-function semantic_ast(t::Node{Bool})
-    if iscall(t)
-        op = operation(t)
-        args = arguments(t)
-        pretty_args = map(arg -> semantic_ast(arg), args)
-
-        if isequal(op, ==)
-            return InfixOp(Leaf(:(==)), pretty_args, id(t))
-        elseif isequal(op, ≤)
-            return InfixOp(Leaf(:≤), pretty_args, id(t))
-        elseif isequal(op, ≥)
-            return InfixOp(Leaf(:≥), pretty_args, id(t))
-        end
-    else
-        return Leaf(id(t))
-    end
-end
-
-function semantic_ast(t::Node{FnType{Tuple{T}, T, Gradient}}) where T
-    f = iscall(t) ? semantic_ast(arguments(t)[1]) : f = Leaf(id(t))
-    return GradientOp(f, id(t))
-end
-
-function semantic_ast(t::Node{FnType{Tuple{X}, Y, LinearFunctional}}) where {X,Y}
-    iszero(t) && return Leaf(Symbol(0))
-    f = iscall(t) ? semantic_ast(arguments(t)[1]) : Leaf(id(t))
-    return Postfixed(f, Symbol("'"), id(t))
-end
-
-function semantic_ast(t::Node)
-
-    x = check_and_translate_identity(t)
-    x ≠ nothing && return x
-
-    if iscall(t)
-        op = operation(t)
-
-        isequal(op, constant) && return Constant(arguments(t)[1], id(t))
-
-        args = arguments(t)
-        pretty_args = map(arg -> semantic_ast(arg), args)
-
-        if op ∈ [+, -, *, /, ∧, ==]
-            if isequal(op, -) && length(args) == 1
-                return Prefixed(pretty_args[1], :-, id(t))
-            end
-            return InfixOp(Leaf(Symbol(op)), pretty_args, id(t))
-        elseif op === ≤
-            return InfixOp(Leaf(:≤), pretty_args, id(t))
-        elseif op === ≥
-            return InfixOp(Leaf(:≥), pretty_args, id(t))
-        elseif op === tr
-            return FuncEval(Leaf(:tr), pretty_args, id(t))
-        end
-
-        if !isempty(args)
-            if applicable(adjoint, args[1]) && isequal(op, args[1]')
-                return NormSquared(pretty_args[1], id(t))
-            elseif isequal(op, adjoint)
-                return Postfixed(pretty_args[1], Symbol("'"), id(t))
-            end
-        end
-
-        pretty_op = semantic_ast(op)
-
-        if length(args) == 1
-            return FuncEval(pretty_op, pretty_args, id(t))
-        else
-            return InfixOp(pretty_op, pretty_args, id(t))
-        end
-    end
-    
-    return Leaf(id(t))
-end
-
-# ------------------------------------------------------
-#  SHOW
-# ------------------------------------------------------
-
-Base.show(io::IO, x::Constant) = show(io, MIME"text/plain"(), x)
-Base.show(io::IO, n::NormSquared) = show(io, MIME"text/plain"(), n)
-Base.show(io::IO, con::PropSet) = show(io, MIME"text/plain"(), con)
-Base.show(io::IO, p::Postfixed) = show(io, MIME"text/plain"(), p)
-Base.show(io::IO, p::Prefixed) = show(io, MIME"text/plain"(), p)
-Base.show(io::IO, opt::OptimizationProblem) = show(io, MIME"text/plain"(), opt)
-Base.show(io::IO, ∇f::GradientOp) = show(io, MIME"text/plain"(), ∇f)
-Base.show(io::IO, f::FuncEval) = show(io, MIME"text/plain"(), f)
-Base.show(io::IO, op_node::InfixOp) = show(io, MIME"text/plain"(), op_node)
-Base.show(io::IO, x::Mat) = show(io, MIME"text/plain"(), x)
-Base.show(io::IO, t::Trans) = show(io, MIME"text/plain"(), t)
-Base.show(io::IO, t::Lyap) = show(io, MIME"text/plain"(), t)
-
-Base.show(io::IO, ::MIME"text/plain", op::Leaf) = print(io, string(op.id))
-Base.show(io::IO, op::Leaf) = print(io, string(op.id))
-
-function Base.show(io::IO, ::MIME"text/plain", x::Constant)
-    get(io, :use_id, true) && x.id ≠ nothing && return print(io, x.id)
-    print(io, x.value)
-end
-
-function Base.show(io::IO, mime::MIME"text/plain", n::NormSquared)
-    get(io, :use_id, true) && n.id ≠ nothing && return print(io, n.id)
-    print(io, "‖")
-    show(io, mime, n.expr)
-    print(io, "‖²")
-end
-
-function Base.show(io::IO, mime::MIME"text/plain", con::PropSet)
-    get(io, :use_id, true) && con.id ≠ nothing && return print(io, con.id)
-    show(io, mime, con.obj)
-    print(io, " ∈ ")
-    show(io, mime, con.set)
-end
-
-function Base.show(io::IO, ::MIME"text/plain", p::Postfixed)
-    get(io, :use_id, true) && p.id ≠ nothing && return print(io, p.id)
-
-    if p.expr isa Leaf
-        print(io, p.expr, p.op)
-    else
-        print("(")
-        show(io, p.expr)
-        print(io, ")", p.op)
-    end
-end
-
-function Base.show(io::IO, ::MIME"text/plain", p::Prefixed)
-    get(io, :use_id, true) && p.id ≠ nothing && return print(io, p.id)
-
-    if p.expr isa Leaf
-        print(io, p.op, p.expr)
-    else
-        print(p.op, "(")
-        show(io, p.expr)
+function show_node(io::IO, t::Node, use_id::Bool, parent_op::Union{Nothing,Symbol}=nothing)
+    if parent_op !== nothing && should_wrap(parent_op, t)
+        print(io, "(")
+        show_node_core(io, t, use_id)
         print(io, ")")
+    else
+        show_node_core(io, t, use_id)
     end
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", opt::OptimizationProblem)
-    get(io, :use_id, true) && opt.id ≠ nothing && return print(io, opt.id)
+function show_node_core(io::IO, t::Node, use_id::Bool)
+    use_id && has_id(t) && return print(io, id(t))
 
-    print(io, opt.sense, " "^5, opt.objective)
-    for (i, con) in enumerate(opt.constraints)
-        println()
+    stype = symtype(t)
+    if stype <: Optimization
+        return show_optimization(io, t, use_id)
+    elseif stype <: LyapunovCertificate
+        return show_lyapunov(io, t, use_id)
+    elseif stype <: Transition
+        return show_transition(io, t, use_id)
+    elseif stype <: MatrixSpace
+        return show_matrixspace(io, t, use_id)
+    elseif stype <: Prop
+        return show_prop(io, t, use_id)
+    elseif stype <: Bool
+        return show_bool(io, t, use_id)
+    elseif iscall(t)
+        return show_call(io, t, use_id)
+    else
+        return show_atom(io, t, use_id)
+    end
+end
+
+show_value(io::IO, value::Any, ::Bool, ::Union{Nothing,Symbol}=nothing) = print(io, value)
+show_value(io::IO, value::Node, use_id::Bool, parent_op::Union{Nothing,Symbol}=nothing) = show_node(io, value, use_id, parent_op)
+
+function show_atom(io::IO, t::Node, ::Bool)
+    if has_id(t)
+        print(io, id(t))
+    else
+        print(io, nameof(symtype(t)))
+    end
+end
+
+function show_optimization(io::IO, t::Node, use_id::Bool)
+    use_id && has_id(t) && return print(io, id(t))
+
+    print(io, sense(t), " "^5)
+    if !is_feasibility(t)
+        show_value(io, objective(t), use_id)
+    end
+
+    for (i, con) in enumerate(flatten(constraint(t)))
+        println(io)
         prefix = (i == 1) ? "subject to   " : " "^13
         print(io, prefix)
-        show(io, mime, con)
+        show_value(io, con, use_id)
     end
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", opt::Lyap)
-    get(io, :use_id, true) && opt.id ≠ nothing && return print(io, opt.id)
+function show_lyapunov(io::IO, t::Node, use_id::Bool)
+    use_id && has_id(t) && return print(io, id(t))
 
     print(io, "Lyapunov-based stability certification")
-    print(io, "\n  Rate:        "); show(io, mime, opt.rate)
-    print(io, "\n  Performance: "); show(io, mime, opt.perf)
+    print(io, "\n  Rate:        ")
+    if isnothing(rate(t))
+        print(io, :ρₒₚₜ)
+    else
+        show_value(io, rate(t), use_id)
+    end
+    print(io, "\n  Performance: ")
+    show_value(io, performance(t), use_id)
     print(io, "\n  Constraints: ")
-    for (i,con) in enumerate(opt.cons)
+    for (i, con) in enumerate(flatten(constraint(t)))
         i > 1 && print(io, "\n", " "^15)
-        show(io, mime, con)
+        show_value(io, con, use_id)
     end
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", ∇f::GradientOp)
-    get(io, :use_id, true) && ∇f.id ≠ nothing && return print(io, ∇f.id)
-
-    print(io, "∇", ∇f.func)
+function show_transition(io::IO, t::Node, use_id::Bool)
+    use_id && has_id(t) && return print(io, id(t))
+    args = arguments(t)
+    show_value(io, args[1], use_id, :→)
+    print(io, " → ")
+    show_value(io, args[2], use_id, :→)
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", f::FuncEval)
-    get(io, :use_id, true) && f.id ≠ nothing && return print(io, f.id)
+function show_matrixspace(io::IO, t::Node, use_id::Bool)
+    use_id && has_id(t) && return print(io, id(t))
 
-    show(io, mime, f.func)
+    op = operation(t)
+    op_sym = op_symbol(op)
+    args = arguments(t)
+    if op_sym in (:+, :-, :*, :/)
+        return show_infix(io, op, args, use_id)
+    end
+
+    A = mat(args)
+    print(io, '[', join((join(repr.(r), " ") for r in eachrow(A)), "; "), ']')
+end
+
+function show_prop(io::IO, t::Node, use_id::Bool)
+    use_id && has_id(t) && return print(io, id(t))
+
+    stype = symtype(t)
+    if isequal(stype, Satisfied)
+        return print(io, true)
+    elseif isequal(stype, Unsatisfied)
+        return print(io, false)
+    end
+
+    op = operation(t)
+    op_sym = op_symbol(op)
+    args = arguments(t)
+    if op_sym in (:≤, :∧)
+        return show_infix(io, op, args, use_id)
+    elseif op_sym == :(==)
+        return show_infix(io, :(=), args, use_id)
+    elseif op_sym == :<=
+        return show_infix(io, :≤, args, use_id)
+    elseif op_sym == :>=
+        return show_infix(io, :≥, args, use_id)
+    elseif stype == PositiveSemidefinite
+        show_value(io, args[1], use_id)
+        print(io, " ⪰ 0")
+        return
+    elseif op_sym == :smooth_convex
+        show_value(io, args[1], use_id)
+        print(io, " ∈ SmoothConvex(")
+        show_value(io, args[2], use_id)
+        print(io, ")")
+        return
+    elseif op_sym == :sector_bounded
+        show_value(io, args[1], use_id)
+        print(io, " ∈ SectorBounded(")
+        show_value(io, args[2], use_id)
+        print(io, ", ")
+        show_value(io, args[3], use_id)
+        print(io, ")")
+        return
+    end
+
+    show_value(io, args[1], use_id)
+    print(io, " ∈ ", nameof(stype))
+end
+
+function show_bool(io::IO, t::Node, use_id::Bool)
+    use_id && has_id(t) && return print(io, id(t))
+
+    if iscall(t)
+        op = operation(t)
+        op_sym = op_symbol(op)
+        args = arguments(t)
+        if op_sym in (Symbol("=="), :≤, :≥)
+            return show_infix(io, op, args, use_id)
+        end
+    end
+
+    show_atom(io, t, use_id)
+end
+
+function show_call(io::IO, t::Node, use_id::Bool)
+    op = operation(t)
+    op_sym = op_symbol(op)
+    args = arguments(t)
+
+    if op_sym == :constant
+        return show_value(io, args[1], use_id)
+    elseif op_sym == :one
+        return show_value(io, 1, use_id)
+    elseif op_sym == :zero
+        return show_value(io, 0, use_id)
+    elseif op_sym == :tr
+        print(io, "tr(")
+        show_value(io, args[1], use_id)
+        print(io, ")")
+        return
+    end
+
+    if !isempty(args)
+        # u'(u) → ‖u‖²
+        if symtype(t) <: R &&
+            length(args) == 1 &&
+            op isa Node &&
+            iscall(op) &&
+            operation(op) === adjoint &&
+            length(arguments(op)) == 1 &&
+            isequal(arguments(op)[1], args[1])
+            
+            print(io, "‖")
+            show_value(io, args[1], use_id)
+            print(io, "‖²")
+            return
+        end
+
+        if op isa Node
+            if !iscall(op) && op_symbol(op) == :∇ && length(args) == 1
+                print(io, "∇")
+                show_value(io, args[1], use_id)
+                return
+            end
+
+            show_value(io, op, use_id)
+            print(io, "(")
+            for (i, arg) in enumerate(args)
+                show_value(io, arg, use_id)
+                i < length(args) && print(io, ", ")
+            end
+            print(io, ")")
+            return
+
+        elseif op === adjoint
+            if args[1] isa Node && !iscall(args[1])
+                show_value(io, args[1], use_id)
+            else
+                print(io, "(")
+                show_value(io, args[1], use_id)
+                print(io, ")")
+            end
+            print(io, "'")
+            return
+        end
+    end
+
+    if op_sym == :- && length(args) == 1
+        print(io, "-")
+        show_value(io, args[1], use_id, :-)
+        return
+    elseif op_sym in (:+, :-, :*, :/, :∧, :(==), :<=, :>=)
+        return show_infix(io, op, args, use_id)
+    end
+
+    show_value(io, op, use_id)
     print(io, "(")
-    for (i,arg) in enumerate(f.args)
-        show(io, mime, arg)
-        i < length(f.args) && print(io, ", ")
+    for (i, arg) in enumerate(args)
+        show_value(io, arg, use_id)
+        i < length(args) && print(io, ", ")
     end
     print(io, ")")
 end
 
-function Base.show(io::IO, ::MIME"text/plain", op_node::InfixOp)
-
-    get(io, :use_id, true) && op_node.id ≠ nothing && return print(io, op_node.id)
-
-    parent_op = op_node.op
-
-    # Render and format each child element individually
-    rendered_children = map(op_node.args) do child
-
-        if child isa Symbol
-            return string(child)
-        end
-
-        # Capture the child's text string safely using the active stream context
-        buf = IOBuffer()
-        ctx = IOContext(buf, io)
-        show(ctx, child)
-        child_str = String(take!(buf))
-        
-        # Determine the child's operator if it is an algebraic structure
-        child_op = nothing
-        if child isa InfixOp
-            child_op = child.op
-        elseif child isa Expr && child.head === :call
-            child_op = Symbol(child.args[1])
-        elseif iscall(child) # Fallback if a raw symbolic tree leaks through
-            child_op = Symbol(operation(child))
-        end
-
-        if child_op !== nothing && parent_op in (:*, :∧, :-, Symbol("'")) && child_op in (:+, :-, :≤, :≥, :(==))
-            return "($child_str)"
-        end
-        
-        return child_str
+function show_infix(io::IO, op, args, use_id::Bool)
+    parent_op = op_symbol(op)
+    rendered_children = map(args) do child
+        render_child(child, io, use_id, parent_op)
     end
-    
-    # Join the children with natural mathematical padding (e.g., "x + y")
+
     print(io, join(rendered_children, " $parent_op "))
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", t::Mat)
-    get(io, :use_id, true) && t.id ≠ nothing && return print(io, t.id)
-    print(io, t.args)
+function render_child(child, io::IO, use_id::Bool, parent_op::Union{Nothing,Symbol}=nothing)
+    buf = IOBuffer()
+    child_io = IOContext(buf, :compact => get(io, :compact, false), :use_id => use_id)
+    if child isa Node
+        show_node(child_io, child, use_id, parent_op)
+    else
+        show(child_io, child)
+    end
+    return String(take!(buf))
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", t::Trans)
-    get(io, :use_id, true) && t.id ≠ nothing && return print(io, t.id)
-    show(io, mime, t.src)
-    print(io, " → ")
-    show(io, mime, t.dst)
+function should_wrap(parent_op::Symbol, t::Node)
+    iscall(t) || return false
+    child_op = op_symbol(operation(t))
+
+    if parent_op in (:*, :/, :∧, Symbol("'"))
+        return child_op in (:+, :-, :≤, :>=, :≥, :(==), :<=)
+    elseif parent_op == :-
+        return child_op in (:+, :-, :≤, :>=, :≥, :(==), :<=)
+    elseif parent_op == :adjoint
+        return true
+    elseif parent_op == :→
+        return child_op in (:+, :-)
+    end
+
+    return false
 end
 
-# ------------------------------------------------------
-#  UTILITIES
-# ------------------------------------------------------
-
-function check_and_translate_identity(node)
-    node isa Node && iszero(node) && return Leaf(Symbol(0))
-    node isa Node && isone(node) && return Leaf(Symbol(1))
-    return nothing
+function op_symbol(op)
+    if op isa Symbol
+        return op
+    elseif op isa Node
+        if iscall(op)
+            return op_symbol(operation(op))
+        elseif has_id(op)
+            return id(op)
+        else
+            return nameof(symtype(op))
+        end
+    elseif op isa Function
+        return Symbol(op)
+    else
+        return Symbol(string(op))
+    end
 end
