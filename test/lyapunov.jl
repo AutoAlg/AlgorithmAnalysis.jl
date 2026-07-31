@@ -2,7 +2,7 @@
 
     @alg begin
         α, μ, L, ρ ∈ R
-        x, xs, y ∈ Rⁿ
+        x, xs ∈ Rⁿ
         f ∈ F(Rⁿ)
         gs = f'(xs)
         g  = f'(x)

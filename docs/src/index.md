@@ -8,12 +8,11 @@ This package provides a generic way to analyze algorithms in a systematic manner
 
 The package can be downloaded from GitHub and imported with:
 ```julia
-import Pkg
-Pkg.add("AlgorithmAnalysis")
+import Pkg; Pkg.add("AlgorithmAnalysis")
 ```
 
 !!! tip
-    By default, AlgorithmAnalysis uses [SCS](https://www.cvxgrp.org/scs/) to solve convex cone programs. If you would like to use a different solver (such as [Mosek](https://www.mosek.com/)), you will need to install that as well.
+    By default, AlgorithmAnalysis uses [Clarabel](https://clarabel.org/) and [Hypatia](https://jump.dev/Hypatia.jl/) to solve convex cone programs. If you would like to use a different solver (such as [Mosek](https://www.mosek.com/)), you will need to install that as well.
 
 ## Example
 
@@ -21,16 +20,30 @@ This example code finds the worst-case convergence rate of the (squared) distanc
 
 ```julia
 using AlgorithmAnalysis
-m, L = 1, 10
-@algorithm begin
-    f = DifferentiableFunctional{Rⁿ}()
-    xs = first_order_stationary_point(f)
-    f' ∈ SmoothStronglyConvex(m, L)
-    x0 ∈ Rⁿ
-    x0 => x0 - (1/L) * f'(x0)
-    performance = (x0 - xs)^2
+
+@alg begin
+    α, μ, L, ρ ∈ R
+    x, xs ∈ Rⁿ
+    f ∈ F(Rⁿ)
+    gs = f'(xs)
+    g  = f'(x)
+    x₊ = x - α * g
+    t1 = x → x₊
+    t2 = xs → xs
+    t3 = (f → f) ∧ (f' → f')
+    c1 = sector_bounded(f, μ, L)
+    c2 = gs^2 == zero(R)
+    con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
+    perf = (x - xs)^2
+    opt = rate(con, perf)
 end
-rate(performance)
+
+with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
+    
+    transformed_opt = simplify(opt)
+
+    evaluate(transformed_opt) ≈ 0.81
+end
 ```
 
 ## Documentation structure
