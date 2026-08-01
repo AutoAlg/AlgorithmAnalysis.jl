@@ -1,4 +1,4 @@
-![Algorithm Analysis Logo](./assets/logo-with-title-dark.svg)
+![Algorithm Analysis Logo](/docs/src/assets/logo-with-title-dark.svg)
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/stable/)
 [![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)
