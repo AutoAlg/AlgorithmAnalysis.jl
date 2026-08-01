@@ -8,14 +8,23 @@ abstract type Bisection <: R end
 
 const Optimization = Union{<:Minimization, <:Maximization, <:Feasibility}
 
+"""
+    maximize(obj, con)
+"""
 function maximize(obj::Node, con::Node{<:Prop})
     return Term{Maximization}(maximize, [obj, con])
 end
 
+"""
+    minimize(obj, con)
+"""
 function minimize(obj::Node, con::Node{<:Prop})
     return Term{Minimization}(minimize, [obj, con])
 end
 
+"""
+    feasible(con)
+"""
 function feasible(con::Node{<:Prop} = satisfied())
     return Term{Feasibility}(feasible, [con])
 end
@@ -55,6 +64,9 @@ function certify(con::Node{<:Prop}, perf::Node{R}, rate::Node{R})
     return Term{LyapunovCertificate}(certify, Any[con, perf, rate])
 end
 
+"""
+    rate(con, perf)
+"""
 function rate(con::Node{<:Prop}, perf::Node{R})
     return Term{LyapunovCertificate}(rate, Any[con, perf, nothing])
 end
