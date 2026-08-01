@@ -1,6 +1,6 @@
 ![Algorithm Analysis Logo](/docs/src/assets/logo-with-title-dark.svg)
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/stable/)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/dev/)
 [![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)
 
 AlgorithmAnalysis.jl is a Julia package for the automated analysis of algorithms.
