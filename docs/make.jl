@@ -1,3 +1,5 @@
+using Pkg
+
 push!(LOAD_PATH,"../src/")
 
 # Ensure the docs environment is active
