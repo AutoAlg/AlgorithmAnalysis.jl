@@ -1,5 +1,8 @@
 ![Algorithm Analysis Logo](./assets/logo-with-title-dark.svg)
 
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/stable/)
+[![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)
+
 AlgorithmAnalysis.jl is a Julia package for the automated analysis of algorithms.
 
 This package provides a generic way to analyze algorithms in a systematic manner in the [Julia programming language](https://julialang.org/). Algorithm analysis seeks to find a mathematically proven guarantee of an algorithm's performance over a class of problems. AlgorithmAnalysis.jl includes both the performance estimation (PEP) and control theoretic methodologies to analysis.
