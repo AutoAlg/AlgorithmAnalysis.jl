@@ -57,13 +57,39 @@ macro def(ex)
 end
 
 """
-    @alg let
-        x, y in R
-        z = 42
-    end
+    @alg ex
 
-Runs the algorithm inside a local scope using a `let` block. 
-Can also be used normally as `@alg begin ... end` for global/current scope.
+Domain-specific language (DSL) for algorithmic computation. Constructs and initializes symbolic variables, expression terms, and state transitions.
+
+# Syntax Rules
+
+1. Leaf variables (`∈` or `in`)
+   Declare symbolic leaf variables belonging to a specific set or space:
+   - Single variable: `x ∈ R` or `x in R`
+   - Tuple syntax: `x, y ∈ R`
+
+2. Standard Symbolic Assignments (`=`)
+   Assign a symbolic expression to a variable:
+   - `z = 2x - 3y`
+
+3. Transition Declarations (`→`)
+   Define state transitions between two variables:
+   - `t = x → x₊`
+
+All expressions are labeled with the symbol used to represent the quantity in the code. Also, all code constructed by the macro returns `nothing` to suppress verbose output. The macro is often used with `begin..end` or `let...end` blocks to specify multiple lines of statements that are evaluated sequentially.
+
+# Example
+
+    @alg let
+        # Declarations
+        a, b ∈ R, u, v ∈ Rⁿ
+
+        # Assignment
+        z = a*u + b*v
+
+        # Transition
+        step = u → 3u
+    end
 """
 macro alg(ex)
 

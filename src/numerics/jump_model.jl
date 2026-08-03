@@ -18,6 +18,14 @@ function default_model(T::DataType)
     return model
 end
 
+"""
+    with_numerics(code;
+        T = Float64,
+        model_constructor = () -> default_model(T),
+        parameters = Dict())
+
+Execute code within a local scope with the given JuMP model with data type `T` and (additional) parameters. Within this scope, use `model()` to access the JuMP model.
+"""
 function with_numerics(code::Function;
     T::DataType = Float64,
     model_constructor::Function = () -> default_model(T),
@@ -35,6 +43,11 @@ function without_numerics(code::Function)
     Base.ScopedValues.with(code, JUMP_MODEL => nothing)
 end
 
+"""
+    model()
+
+Access the JuMP model within a numeric scope. See `with_numerics()`.
+"""
 function model()
     if active_model()
         JUMP_MODEL[]
@@ -52,6 +65,11 @@ function get_from_model(x::Node)
     return JuMP.has_values(model()) ? JuMP.value(val) : val
 end
 
+"""
+    instantiate_in_model(x)
+
+Instantiate an expression (e.g., variable or constraint) in the JuMP model.
+"""
 instantiate_in_model(::Any) = nothing
 
 function instantiate_in_model(x::Node{R})

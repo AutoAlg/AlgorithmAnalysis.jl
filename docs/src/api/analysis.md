@@ -1,8 +1,31 @@
+## Algorithms
+
+```@docs
+@alg
+```
+
+## Symbolics
+
+```@docs
+simplify
+```
+
+## Numerics
+
+```@docs
+evaluate
+with_numerics
+with_parameters
+with_additional_parameters
+model
+instantiate_in_model
+```
+
 ## Performance Estimation Approach
 
 ```@docs
-maximize
 minimize
+maximize
 feasible
 ```
 
@@ -24,7 +47,6 @@ rewrite
 leaves
 find_evaluation_points
 apply_transition
-@alg
 from_matrix
 transitions
 bsmin

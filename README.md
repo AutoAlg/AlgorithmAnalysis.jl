@@ -9,17 +9,14 @@ This package provides a generic way to analyze algorithms in a systematic manner
 
 ## Installation
 
-The package can be downloaded from GitHub and imported with:
+The package can be installed using the Julia package manager:
 ```julia
 import Pkg; Pkg.add("AlgorithmAnalysis")
 ```
 
-!!! tip
-    By default, AlgorithmAnalysis uses [Clarabel](https://clarabel.org/) and [Hypatia](https://jump.dev/Hypatia.jl/) to solve convex cone programs. If you would like to use a different solver (such as [Mosek](https://www.mosek.com/)), you will need to install that as well.
-
 ## Example
 
-This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $m$-strongly convex functions.
+This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing L-smooth and μ-strongly convex functions.
 
 ```julia
 using AlgorithmAnalysis
@@ -28,14 +25,13 @@ using AlgorithmAnalysis
     α, μ, L, ρ ∈ R
     x, xs ∈ Rⁿ
     f ∈ F(Rⁿ)
-    gs = f'(xs)
     g  = f'(x)
     x₊ = x - α * g
     t1 = x → x₊
     t2 = xs → xs
     t3 = (f → f) ∧ (f' → f')
     c1 = sector_bounded(f, μ, L)
-    c2 = gs^2 == zero(R)
+    c2 = f'(xs)^2 == zero(R)
     con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
     perf = (x - xs)^2
     opt = rate(con, perf)
@@ -49,12 +45,10 @@ with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
 end
 ```
 
-## Documentation structure
+## License
 
-- **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques
+The software is licensed under the [MIT License](https://opensource.org/license/mit).
 
-- **Manual:** describes the data structures used by AlgorithmAnalysis.jl
+## Acknowledgements
 
-- **API:** a comprehensive list of all public objects exported by AlgorithmAnalysis.jl
-
-- **Results:** illustrate the analyses on a variety of algorithms and problem classes
+This material is based upon work supported by the National Science Foundation under [Award No. 2347121](https://www.nsf.gov/awardsearch/show-award/?AWD_ID=2347121). Any opinions, findings and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.

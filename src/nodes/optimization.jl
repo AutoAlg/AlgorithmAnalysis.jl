@@ -10,6 +10,8 @@ const Optimization = Union{<:Minimization, <:Maximization, <:Feasibility}
 
 """
     maximize(obj, con)
+
+Maximize an objective subject to a constraint.
 """
 function maximize(obj::Node, con::Node{<:Prop})
     return Term{Maximization}(maximize, [obj, con])
@@ -17,6 +19,8 @@ end
 
 """
     minimize(obj, con)
+
+Minimize an objective subject to a constraint.
 """
 function minimize(obj::Node, con::Node{<:Prop})
     return Term{Minimization}(minimize, [obj, con])
@@ -24,6 +28,8 @@ end
 
 """
     feasible(con)
+
+Determine whether or not a constraint is feasible.
 """
 function feasible(con::Node{<:Prop} = satisfied())
     return Term{Feasibility}(feasible, [con])

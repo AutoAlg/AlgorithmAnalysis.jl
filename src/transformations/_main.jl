@@ -55,4 +55,9 @@ const theory = [
     @rule ~x::lyapunov_transformation_is_applicable => lyapunov_transformation(~x)
 ]
 
+"""
+    simplify(expr)
+
+Simplify an expression using any of the available transformations.
+"""
 simplify = Fixpoint(Postwalk(Chain(theory)))

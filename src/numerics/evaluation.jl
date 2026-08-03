@@ -1,5 +1,18 @@
 export evaluate
 
+"""
+    evaluate(expr)
+
+Evaluate an expression. Uses the following evaluation techniques (in order):
+- If the expression is a parameter, return its parameter value.
+- If the expression is in an active JuMP model, then its value in the model (either numeric if the model is solved, or as a JuMP expression) is returned.
+- If the expression is a leaf and has an instantation as a JuMP variable, then instantiate it in the model.
+- If the expression is a top-level node (e.g., a Lyapunov certificate or bisection), then evaluate the expression from the top down.
+- If the expression is a basic arithmetic operation (e.g., +, -, *, /), evaluate the expression from the bottom up (starting with leaf nodes).
+- If the expression has an instantation as a JuMP variable (and is not a leaf), then instantiate it in the model.
+
+Otherwise, when none of these evaluation techniques are applicable, the original expression is returned.
+"""
 evaluate(node::Any) = node
 
 function evaluate(node::Node)
