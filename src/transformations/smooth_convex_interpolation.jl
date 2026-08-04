@@ -13,6 +13,11 @@ function smooth_convex_interpolation_is_applicable(opt::Node{<:Optimization})
     return !isempty(find_nodes(predicate, opt))
 end
 
+"""
+    smoot_convex_interpolation(opt::Node)
+
+Given an optimization node, replaces all smooth convex functions with their interpolation conditions.
+"""
 function smooth_convex_interpolation(opt::Node{<:Optimization})
     
     predicate = function (c)

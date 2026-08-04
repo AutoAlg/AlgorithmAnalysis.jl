@@ -63,16 +63,20 @@ Domain-specific language (DSL) for algorithmic computation. Constructs and initi
 
 # Syntax Rules
 
-1. Leaf variables (`∈` or `in`)
-   Declare symbolic leaf variables belonging to a specific set or space:
+1. Variables (`∈` or `in`)
+
+   Declare symbolic variables belonging to a specific set or space:
    - Single variable: `x ∈ R` or `x in R`
    - Tuple syntax: `x, y ∈ R`
+   - Multiple types on single line: `x ∈ Rⁿ, y ∈ Rᵐ`
 
-2. Standard Symbolic Assignments (`=`)
+2. Assignments (`=`)
+
    Assign a symbolic expression to a variable:
    - `z = 2x - 3y`
 
-3. Transition Declarations (`→`)
+3. Transitions (`→`)
+
    Define state transitions between two variables:
    - `t = x → x₊`
 
@@ -81,14 +85,14 @@ All expressions are labeled with the symbol used to represent the quantity in th
 # Example
 
     @alg let
-        # Declarations
+        # Variables
         a, b ∈ R, u, v ∈ Rⁿ
 
         # Assignment
-        z = a*u + b*v
+        z = a * u + b * v
 
         # Transition
-        step = u → 3u
+        step = u → v
     end
 """
 macro alg(ex)

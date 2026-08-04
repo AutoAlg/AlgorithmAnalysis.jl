@@ -1,8 +1,10 @@
-# Code
+# Overview
 
-## Expressions
+Algorithms are mathematical descriptions of computation. AlgorithmAnalysis.jl implements a domain-specific language (DSL) that enables users to represent algorithms symbolically with syntax that closely resembles their mathematical description, and then manipulate the algorithm both symbolically and numerically.
 
-Algorithms are mathematical descriptions of computation. In AlgorithmAnalysis.jl, every mathematical object is an `Expression`. An algorithm then systematically manipulates input expressions to construct output expressions. AlgorithmAnalysis.jl finds worst-case performance guarantees for an algorithm over a class of problems.
+## Symbolics
+
+Each mathematical object is a symbolic expression represented by an abstract syntax tree (AST) using SymbolicUtils.jl.
 
 Each expression `e` has a type `T <: Expression`. AlgorithmAnalysis.jl defines several common types of expressions, and also makes it simple for users to define their own types. The built-in types are as follows:
 - `R` represents the set of real numbers

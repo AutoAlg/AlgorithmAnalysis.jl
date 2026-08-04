@@ -8,6 +8,7 @@
 
 ```@docs
 simplify
+Node
 ```
 
 ## Numerics

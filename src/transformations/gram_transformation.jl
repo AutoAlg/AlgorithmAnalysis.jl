@@ -19,6 +19,11 @@ function gram_transformation_is_applicable(opt::Node{<:Optimization})
     return true
 end
 
+"""
+    gram_transformation(opt::Node)
+
+Given an optimization node, for each vector space, replaces all vectors in the space with the condition that their Gram matrix is positive semidefinite. All inner products are flattened into new symbolic variables.
+"""
 function gram_transformation(opt::Node{<:Optimization})
 
     all_vecs = find_nodes(x -> symtype(x) <: VectorSpace, opt)

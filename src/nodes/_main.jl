@@ -1,5 +1,10 @@
 export Node, NodeType, leaf, branch, to_symbolic, is_constant, →
 
+"""
+    Node{T} = SymbolicUtils.BasicSymbolic{T}
+
+Abstract type of a symbolic expression of symtype `T`.
+"""
 const Node{T} = SymbolicUtils.BasicSymbolic{T}
 
 abstract type NodeType end

@@ -10,6 +10,11 @@ function convex_interpolation_is_applicable(opt::Node{<:Optimization})
     return !isempty(find_nodes(c -> isequal(symtype(c), Convex), opt))
 end
 
+"""
+    convex_interpolation(opt::Node)
+
+Given an optimization node, replaces all convex functions with their interpolation conditions.
+"""
 function convex_interpolation(opt::Node{<:Optimization})
     
     cvx_cons = find_nodes(c -> isequal(symtype(c), Convex), opt)

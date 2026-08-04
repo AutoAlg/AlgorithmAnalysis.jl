@@ -54,15 +54,17 @@ makedocs(
     plugins = [bib, links],
     pages = [
         "Introduction" => "index.md",
-        "Developer Guide" => "developers/index.md",
         "Manual" => [
-            "manual/code.md",
-            "manual/analysis.md"
+            "manual/overview.md",
+            "manual/pep.md",
+            "manual/lyap.md",
         ],
         "API" => [
-            "Analysis" => "api/analysis.md",
+            "Fundamentals" => "api/fundamentals.md",
+            "Transformations" => "api/transformations.md",
         ],
         # "Results" => paths_of_generated_pages,
+        "Developer Guide" => "developers/index.md",
     ]
 )
 

@@ -13,6 +13,11 @@ function sector_bound_is_applicable(opt::Node{<:Optimization})
     return !isempty(find_nodes(predicate, opt))
 end
 
+"""
+    sector_bounded_interpolation(opt::Node)
+
+Given an optimization node, replaces all sector bounded functions with their interpolation conditions.
+"""
 function sector_bounded_interpolation(opt::Node{<:Optimization})
     
     predicate = function (c)

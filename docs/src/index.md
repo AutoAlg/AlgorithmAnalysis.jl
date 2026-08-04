@@ -48,13 +48,13 @@ end
 
 ## Documentation structure
 
-- **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques
-
 - **Manual:** describes the data structures used by AlgorithmAnalysis.jl
 
 - **API:** a comprehensive list of all public objects exported by AlgorithmAnalysis.jl
 
 - **Results:** illustrate the analyses on a variety of algorithms and problem classes
+
+- **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques
 
 ## License
 
