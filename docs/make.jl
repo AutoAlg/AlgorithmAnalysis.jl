@@ -1,3 +1,5 @@
+using Revise
+Revise.revise()
 using Pkg
 
 push!(LOAD_PATH,"../src/")
@@ -48,6 +50,7 @@ makedocs(
         prettyurls = false,
         assets = ["assets/style.css"],
         collapselevel = 1,
+        ansicolor = true,
     ),
     modules = [AlgorithmAnalysis],
     # checkdocs = :exports,
@@ -61,10 +64,14 @@ makedocs(
         ],
         "API" => [
             "Fundamentals" => "api/fundamentals.md",
-            "Transformations" => "api/transformations.md",
+            "Transformations" => "api/transformations.md"
         ],
         # "Results" => paths_of_generated_pages,
-        "Developer Guide" => "developers/index.md",
+        "Developer Guide" => [
+            "developers/workflow.md",
+            "developers/documentation.md",
+            "developers/api.md",
+        ]
     ]
 )
 

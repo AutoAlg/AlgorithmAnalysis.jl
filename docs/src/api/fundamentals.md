@@ -1,7 +1,13 @@
+# Fundamental API
+
 ## Algorithms
 
 ```@docs
 @alg
+Prop
+R
+Rⁿ
+Sⁿ
 ```
 
 ## Symbolics
@@ -9,6 +15,7 @@
 ```@docs
 simplify
 Node
+→
 ```
 
 ## Numerics
@@ -22,7 +29,7 @@ model
 instantiate_in_model
 ```
 
-## Performance Estimation Approach
+## Optimization
 
 ```@docs
 minimize
@@ -30,27 +37,9 @@ maximize
 feasible
 ```
 
-## Control Theoretic Approach
+## Lyapunov certificates
 
 ```@docs
 certify
 rate
-```
-
-## Miscellaneous
-
-```@docs
-extract_symbols
-replace_node
-find_nodes
-get_safe_symbol
-rewrite
-leaves
-find_evaluation_points
-apply_transition
-from_matrix
-transitions
-bsmin
-is_safe
-s_procedure
 ```

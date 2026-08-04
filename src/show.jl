@@ -66,7 +66,7 @@ function show_optimization(io::IO, t::Node, use_id::Bool)
         show_value(io, objective(t), use_id)
     end
 
-    for (i, con) in enumerate(flatten(constraint(t)))
+    for (i, con) in enumerate(constraint(t))
         println(io)
         prefix = (i == 1) ? "subject to   " : " "^13
         print(io, prefix)
@@ -104,6 +104,7 @@ end
 function show_matrixspace(io::IO, t::Node, use_id::Bool)
     use_id && has_id(t) && return print(io, id(t))
 
+    !iscall(t) && return print(io, id(t))
     op = operation(t)
     op_sym = op_symbol(op)
     args = arguments(t)
@@ -123,6 +124,8 @@ function show_prop(io::IO, t::Node, use_id::Bool)
         return print(io, true)
     elseif isequal(stype, Unsatisfied)
         return print(io, false)
+    elseif !iscall(t)
+        return show_value(io, id(t), use_id)
     end
 
     op = operation(t)

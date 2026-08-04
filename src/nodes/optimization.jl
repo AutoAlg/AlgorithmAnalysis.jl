@@ -30,6 +30,16 @@ end
     feasible(con)
 
 Determine whether or not a constraint is feasible.
+
+## Examples
+
+    @alg let
+        x ∈ R
+        A = [-2 x; x -2]
+        with_numerics() do
+            evaluate(feasible(A ⪰ 0))
+        end
+    end
 """
 function feasible(con::Node{<:Prop} = satisfied())
     return Term{Feasibility}(feasible, [con])

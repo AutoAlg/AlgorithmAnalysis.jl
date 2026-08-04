@@ -1,4 +1,4 @@
-## Transformations
+## Transformation API
 
 ```@docs
 convex_interpolation

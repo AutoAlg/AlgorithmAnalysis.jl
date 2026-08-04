@@ -1,17 +1,5 @@
 export add_constraint, remove_constraint, replace_constraint
 
-# iterate over conjunctions
-iterate(prop::Node{Conjunction}) = iterate(prop, 1)
-function iterate(prop::Node{Conjunction}, i::Int)
-    args = arguments(prop)
-    if i < 0 || i > length(args)
-        return nothing
-    else
-        return args[i], i+1
-    end
-end
-length(prop::Node{Conjunction}) = length(arguments(prop))
-
 function add_constraint(con::Node{<:Prop}, new::Node{<:Prop})
     return con ∧ new
 end

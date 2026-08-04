@@ -23,8 +23,8 @@ end
     lyapunov_transformation(node)
 
 Given a Lyapunov certificate node, constructs an optimization problem that searches for a valid Lyapunov certificate of convergence. The Lyapunov candidate is linear in the algorithm state, where the state is specified by transitions: ``V(x) = \theta ⋅ x``. The analysis then uses the S-procedure to search for the parameters ``\theta`` such that the Lyapunov candidate satisfies the following two conditions:
-    - **Positivity:** ``V(x) \geq \text{performance}``
-    - **Decreasing:** ``V(x₊) \leq \text{rate}\,V(x)``
+- **Positivity:** ``V(x) \geq \text{performance}``
+- **Decreasing:** ``V(x₊) \leq \text{rate}\,V(x)``
 where the performance measure and rate are specified by the node.
 """
 function lyapunov_transformation(prob::Node{LyapunovCertificate})

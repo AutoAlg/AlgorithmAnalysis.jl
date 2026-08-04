@@ -75,24 +75,16 @@ Domain-specific language (DSL) for algorithmic computation. Constructs and initi
    Assign a symbolic expression to a variable:
    - `z = 2x - 3y`
 
-3. Transitions (`→`)
-
-   Define state transitions between two variables:
-   - `t = x → x₊`
-
 All expressions are labeled with the symbol used to represent the quantity in the code. Also, all code constructed by the macro returns `nothing` to suppress verbose output. The macro is often used with `begin..end` or `let...end` blocks to specify multiple lines of statements that are evaluated sequentially.
 
 # Example
 
     @alg let
         # Variables
-        a, b ∈ R, u, v ∈ Rⁿ
+        a ∈ R, u ∈ Rⁿ
 
         # Assignment
-        z = a * u + b * v
-
-        # Transition
-        step = u → v
+        z = a * u
     end
 """
 macro alg(ex)
@@ -154,19 +146,6 @@ macro alg(ex)
             lhs = esc(x.args[1])
             rhs = esc(x.args[2])
             sym = QuoteNode(x.args[1])
-
-            raw_rhs = x.args[2]
-
-            if raw_rhs isa Expr && raw_rhs.head == :call &&
-                length(raw_rhs.args) == 3 && raw_rhs.args[1] == :(→)
-
-                src = esc(raw_rhs.args[2])
-                dst = esc(raw_rhs.args[3])
-                
-                return quote
-                    $lhs = set_id(Term{Transition{symtype($src)}}(→, [$src, $dst]), $sym); nothing
-                end
-            end
 
             return quote
                 $lhs = set_id(to_symbolic($rhs), $sym); nothing

@@ -1,13 +1,33 @@
-export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace, field
+export R, Rⁿ, Sⁿ, VectorSpace, MatrixSpace, field
 export zero, one, mat, size, tr
 
 abstract type Field <: NodeType end
 abstract type VectorSpace{F} <: NodeType end
 abstract type MatrixSpace{F} <: NodeType end
 abstract type SymmetricMatrix{F} <: MatrixSpace{F} end
+
+"""
+    R
+
+The field of real numbers.
+"""
 abstract type R <: Field end
 
+"""
+    Rⁿ
+
+A real finite-dimensional vector space of arbitrarily large dimension. Note that the superscript `n` does *not* refer to the variable `n`, but is simply part of the symbol for the vector space (`Rⁿ` is a single symbol in Julia). To create other similar vector spaces, just create an abstract type that subtypes `VectorSpace{R}`, such as:
+
+    abstract type Rᵐ <: VectorSpace{R} end
+
+"""
 abstract type Rⁿ <: VectorSpace{R} end
+
+"""
+    Sⁿ
+
+A real finite-dimensional vector space of symmetric matrices.
+"""
 abstract type Sⁿ <: MatrixSpace{R} end
 
 Base.convert(::Type{<:Node}, val::Number) = R(val)
@@ -97,9 +117,7 @@ end
 -(x::Node{F}) where {F<:Field} = Term{F}(-, [x])
 ⋅(x::T...) where {F<:Field, T<:Node{F}} = *(x...)
 
-function F(V::Type{<:VectorSpace})
-    return FnType{Tuple{V},field(V),DifferentiableFunctional}
-end
+
 
 function +(u::Node{V}, v::Node{V}) where {V<:VectorSpace}
     return Term{V}(+, [u, v])
@@ -133,11 +151,6 @@ function adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:Vecto
     end
     return Term{V}(adjoint, [f])
     # return Sym{V}( Symbol(f, "'") )
-end
-
-function adjoint(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
-    #   return Term{FnType{Tuple{V}, V, Gradient}}(∇, [f])
-    return ∇(f)
 end
 
 Base.literal_pow(::typeof(^), x::Node{<:VectorSpace}, ::Val{2}) = x'(x)

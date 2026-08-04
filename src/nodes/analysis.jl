@@ -1,6 +1,8 @@
 export is_function, function_category, Convex
 export Gradient, LinearFunctional, DifferentiableFunctional, ∇
 export convex, smooth_convex, sector_bounded
+export functional, differentiable_functional
+export domain, codomain
 
 const ∇ = Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}},FnType{Tuple{Rⁿ},Rⁿ,Gradient},Nothing}}(:∇)
 
@@ -28,3 +30,18 @@ function function_category(t::Node)
     end
     return fn_type.parameters[3]
 end
+
+function functional(V::Type{<:VectorSpace})
+    return FnType{Tuple{V},field(V),Nothing}
+end
+
+function differentiable_functional(V::Type{<:VectorSpace})
+    return FnType{Tuple{V},field(V),DifferentiableFunctional}
+end
+
+function adjoint(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
+    return ∇(f)
+end
+
+domain(::Node{FnType{Tuple{V},F,C}}) where {F,V<:VectorSpace{F},C} = V
+codomain(::Node{FnType{Tuple{V},F,C}}) where {F,V<:VectorSpace{F},C} = F

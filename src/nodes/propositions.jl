@@ -2,6 +2,11 @@ export Prop, Conjunction, satisfied, unsatisfied, ∧, ⪯, ⪰, flatten
 export Equality, LessThanOrEqualTo, PositiveSemidefinite, Transition
 export expression
 
+"""
+    Prop
+
+The set of propositions, which are statements that are either true or false.
+"""
 abstract type Prop <: NodeType end
 abstract type Satisfied <: Prop end
 abstract type Unsatisfied <: Prop end
@@ -67,10 +72,27 @@ function flatten(props::Node{<:Prop}...)
 end
 
 function ∧(args::Node{<:Prop}...)
-    return Term{Conjunction}(∧, flatten(args...))
+    flat_args = flatten(args...)
+    if isempty(flat_args)
+        return satisfied()
+    else
+        return Term{Conjunction}(∧, flatten(args...))
+    end
 end
 
 ∧(x::Node{Conjunction}, y::Node{Conjunction}) = Term{Conjunction}(∧, [arguments(x)..., arguments(y)...])
 
 ∧(x::Node{<:Prop}, y::Bool) = y ? x : unsatisfied()
 ∧(x::Bool, y::Node{<:Prop}) = x ? y : unsatisfied()
+
+# iterate over conjunctions
+iterate(prop::Node{Conjunction}) = iterate(prop, 1)
+function iterate(prop::Node{Conjunction}, i::Int)
+    args = arguments(prop)
+    if i < 0 || i > length(args)
+        return nothing
+    else
+        return args[i], i+1
+    end
+end
+length(prop::Node{Conjunction}) = length(arguments(prop))
