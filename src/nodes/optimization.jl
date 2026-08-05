@@ -1,6 +1,4 @@
-export Optimization, Minimization, Maximization, Feasibility
-export LyapunovCertificate, certify, rate, performance
-export maximize, minimize, objective, constraint, feasible
+export minimize, maximize, feasible, certify, rate
 
 abstract type Minimization <: R end
 abstract type Maximization <: R end

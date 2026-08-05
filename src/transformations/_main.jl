@@ -1,8 +1,5 @@
 export simplify
 
-using SymbolicUtils
-using SymbolicUtils.Rewriters: Chain, Postwalk, Fixpoint
-
 include("convex_interpolation.jl")
 include("smooth_convex_interpolation.jl")
 include("sector_bounded_interpolation.jl")
@@ -58,6 +55,10 @@ const theory = [
 """
     simplify(expr)
 
-Simplify an expression using any of the available transformations.
+Simplify an expression using any of the available [transformations](./../api/index.md#Transformations).
 """
-simplify = Fixpoint(Postwalk(Chain(theory)))
+const simplify = SymbolicUtils.Rewriters.Fixpoint(
+    SymbolicUtils.Rewriters.Postwalk(
+        SymbolicUtils.Rewriters.Chain(theory)
+    )
+)

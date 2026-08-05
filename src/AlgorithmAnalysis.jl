@@ -10,7 +10,7 @@ using SymbolicUtils: symtype, @rule, iscall, issym, term
 using SymbolicUtils: hasmetadata, setmetadata, getmetadata
 
 import Base: +, -, *, /, ^, ==, ≤, ≥, <=, >=, ∈
-import Base: isequal, hash, adjoint, show, isless, zero, one
+import Base: isequal, hash, adjoint, isless, zero, one
 import Base: iterate, getindex, size, iszero, isone, length
 import LinearAlgebra as la
 import LinearAlgebra: dot, ⋅

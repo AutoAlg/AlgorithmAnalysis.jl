@@ -1,8 +1,4 @@
-export is_function, function_category, Convex
-export Gradient, LinearFunctional, DifferentiableFunctional, ∇
-export convex, smooth_convex, sector_bounded
 export functional, differentiable_functional
-export domain, codomain
 
 const ∇ = Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}},FnType{Tuple{Rⁿ},Rⁿ,Gradient},Nothing}}(:∇)
 
@@ -31,10 +27,20 @@ function function_category(t::Node)
     return fn_type.parameters[3]
 end
 
+"""
+    functional(V)
+
+Create a symbolic functional from a vector space `V` to its underlying scalar field.
+"""
 function functional(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),Nothing}
 end
 
+"""
+    differentiable_functional(V)
+
+Create a symbolic differentiable functional from a vector space `V` to its underlying scalar field. For a differentiable function `f`, access its gradient as `f'`.
+"""
 function differentiable_functional(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}
 end

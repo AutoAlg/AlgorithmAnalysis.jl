@@ -1,12 +1,36 @@
 # API
 
-## Sets
+This page lists the public API of AlgorithmAnalysis.jl. For an introduction to the package, please see the [Manual](./../manual/overview.md).
+
+## Spaces
+
+### Propositions
 
 ```@docs
 Prop
+∧
+```
+
+### Reals
+
+```@docs
 R
+```
+
+### Vector spaces
+
+```@docs
 Rⁿ
 Sⁿ
+⪯
+⪰
+```
+
+### Function spaces
+
+```@docs
+functional
+differentiable_functional
 ```
 
 ## Algorithms
@@ -19,7 +43,6 @@ Sⁿ
 
 ```@docs
 simplify
-Node
 →
 ```
 
@@ -55,4 +78,10 @@ smooth_convex_interpolation
 sector_bounded_interpolation
 gram_transformation
 lyapunov_transformation
+```
+
+## Miscellaneous
+
+```@docs
+with_verbose
 ```

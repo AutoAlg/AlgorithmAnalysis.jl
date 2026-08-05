@@ -1,6 +1,4 @@
-export with_numerics, without_numerics
-export model, active_model, default_model
-export instantiate_in_model
+export with_numerics
 
 const JUMP_MODEL = Base.ScopedValues.ScopedValue{Union{JuMP.GenericModel,Nothing}}()
 

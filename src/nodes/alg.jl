@@ -1,60 +1,4 @@
-export @alg, @var, @def
-
-# ------------------------------------------------------
-# MACROS
-# ------------------------------------------------------
-
-macro var(ex)
-
-    _var(x) = error("Invalid expression for @var macro: $x")
-    _var(x::LineNumberNode) = x
-
-    function _var(x::Expr)
-        if x.head == :call && length(x.args) == 3 && (x.args[1] == :(∈) || x.args[1] == :in)
-            var = x.args[2]
-            T = x.args[3]
-            sym = QuoteNode(x.args[2])
-            quote
-                $lhs = AlgorithmAnalysis.leaf($T, $sym); nothing
-            end
-        elseif x.head == :block || x.head == :tuple
-            Expr(:block, map(_var, x.args)...)
-        else
-            error("Invalid expression for @var macro: $x")
-        end
-    end
-    
-    return esc(quote
-        $(_var(ex)); nothing
-    end)
-end
-
-macro def(ex)
-
-    _def(x) = error("Invalid expression for @def macro: $x")
-    _def(x::LineNumberNode) = x
-
-    function _def(x::Expr)
-        if x.head == :(=)
-            lhs = x.args[1]
-            rhs = x.args[2]
-            sym = QuoteNode(x.args[1])
-            quote
-                $lhs = $rhs
-                $lhs = AlgorithmAnalysis.set_id($lhs, $sym)
-                nothing
-            end
-        elseif x.head == :block || x.head == :tuple
-            Expr(:block, map(_def, x.args)...)
-        else
-            error("Invalid expression for @def macro: $x")
-        end
-    end
-    
-    return esc(quote
-        $(_def(ex)); nothing
-    end)
-end
+export @alg
 
 """
     @alg ex
@@ -65,7 +9,7 @@ Domain-specific language (DSL) for algorithmic computation. Constructs symbolic 
 
 1. Variables (`∈` or `in`)
 
-   Declare symbolic variables belonging to a specific [set](./../api/index.md#Sets):
+   Declare symbolic variables belonging to a specific [space](./../api/index.md#Spaces):
    - Single variable: `x ∈ R` or `x in R`
    - Tuple syntax: `x, y ∈ R`
    - Multiple types on single line: `x ∈ Rⁿ, y ∈ Rᵐ`
@@ -148,7 +92,7 @@ macro alg(ex)
             sym = QuoteNode(x.args[1])
 
             return quote
-                $lhs = set_id(to_symbolic($rhs), $sym); nothing
+                $lhs = AlgorithmAnalysis.set_id(AlgorithmAnalysis.to_symbolic($rhs), $sym); nothing
             end
 
         # Fallback

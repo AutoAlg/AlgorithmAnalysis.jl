@@ -1,5 +1,3 @@
-export flatten_evaluations, flatten_inner_product
-
 function flatten_evaluations(tree::Node, f::Node)
 
     f₊ = next(f, tree)

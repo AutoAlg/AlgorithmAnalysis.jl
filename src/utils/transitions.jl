@@ -1,7 +1,8 @@
-export transitions, apply_transition, propagate_transition, propagate_transitions
-export next, has_next, state
-
-"Extract all transitions from a proposition."
+"""
+    transitions(prop)
+    
+Extract all transitions from a proposition.
+"""
 function transitions(con::Node{Conjunction})
     foldl(∧, filter(t -> symtype(t) <: Transition, arguments(con)), init=satisfied())
 end

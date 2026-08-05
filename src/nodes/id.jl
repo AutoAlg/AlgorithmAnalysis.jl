@@ -1,5 +1,3 @@
-export ID, id, has_id, set_id
-
 abstract type ID end
 
 has_id(::Any) = false

@@ -1,4 +1,4 @@
-export Node, NodeType, leaf, branch, to_symbolic, is_constant, →
+export →
 
 """
     Node{T} = SymbolicUtils.BasicSymbolic{T}
@@ -17,7 +17,7 @@ abstract type GramMatrix <: Category end
 
 function constant end
 
-include("macros.jl")
+include("alg.jl")
 include("id.jl")
 include("equality.jl")
 include("linear_algebra.jl")

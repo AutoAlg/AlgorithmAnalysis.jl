@@ -1,5 +1,3 @@
-export add_constraint, remove_constraint, replace_constraint
-
 function add_constraint(con::Node{<:Prop}, new::Node{<:Prop})
     return con ∧ new
 end

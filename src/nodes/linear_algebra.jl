@@ -1,5 +1,4 @@
-export R, Rⁿ, Sⁿ, VectorSpace, MatrixSpace, field
-export zero, one, mat, size, tr
+export R, Rⁿ, Sⁿ
 
 abstract type Field <: NodeType end
 abstract type VectorSpace{F} <: NodeType end
@@ -70,8 +69,8 @@ R(val::Real) = Term{R}(constant, [val])
 R(x::Node{<:Real}) = R(value(x))
 R(x::Node{R}) = x
 
-iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
-isone(x::Node) = iscall(x) && isequal(operation(x), one)
+Base.iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
+Base.isone(x::Node) = iscall(x) && isequal(operation(x), one)
 
 function Sⁿ(A::Matrix{Node{R}})
     size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
@@ -139,12 +138,12 @@ end
 
 (⋅)(u::Node{V}, v::Node{V}) where {F,V<:VectorSpace{F}} = u'(v)
 
-function adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
+function Base.adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
     iszero(x) && return Term{FnType{Tuple{V},F,LinearFunctional}}(zero, [])
     return Term{FnType{Tuple{V},F,LinearFunctional}}(adjoint, [x])
 end
 
-function adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
+function Base.adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
     # If it's already an adjoint term tree, peel it off to prevent double nesting
     if iscall(f) && isequal(operation(f), adjoint)
         return arguments(f)[1]
@@ -159,7 +158,7 @@ function (f::Node{FnType{Tuple{V},F,Nothing}})(x::V) where {F,V<:VectorSpace{F}}
     return Term{F}(f, [x])
 end
 
-function getindex(A::Node{MatrixSpace{F}}, i::Int, j::Int) where F
+function Base.getindex(A::Node{MatrixSpace{F}}, i::Int, j::Int) where F
     if isequal(operation(A), Gram)
         args = arguments(A)
         return args[i]'(args[j])

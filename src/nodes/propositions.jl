@@ -1,6 +1,4 @@
-export Prop, Conjunction, satisfied, unsatisfied, ∧, ⪯, ⪰, flatten
-export Equality, LessThanOrEqualTo, PositiveSemidefinite, Transition
-export expression
+export Prop, ∧, ⪯, ⪰
 
 """
     Prop
@@ -34,6 +32,11 @@ function ≥(x::Node{T}, y::Node{T}) where {T}
     return Term{LessThanOrEqualTo{T}}(≤, [y, x])
 end
 
+"""
+    0 ⪯ A
+
+Proposition that a symmetric matrix is positive semidefinite.
+"""
 function ⪯(a::Number, A::Node{<:MatrixSpace})
     if iszero(a)
         return Term{PositiveSemidefinite}(∈, [A])
@@ -42,6 +45,11 @@ function ⪯(a::Number, A::Node{<:MatrixSpace})
     end
 end
 
+"""
+    A ⪰ 0
+
+Proposition that a symmetric matrix is positive semidefinite.
+"""
 ⪰(A::Node{<:MatrixSpace}, a::Number) = ⪯(a,A)
 
 function expression(x::Node{<:Equality})
@@ -71,6 +79,12 @@ function flatten(props::Node{<:Prop}...)
     return flat_args
 end
 
+"""
+    ∧(props...)
+    p ∧ q
+
+Conjunction of two or more propositions.
+"""
 function ∧(args::Node{<:Prop}...)
     flat_args = flatten(args...)
     if isempty(flat_args)

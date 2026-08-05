@@ -1,5 +1,3 @@
-export linear_decomposition, as_matrix, from_matrix
-
 function linear_decomposition(
     v::Node{T}, 
     basis::AbstractVector{<:Node}
