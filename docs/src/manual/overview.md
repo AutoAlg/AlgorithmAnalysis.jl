@@ -1,6 +1,6 @@
 # Overview
 
-Algorithms are mathematical descriptions of computation. AlgorithmAnalysis.jl implements a domain-specific language (DSL) that enables users to represent algorithms symbolically with syntax that closely resembles their mathematical description, and then manipulate the algorithm both symbolically and numerically. We now provide an overview of this process; for more details please see the [API](./../api/fundamentals.md).
+Algorithms are mathematical descriptions of computation. AlgorithmAnalysis.jl implements a domain-specific language (DSL) that enables users to represent algorithms symbolically with syntax that closely resembles their mathematical description, and then manipulate the algorithm both symbolically and numerically. We now provide an overview of this process; for more details please see the [API](./../api/index.md).
 
 
 ## Symbolics

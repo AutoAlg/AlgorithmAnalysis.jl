@@ -24,7 +24,7 @@ end
         model_constructor = () -> default_model(T),
         parameters = Dict())
 
-Execute code within a local scope with the given JuMP model with data type `T` and (additional) parameters. Within this scope, use `model()` to access the JuMP model.
+Execute code within a local scope with the given JuMP model with data type `T` and (additional) parameters.
 """
 function with_numerics(code::Function;
     T::DataType = Float64,

@@ -20,7 +20,7 @@ function gram_transformation_is_applicable(opt::Node{<:Optimization})
 end
 
 """
-    gram_transformation(opt::Node)
+    gram_transformation(opt)
 
 Given an optimization node, for each vector space, replaces all vectors in the space with the condition that their Gram matrix is positive semidefinite. All inner products are flattened into new symbolic variables.
 """

@@ -1,13 +1,18 @@
-# Fundamental API
+# API
+
+## Sets
+
+```@docs
+Prop
+R
+Rⁿ
+Sⁿ
+```
 
 ## Algorithms
 
 ```@docs
 @alg
-Prop
-R
-Rⁿ
-Sⁿ
 ```
 
 ## Symbolics
@@ -25,8 +30,6 @@ evaluate
 with_numerics
 with_parameters
 with_additional_parameters
-model
-instantiate_in_model
 ```
 
 ## Optimization
@@ -42,4 +45,14 @@ feasible
 ```@docs
 certify
 rate
+```
+
+## Transformations
+
+```@docs
+convex_interpolation
+smooth_convex_interpolation
+sector_bounded_interpolation
+gram_transformation
+lyapunov_transformation
 ```

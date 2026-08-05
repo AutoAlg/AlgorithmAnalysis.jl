@@ -63,25 +63,23 @@ constraint(opt::Node{Maximization}) = arguments(opt)[2]
 constraint(opt::Node{Feasibility}) = arguments(opt)[1]
 
 """
-    certify(trans, oracle_con, performance, rate)
+    certify(constraint, performance, rate)
 
-Construct a Lyapunov certification problem. Use `simplify` to transform it into a
-fixed-rate feasibility problem that searches for a parameterized Lyapunov certificate.
-The argument `rate` is required and should satisfy `0 < rate < 1` for geometric decay.
+Construct a Lyapunov certification problem. This searches for a parameterized Lyapunov function which certifies that the performance measure subject to the constraint converges with the specified rate.
 
-The simplified problem searches for scalar certificate variables (Lyapunov template
-coefficients and nonnegative multipliers) that prove both:
+To search for a Lyapunov certificate, the algorithm must have a state as specified by transitions within the constaint. For a state `x` and next state `x₊`, a valid Lyapunov certificate `V(x)` must satisfy the following conditions:
 1. `V(x) ≥ performance(x)`
 2. `V(x⁺) ≤ rate * V(x)`
-
-subject to the transformed interpolation and Gram constraints.
+Together, these imply that `performance` decreases by a factor of `rate` at each iteration of the algorithm. To make the search tractable, the Lyapunov candidate is parameterized linearly in the state so that `V(x) = θ ⋅ x` with parameter vector `θ`. This node evaluates to a proposition that specifies whether or not such a Lyapunov certificate exists.
 """
 function certify(con::Node{<:Prop}, perf::Node{R}, rate::Node{R})
     return Term{LyapunovCertificate}(certify, Any[con, perf, rate])
 end
 
 """
-    rate(con, perf)
+    rate(constraint, performance)
+
+Construct a Lyapunov certification problem that finds the fastest rate for which a Lyapunov certificate exists. This node evaluates to the minimal rate for which [`certify`](@ref) holds.
 """
 function rate(con::Node{<:Prop}, perf::Node{R})
     return Term{LyapunovCertificate}(rate, Any[con, perf, nothing])

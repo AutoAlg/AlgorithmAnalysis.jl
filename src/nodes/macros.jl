@@ -59,13 +59,13 @@ end
 """
     @alg ex
 
-Domain-specific language (DSL) for algorithmic computation. Constructs and initializes symbolic variables, expression terms, and state transitions.
+Domain-specific language (DSL) for algorithmic computation. Constructs symbolic variables and assigns symbolic expressions.
 
 # Syntax Rules
 
 1. Variables (`∈` or `in`)
 
-   Declare symbolic variables belonging to a specific set or space:
+   Declare symbolic variables belonging to a specific [set](./../api/index.md#Sets):
    - Single variable: `x ∈ R` or `x in R`
    - Tuple syntax: `x, y ∈ R`
    - Multiple types on single line: `x ∈ Rⁿ, y ∈ Rᵐ`

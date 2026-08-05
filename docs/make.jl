@@ -62,10 +62,7 @@ makedocs(
             "manual/pep.md",
             "manual/lyap.md",
         ],
-        "API" => [
-            "Fundamentals" => "api/fundamentals.md",
-            "Transformations" => "api/transformations.md"
-        ],
+        "API" => "api/index.md",
         # "Results" => paths_of_generated_pages,
         "Developer Guide" => [
             "developers/workflow.md",

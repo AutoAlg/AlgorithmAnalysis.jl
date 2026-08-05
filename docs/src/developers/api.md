@@ -25,6 +25,13 @@ transitions
 apply_transition
 ```
 
+## Numerics
+
+```@docs
+model
+instantiate_in_model
+```
+
 ## Miscellaneous
 
 ```@docs
