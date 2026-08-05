@@ -1,3 +1,5 @@
+export leaves
+
 """
     postwalk_with_operators(f, x)
 
@@ -18,7 +20,7 @@ end
 
 Rewrites a node using the given rules. See [`postwalk_with_operators`](@ref).
 """
-rewrite(node::Node, rules) = postwalk_with_operators(Chain(rules), node)
+rewrite(node::Node, rules) = postwalk_with_operators(SymbolicUtils.Rewriters.Chain(rules), node)
 
 """
     find_nodes(predicate, tree)

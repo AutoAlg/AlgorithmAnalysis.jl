@@ -1,4 +1,6 @@
-export minimize, maximize, feasible, certify, rate
+export minimize, maximize, feasible
+export certify, rate
+export constraint, objective
 
 abstract type Minimization <: R end
 abstract type Maximization <: R end
@@ -53,9 +55,19 @@ is_minimization(opt::Node{<:Optimization}) = isequal(sense(opt), :minimize)
 is_maximization(opt::Node{<:Optimization}) = isequal(sense(opt), :maximize)
 is_feasibility(opt::Node{<:Optimization}) = isequal(sense(opt), :feasible)
 
+"""
+    objective(opt)
+
+Objective function of an optimization problem, which is a symbolic node in `R`.
+"""
 objective(opt::Node{Minimization}) = arguments(opt)[1]
 objective(opt::Node{Maximization}) = arguments(opt)[1]
 
+"""
+    constraint(opt)
+
+Constraint of an optimization problem, which is a symbolic node in `Prop`.
+"""
 constraint(opt::Node{Minimization}) = arguments(opt)[2]
 constraint(opt::Node{Maximization}) = arguments(opt)[2]
 constraint(opt::Node{Feasibility}) = arguments(opt)[1]

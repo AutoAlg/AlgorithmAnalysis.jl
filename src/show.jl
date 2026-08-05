@@ -28,10 +28,10 @@ function show_node_core(io::IO, t::Node, use_id::Bool)
     use_id && has_id(t) && return print(io, id(t))
 
     stype = symtype(t)
-    if stype <: Optimization
-        return show_optimization(io, t, use_id)
-    elseif stype <: LyapunovCertificate
+    if stype <: LyapunovCertificate
         return show_lyapunov(io, t, use_id)
+    elseif stype <: Optimization
+        return show_optimization(io, t, use_id)
     elseif stype <: Transition
         return show_transition(io, t, use_id)
     elseif stype <: MatrixSpace

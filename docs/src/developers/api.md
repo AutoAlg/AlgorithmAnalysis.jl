@@ -1,6 +1,9 @@
 # Internal API
 
-This page lists the internal API of AlgorithmAnalysis.jl. This documentation exists to help developers. While these methods may be used other users, they are considered internal and therefore subject to change at any time.
+This page lists the internal API of AlgorithmAnalysis.jl. This documentation exists to help developers. While these methods may be used by other users, they are considered internal and therefore subject to change at any time.
+
+!!! note
+    As these symbols are internal API, they are not exported. Therefore, to use them outside of the package you must prefix the name with `AlgorithmAnalysis.<NAME>`.
 
 ## Symbols
 
@@ -14,7 +17,6 @@ AlgorithmAnalysis.is_safe
 
 ```@docs
 AlgorithmAnalysis.Node
-AlgorithmAnalysis.leaves
 AlgorithmAnalysis.replace_node
 AlgorithmAnalysis.find_nodes
 AlgorithmAnalysis.rewrite

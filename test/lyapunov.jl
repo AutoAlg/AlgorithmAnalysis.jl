@@ -9,7 +9,7 @@
         x₊ = x - α * g
         t1 = x → x₊
         t2 = xs → xs
-        t3 = (f → f) ∧ (f' → f')
+        t3 = f → f
         c1 = sector_bounded(f, μ, L)
         c2 = gs^2 == zero(R)
         con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2

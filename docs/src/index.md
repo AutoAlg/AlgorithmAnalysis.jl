@@ -16,7 +16,7 @@ import Pkg; Pkg.add("AlgorithmAnalysis")
 
 ## Example
 
-This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $m$-strongly convex functions.
+This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $\mu$-strongly convex functions.
 
 ```julia
 using AlgorithmAnalysis

@@ -1,6 +1,9 @@
-# Performance estimation
+# Performance Estimation
 
-We now provide an overview of the performance estimation problem (PEP) approach to algorithm analysis.
+We now provide an overview of the performance estimation problem (PEP) approach to algorithm analysis. The PEP approach formulates the problem of finding the sequence of iterates and the problem instance for which a given algorithm attains its worst-case behavior in terms of a specified measure of performance over some finite number of iterations [drori-teboulle,pep](@cite).
+
+!!! info "Implementation in AlgorithmAnalysis.jl"
+    This section provides a mathematical description of the PEP approach to algorithm analysis. To see how this approach is implemented in the package, please see the [overview](./../manual/overview.md) section of the manual.
 
 
 ## Oracles
@@ -13,7 +16,7 @@ The automated analysis methodology applies to *black-box* algorithms, which are 
 
 ## Interpolation
 
-The main idea behind both the analysis is to replace all oracles with their *interpolation conditions*. Consider a class $\mathcal{O}$ of oracles, where each oracle in $\mathcal{O}$ is a set-valued function from $X$ to $Y$. Consider also a set of points $S \subset X\times Y$, where each element of $S$ has the form $(x,y)$ with $x\in X$ and $y\in Y$. The interpolation conditions are necessary and sufficient conditions on the set $S$ for there to exist an oracle $o\in\mathcal{O}$ that interpolates the data:
+The main idea behind both the analysis is to replace all oracles with their *interpolation conditions* [pep](@cite). Consider a class $\mathcal{O}$ of oracles, where each oracle in $\mathcal{O}$ is a set-valued function from $X$ to $Y$. Consider also a set of points $S \subset X\times Y$, where each element of $S$ has the form $(x,y)$ with $x\in X$ and $y\in Y$. The interpolation conditions are necessary and sufficient conditions on the set $S$ for there to exist an oracle $o\in\mathcal{O}$ that interpolates the data:
 ```math
   \text{there exists }o\in\mathcal{O} \text{ such that }y = o(x) \text{ for all }(x,y)\in S.
 ```
@@ -164,12 +167,8 @@ As the previous example illustrates, the ideas used to transform the PEP into a 
     with variables $x_1,\ldots,x_n\in X$ and $y_1,\ldots,y_n\in Y$. The optimal solutions to each problem are related through the interpolation conditions. The equivalence also holds if the objective function and predicate also depend on additional variables.
 
 
-## Background
-
-The PEP approach formulates the automated analysis as the problem of finding the sequence of iterates and the optimization problem for which a given algorithm attains its worst-case behavior in terms of a specified measure of performance over some finite number of iterations [drori-teboulle](@cite). While this optimization problem involves searching over an infinite-dimensional class of functions, it can be convexified by replacing the search over the function itself with constraints on the iterates such that there exists some function in the class that interpolates the points, along with a large-scale asumption on the dimension of the underlying domain of the optimization problem [pep](@cite). While the PEP approach constructs provably tight bounds on the iterates of the algorithm, it can do so only over finite time horizons. Furthermore, the complexity of the analysis scales with the number of iterations, so the analysis is only computationally tractable for up to a few hundred iterations.
-
-
 ## References
 
 ```@bibliography
+Pages = ["pep.md"]
 ```

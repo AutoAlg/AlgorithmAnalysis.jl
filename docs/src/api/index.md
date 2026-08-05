@@ -31,6 +31,10 @@ Sⁿ
 ```@docs
 functional
 differentiable_functional
+convex
+smooth_convex
+smooth_strongly_convex
+sector_bounded
 ```
 
 ## Algorithms
@@ -43,6 +47,7 @@ differentiable_functional
 
 ```@docs
 simplify
+leaves
 →
 ```
 
@@ -61,6 +66,8 @@ with_additional_parameters
 minimize
 maximize
 feasible
+objective
+constraint
 ```
 
 ## Lyapunov certificates
@@ -75,6 +82,7 @@ rate
 ```@docs
 convex_interpolation
 smooth_convex_interpolation
+smooth_strongly_convex_interpolation
 sector_bounded_interpolation
 gram_transformation
 lyapunov_transformation
