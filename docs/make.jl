@@ -78,4 +78,5 @@ makedocs(
 deploydocs(
     repo = "github.com/AutoAlg/AlgorithmAnalysis.jl.git",
     devbranch = "main",
+    push_preview = true
 )
