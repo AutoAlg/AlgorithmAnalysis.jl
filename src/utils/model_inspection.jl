@@ -1,5 +1,3 @@
-export inspect, inspect_constraints
-
 function inspect(model::JuMP.Model, tolerance = 1e-6)
     status = JuMP.termination_status(model)
     println("-"^50)
@@ -10,7 +8,7 @@ function inspect(model::JuMP.Model, tolerance = 1e-6)
     println("-"^50)
     println("VARIABLES")
     for var in JuMP.all_variables(model)
-        @printf("%20s : %.6f\n", JuMP.name(var), JuMP.value(var))
+        println(JuMP.name(var), JuMP.value(var))
     end
     println("-"^50)
     println("CONSTRAINTS")
@@ -71,12 +69,6 @@ function inspect_constraints(model::JuMP.Model)
     end
 end
 
-"""
-    unpack_triangular_vector(flat_vec::Vector{Float64})
-
-Takes a 1D vector of packed lower-triangular elements and reconstructs 
-a square, symmetric 2D Matrix.
-"""
 function unpack_triangular_vector(vec::Vector{Float64})
     len = length(vec)
     N_float = (-1.0 + sqrt(1 + 8 * len)) / 2.0

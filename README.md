@@ -1,4 +1,8 @@
-![Algorithm Analysis Logo](/docs/src/assets/logo-with-title-dark.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.png">
+  <img alt="AlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.png">
+</picture>
 
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/dev/)
 [![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)
@@ -29,8 +33,8 @@ using AlgorithmAnalysis
     x₊ = x - α * g
     t1 = x → x₊
     t2 = xs → xs
-    t3 = (f → f) ∧ (f' → f')
-    c1 = sector_bounded(f, μ, L)
+    t3 = f → f
+    c1 = smooth_strongly_convex(f, μ, L)
     c2 = f'(xs)^2 == zero(R)
     con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
     perf = (x - xs)^2

@@ -44,7 +44,7 @@ end
 
 @testitem "Performance estimation" begin
     @alg begin
-        α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
+        α, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
 
         gs   = f'(xs)
         g    = f'(x)

@@ -1,11 +1,16 @@
+using Revise
+Revise.revise()
 using Pkg
 
 push!(LOAD_PATH,"../src/")
 
 # Ensure the docs environment is active
 Pkg.activate(@__DIR__)
+Pkg.develop(PackageSpec(path="."))
+Pkg.instantiate()
 
-using AlgorithmAnalysis, Documenter, DocumenterCitations, DocumenterInterLinks, DocStringExtensions
+using AlgorithmAnalysis, Documenter, DocumenterCitations
+using DocumenterInterLinks, DocStringExtensions
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "references.bib"))
 
@@ -48,6 +53,7 @@ makedocs(
         prettyurls = false,
         assets = ["assets/style.css"],
         collapselevel = 1,
+        ansicolor = true,
     ),
     modules = [AlgorithmAnalysis],
     # checkdocs = :exports,
@@ -59,16 +65,18 @@ makedocs(
             "manual/pep.md",
             "manual/lyap.md",
         ],
-        "API" => [
-            "Fundamentals" => "api/fundamentals.md",
-            "Transformations" => "api/transformations.md",
-        ],
+        "API" => "api/index.md",
         # "Results" => paths_of_generated_pages,
-        "Developer Guide" => "developers/index.md",
+        "Developer Guide" => [
+            "developers/workflow.md",
+            "developers/documentation.md",
+            "developers/api.md",
+        ]
     ]
 )
 
 deploydocs(
     repo = "github.com/AutoAlg/AlgorithmAnalysis.jl.git",
     devbranch = "main",
+    push_preview = true
 )

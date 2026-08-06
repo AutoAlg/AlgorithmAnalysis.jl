@@ -1,13 +1,32 @@
-export R, Rⁿ, Sⁿ, F, VectorSpace, MatrixSpace, field
-export zero, one, mat, size, tr
+export R, Rⁿ, Sⁿ, tr, ⋅
 
 abstract type Field <: NodeType end
 abstract type VectorSpace{F} <: NodeType end
 abstract type MatrixSpace{F} <: NodeType end
 abstract type SymmetricMatrix{F} <: MatrixSpace{F} end
+
+"""
+    R
+
+The field of real numbers.
+"""
 abstract type R <: Field end
 
+"""
+    Rⁿ
+
+A real finite-dimensional vector space of arbitrarily large dimension. Note that the superscript `n` does *not* refer to the variable `n`, but is simply part of the symbol for the vector space (`Rⁿ` is a single symbol in Julia). To create other similar vector spaces, just create an abstract type that subtypes `VectorSpace{R}`, such as:
+
+    abstract type Rᵐ <: VectorSpace{R} end
+
+"""
 abstract type Rⁿ <: VectorSpace{R} end
+
+"""
+    Sⁿ
+
+A real finite-dimensional vector space of symmetric matrices.
+"""
 abstract type Sⁿ <: MatrixSpace{R} end
 
 Base.convert(::Type{<:Node}, val::Number) = R(val)
@@ -43,38 +62,45 @@ field(::Node{R}) = R
 field(::Type{Sⁿ}) = R
 field(::Node{Sⁿ}) = R
 
-zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
-zero(::Type{R}) = Term{R}(zero, [])
-one(::Type{R}) = Term{R}(one, [])
+Base.zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
+Base.zero(::Type{R}) = Term{R}(zero, [])
+Base.one(::Type{R}) = Term{R}(one, [])
 R(val::Real) = Term{R}(constant, [val])
 R(x::Node{<:Real}) = R(value(x))
 R(x::Node{R}) = x
 
-iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
-isone(x::Node) = iscall(x) && isequal(operation(x), one)
+Base.iszero(x::Node) = iscall(x) && isequal(operation(x), zero)
+Base.isone(x::Node) = iscall(x) && isequal(operation(x), one)
 
 function Sⁿ(A::Matrix{Node{R}})
     size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
     n = size(A,1)
-    # for i in 1:n
-    #     for j in 1:i
-    #         if !isequal(A[i,j], A[j,i])
-    #             error("Matrix $A is not symmetric")
-    #         end
-    #     end
-    # end
     return Term{Sⁿ}(Matrix, vec(A))
 end
 
 function Base.convert(::Type{<:Node}, A::Matrix)
-    Sⁿ(Base.convert.(Node, A))
+    Sⁿ(convert.(Node, A))
 end
 
-tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
-tr(A::Matrix) = la.tr(A)
-⋅(A::Node{Sⁿ}, B::Node{Sⁿ}) = arguments(A) ⋅ arguments(B) # tr(A*B)
+"""
+    tr(A)
 
-function size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
+Trace of a symbolic matrix.
+"""
+tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
+
+"""
+    ⋅(x,y)
+    x ⋅ y
+
+Inner product of two vectors.
+- For scalars, this is standard multiplication.
+- For vectors, this is `x'(y)`.
+- For matrices, this is `tr(A * B)`.
+"""
+⋅(A::Node{Sⁿ}, B::Node{Sⁿ}) = arguments(A) ⋅ arguments(B)  # tr(A*B)
+
+function Base.size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
     n = Integer(sqrt(length(arguments(A))))
     if ismissing(i)
         (n,n)
@@ -97,10 +123,6 @@ end
 -(x::Node{F}) where {F<:Field} = Term{F}(-, [x])
 ⋅(x::T...) where {F<:Field, T<:Node{F}} = *(x...)
 
-function F(V::Type{<:VectorSpace})
-    return FnType{Tuple{V},field(V),DifferentiableFunctional}
-end
-
 function +(u::Node{V}, v::Node{V}) where {V<:VectorSpace}
     return Term{V}(+, [u, v])
 end
@@ -121,23 +143,17 @@ end
 
 (⋅)(u::Node{V}, v::Node{V}) where {F,V<:VectorSpace{F}} = u'(v)
 
-function adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
+function Base.adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
     iszero(x) && return Term{FnType{Tuple{V},F,LinearFunctional}}(zero, [])
     return Term{FnType{Tuple{V},F,LinearFunctional}}(adjoint, [x])
 end
 
-function adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
-    # If it's already an adjoint term tree, peel it off to prevent double nesting
+function Base.adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
+    # the adjoint of the adjoint is the original object
     if iscall(f) && isequal(operation(f), adjoint)
         return arguments(f)[1]
     end
     return Term{V}(adjoint, [f])
-    # return Sym{V}( Symbol(f, "'") )
-end
-
-function adjoint(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
-    #   return Term{FnType{Tuple{V}, V, Gradient}}(∇, [f])
-    return ∇(f)
 end
 
 Base.literal_pow(::typeof(^), x::Node{<:VectorSpace}, ::Val{2}) = x'(x)
@@ -146,7 +162,7 @@ function (f::Node{FnType{Tuple{V},F,Nothing}})(x::V) where {F,V<:VectorSpace{F}}
     return Term{F}(f, [x])
 end
 
-function getindex(A::Node{MatrixSpace{F}}, i::Int, j::Int) where F
+function Base.getindex(A::Node{MatrixSpace{F}}, i::Int, j::Int) where F
     if isequal(operation(A), Gram)
         args = arguments(A)
         return args[i]'(args[j])
@@ -165,6 +181,6 @@ function mat(v::AbstractVector)
 end
 
 mat(A::Node{<:MatrixSpace}) = mat(arguments(A))
-size(A::Node{<:MatrixSpace}) = size(mat(A), 1)
+Base.size(A::Node{<:MatrixSpace}) = size(mat(A), 1)
 
-const Gram = Sym{FnType{Tuple{Vararg{Rⁿ}}, MatrixSpace{R}, Nothing}}(:Gram)
+const Gram = SymbolicUtils.Sym{FnType{Tuple{Vararg{Rⁿ}}, MatrixSpace{R}, Nothing}}(:Gram)

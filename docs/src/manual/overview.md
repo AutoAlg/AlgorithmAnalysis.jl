@@ -1,200 +1,294 @@
 # Overview
 
-Algorithms are mathematical descriptions of computation. AlgorithmAnalysis.jl implements a domain-specific language (DSL) that enables users to represent algorithms symbolically with syntax that closely resembles their mathematical description, and then manipulate the algorithm both symbolically and numerically.
+Algorithms are mathematical descriptions of computation. AlgorithmAnalysis.jl implements a domain-specific language (DSL) that enables users to represent algorithms symbolically with syntax that closely resembles their mathematical description, and then manipulate the algorithm both symbolically and numerically. We now provide an overview of this process; for more details please see the [API](./../api/index.md).
+
+```@meta
+ShareDefaultModule = true
+```
+
+```@setup
+using AlgorithmAnalysis
+```
 
 ## Symbolics
 
-Each mathematical object is a symbolic expression represented by an abstract syntax tree (AST) using SymbolicUtils.jl.
+Each mathematical object is a symbolic expression in some space. AlgorithmAnalysis defines several common spaces, such as [`R`](@ref) for the field of real numbers, [`Rⁿ`](@ref) for a real finite-dimensional vector space, and [`Prop`](@ref) for the set of propositions. Following standard mathematical notation, we can create variables in a space using the [`@alg`](@ref) macro as follows:
+```@repl
+@alg a ∈ R
+@alg u ∈ Rⁿ
+@alg p, q ∈ Prop
+```
+Common methods are implemented for each of these spaces. For instance,
+```@repl
+p ∧ q  # conjunction p and q, the symbol `∧` can be typed by `\wedge<tab>`
+a * u  # scale vector u by a
+```
+To assign these expressions to other variables, we again use the `@alg` macro:
+```@repl
+@alg r = p ∧ q
+```
 
-Each expression `e` has a type `T <: Expression`. AlgorithmAnalysis.jl defines several common types of expressions, and also makes it simple for users to define their own types. The built-in types are as follows:
-- `R` represents the set of real numbers
-- `Rⁿ` and `Rᵐ` are real inner product spaces of arbitrary dimension (the superscripts `n` and `m` do *not* refer to concrete numbers as `Rⁿ` is a single symbol in Julia).
+!!! note
+    The [`@alg`](@ref) macro is used to define symbolic variables and assign symbolic expressions. While assignments could be done without the macro (such as `r = p ∧ q`), the macro automatically converts objects to symbolic expressions (when available) and labels them with the symbol on the left side of the assignment so that expressions are printed using the same symbol that represents the expression in the code. We therefore recommend using the `@alg` macro whenever creating variables or assigning symbolic expressions.
 
-You can construct expressions like this:
-```julia-repl
-julia> a = R()
-julia> u = Rⁿ()
+We can also represent functions:
+```@repl
+@alg f ∈ functional(Rⁿ)
 ```
-Displaying an expression prints various information about the expression. For the scalar `a` for instance, the default display is
-```julia-repl
-Scalar in R
-  Label: Variable{R}
+This constructs a functional `Rⁿ → R`, which can then be evaluated at vectors in `Rⁿ` to produce scalars in `R`:
+```@repl
+@alg a = f(u)
 ```
-The first line is a basic description of the variable, and the second line indicates its label. Every expression has a label, which is used when displaying expressions in compact form. For instance, if we stack two expressions into a vector, Julia displays the output as:
-```julia
-julia> [a, a]
-2-element Vector{R}:
- Variable{R}
- Variable{R}
+Depending on the type of expression, we can form other expressions using basic algebraic operations. With the real numbers `R`, for instance, we can construct other scalars using addition and multiplication:
+```@repl
+@alg a, b ∈ R
+2a + b
 ```
-Here, the label of the label is used when displaying the expression. While the default label `Variable{R}` is not very descriptive, we can set the label of an expression as follows:
-```julia
-label!(a, "a")
+Here, the literal constant `2` is promoted to a symbolic expression in `R`, which can be done explicitly with `R(2)`, and assigned the constant value `2`. The vector space `Rⁿ` has similar algebraic operations as well as an inner product and norm:
+```@repl
+@alg u, v ∈ Rⁿ
+u'(v)   # inner product of u and v
+u^2     # squared norm of u
 ```
-Now AlgorithmAnalysis.jl will use the label in displaying the expression, for example:
-```julia
-julia> a
-Scalar in R
-  Label: a
+The inner product and norm produce scalars in `R`. The inner product uses the function evaluation notation `u'(v)` since the adjoint `u'` of a vector is a linear functional `Rⁿ → R` which can then be evaluated at vectors to produce scalars. The notation `u^2` is not standard mathematical notation, but is a shorthand for `‖u‖²`.
 
-julia> [a, a]
-2-element Vector{R}:
- a
- a
+AlgorithmAnalysis can represent constraints on expressions as propositions. For instance, the proposition that two expressions are equal is formed as:
+```@repl
+a == 0
 ```
-Labeling each expression like this is tedious. Instead, we provide a macro `@algorithm` to automatically label expressions:
-```julia
-@algorithm a = R()
+
+!!! warning
+    To follow standard mathematical notation as closely as possible, AlgorithmAnalysis overloads `==` for propositional equality. As such, it should *not* be used to test for equality of two expression. Instead, use `isequal(x,y)` to check if two expressions are the same.
+
+We can also create inequality constraints on real scalars:
+```@repl
+@alg a ∈ R
+a ≥ 0
 ```
-This constructs the expression and then labels it with the symbol used to represent the variable in the code (the left-hand side of the assignment). Beyond labeling, the macro also enables us to more closely resemble standard mathematical notation. For instance, we can instead construct expressions like this:
-```julia
-@algorithm a ∈ R
-@algorithm u, v ∈ Rⁿ
+For symmetric matrices, we can specify that a matrix is semidefinite as:
+```@repl
+@alg A ∈ Sⁿ
+A ⪰ 0
 ```
-When applied to multiple lines of code, it is convenient to put the code inside a block:
+
+
+## Numerics
+
+While symbolic manipulations enable us to specify algorithms, analyzing them often requires numeric computation. To mix symbolic and numeric computations, AlgorithmAnalysis uses scoped values to construct a local scope in which symbolic expressions are instantiated with numeric values. As a simple example, we can substitute a numeric value for a parameter:
 ```julia
-@algorithm begin
+@alg let
     a ∈ R
-    u, v ∈ Rⁿ
+    with_parameters(Dict(a => 2)) do
+        evaluate(a)  # 2
+    end
+    evaluate(a)  # a
 end
 ```
-We make extensive use of this macro throughout the manual. Whenever using the macro, we first explain the code without the macro to make explicit how the code is structured within Julia, but then show how to express the code more elegantly with the macro.
+This code constructs a scalar `a`, defines a local scope in which it has the value `2`, and then evaluates it within this scope. Outside of this scope, however, `a` is still a symbolic variable.
 
-## Oracles
-
-In addition to scalars and vector spaces, expressions can also be `Oracle`s, which are black-box functions (or more generally, relations) between other expression types. For instance, we can define a map from `Rⁿ` to `Rᵐ` like this:
-
-```julia-repl
-julia> f = Map{Rⁿ, Rᵐ}()
-Oracle
-  Description: Map from Rⁿ to Rᵐ
-  Label: Map{Rⁿ,Rᵐ}
-```
-
-!!! tip
-    AlgorithmAnalysis.jl uses `Map` to represent single-valued functions (since `Function` is already a keyword in Julia) and `Operator` to denote set-valued functions.
-
-As with scalars and vectors, oracles have a label. We can again use the `@algorithm` macro to automatically label the oracle as well as to use standard mathematical notation:
-```julia-repl
-julia> @algorithm f : Rⁿ → Rᵐ
-julia> f
-Oracle
-  Description: Map from Rⁿ to Rᵐ
-  Label: f
-```
-We can access the domain and codomain of an oracle using:
-```julia-repl
-julia> domain(f)
-Rⁿ
-julia> codomain(f)
-Rᵐ
-```
-Oracles can be sampled at expressions in their domain to produce expressions in their codomain.
-```julia-repl
-julia> @algorithm u ∈ Rⁿ
-julia> f(u)
-Vector in Rᵐ
-  Label: f(u)
-  Oracles: f
-  Associations: Dual => f(u)*
-```
-The result is a vector in `Rᵐ`, which is given the intuitive label `f(u)`. The vector also has a set of `Oracles`, which are oracles for which the expression is an input or output. Since objects of type `Map` are functions, evaluating them at the same point yields the same output:
-```julia-repl
-julia> f(u) === f(u)
-true
-```
-For a set-valued map, use
-```julia-repl
-julia> @algorithm F : Rⁿ ⇒ Rᵐ
-julia> F
-Oracle
-  Description: Operator from Rⁿ to Rᵐ
-  Label: F
-```
-Evaluating set-valued maps at the same expression yields different results:
-```julia-repl
-julia> F(u) === F(u)
-false
-```
-
-## Algebraic manipulations
-
-Algorithms manipulate expressions to perform computation. Depending on the type of expression, we can form other expressions using basic algebraic operations. With the real numbers `R`, for instance, we can construct other scalars using addition and multiplication:
+We can also formulate symbolic optimization problems and then solve them numerically use JuMP. For instance, the following feasibility problem is (trivially) true:
 ```julia
-julia> @algorithm a, b ∈ R
-julia> a + b
-Scalar in R
-  Decomposition: b + a
+@alg let
+    x ∈ R
+    feas = feasible((x ≥ 1) ∧ (x ≤ 2))
+    with_numerics() do
+        evaluate(feas)  # true
+    end
+end
 ```
-Instead of a label, the expression `a + b` has a decomposition in terms of the expressions `a` and `b`. Note that the decomposition displays the expressions in a different order, although this does not change the expression. We can access this decomposition as follows:
+This construct a feasibility problem using [`feasible`](@ref), defines a local scope in which symbolic expressions are evaluated using a JuMP model using [`with_numerics`](@ref), and then solves the feasibility problem within this scope to obtain the boolean literal `true`. While these examples are quite simple, we can use the same ideas to solve more general linear programs:
 ```julia
-julia> decomposition(a + b)
-Linear decomposition over R:
-  b → 1
-  a → 1
+@alg let
+    x, y ∈ R
+    c1 = 50x + 24y ≤ 2400
+    c2 = 30x + 33y ≤ 2100
+    c3 = x ≥ 45
+    c4 = y ≥ 5
+    cons = c1 ∧ c2 ∧ c3 ∧ c4
+    obj = x + y - 50
+    opt = maximize(obj, cons)
+    with_numerics() do
+        evaluate(opt) ≈ 1.25 && evaluate(x) ≈ 45.0 && evaluate(y) ≈ 6.25  # true
+    end
+end
 ```
-The type of the decomposition is `LinearDecomposition{R}`. Expressions of this type are linear combinations of expressions in `R`. We can access the weights of the decomposition as a dictionary using
+Since `with_numerics` creates a local scope, expressions that are obtained numerically maintain their numeric values within this scope. The above code first solves the optimization problem to obtain the numeric values for `x` and `y`, and then compares these numeric values against the known solution to the problem. Beyond linear programs, we can also solve semidefinite programs in a similar way:
 ```julia
-julia> weights(decomposition(a+b))
-Dict{R, Union{Number, JuMP.VariableRef, JuMP.AffExpr}} with 2 entries:
-  b => 1
-  a => 1
+@alg let
+    x ∈ R
+    A = [2 x; x 2]
+    opt = maximize(x, A ⪰ 0)
+    with_numerics() do
+        evaluate(opt) ≈ 2.0  # true
+    end
+end
 ```
-The keys have type `R` while the weights have type `Number` (or are JuMP variables). As a shortcut, we can also access the weights of the decomposition using `weights(a+b)`.
 
-The reals `R` can also be used with real numbers in Julia,
+## Transformations
+
+At this point, AlgorithmAnalysis can be viewed as a domain-specific language for optimization, similar to other DSLs such as JuMP and Convex. The main benefits come when combining symbolic and numeric computations together, which can create emergent behavior that can be useful in analyzing algorithms. To that end, consider the following optimization problem:
+```@repl
+@alg begin
+    α, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
+
+    gs   = f'(xs)
+    g    = f'(x)
+    init = (x - xs)^2
+    x⁺   = x - α * g
+    f⁺   = f(x⁺)
+    c1   = smooth_convex(f, L)
+    c2   = gs^2 == zero(R)
+    c3   = init ≤ one(R)
+    con  = c1 ∧ c2 ∧ c3
+    obj  = f⁺ - f(xs)
+    opt  = maximize(obj, con)
+end
+```
+which prints as:
+```@repl
+opt
+```
+We can view all leaf nodes in this optimization problem using [`leaves`](@ref):
+```@repl
+leaves(opt)
+```
+One of the leaf variables in this problem is the differentiable function `f : Rⁿ → R`, so the problem is intractable as written. However, we can symbolically simplify this optimization problem by replacing the ``L``-smooth convex function ``f`` with its interpolation conditions between all of the points at which it is evaluated:
+```@repl
+transformed_opt = smooth_convex_interpolation(opt)
+```
+This transformation has completely removed the function `f` from the problem. While some of the expressions appear to still depend on `f`, these have all been flattened to leaf expressions:
+```@repl
+leaves(transformed_opt)
+```
+For instance, the symbol `∇f(x)` represents a leaf node in `Rⁿ`, and *not* the evaluation of the gradient of `f` at `x`. The optimization problem is still intractable though, as it involves vectors in `Rⁿ` whose dimension is arbitrarily large and therefore cannot be instantiated with numeric values. However, these vectors only appear in the optimization problem as inner products. A necessary and sufficient condition on these scalar values to be the inner product of such vectors is that the Gram matrix of all combinations of their inner products is positive semidefinite. We can therefore replace these vectors with their (flattened) inner products subject to the constraint that the Gram matrix is positive semidefinite. This is done automatically using:
+```@repl
+final_opt = gram_transformation(transformed_opt)
+```
+The first 9 constraints are from the interpolation conditions, the next two are from the original problem, and the last constraint is that the Gram matrix of inner products is positive semidefinite. Again, this appears to still depend on vectors, but notice that all the inner products are now leaf expressions:
+```@repl
+leaves(final_opt)
+```
+All of these quantities are symbolic variables in `R`, and *not* function evaluations. To help distinguish between inner products of vectors and their flattened scalar variables, the inner product between `u` and `v` is printed as `u'(v)` while the corresponding flattened scalar leaf prints as `⟨u,v⟩` when the vectors are different and `‖u‖²` when they are the same. The optimization problem has now been transformed to a semidefinite program (once the parameters `α` and `L` are fixed) and can therefore be solved numerically:
+```@repl
+with_numerics(parameters = Dict(α => 0.075, L => 10.0)) do
+    evaluate(final_opt)
+end
+```
+While we manually selected which transformations to apply and in what order (smooth convex interpolation followed by the gram transformation), this process can be *automated*. These transformations and more are implemented in [`simplify`](@ref), which automatically reconstructs the final semidefinite program from the original optimization problem as:
+```@repl
+final_opt = simplify(opt);
+```
+Also, numerically evaluating a symbolic expression does *not* modify the expression (which is immutable). Therefore, an expression can be evaluated again with different parameters:
+```@repl
+with_numerics(parameters = Dict(α => 0.075, L => 10.0)) do
+    evaluate(final_opt)
+end
+with_numerics(parameters = Dict(α => 1/3, L => 3.0)) do
+    evaluate(final_opt)
+end
+```
+For more details on this approach to algorithm analysis, see the [performance estimation](./../manual/pep.md) section of the manual.
+
+
+## Iterative algorithms as dynamical systems
+
+We can interpret iterative algorithms as dynamical systems, which can then be analyzed using tools from control theory. Dynamical systems have a *state* that evolves over *time*. At each point in time, the state completely describes the behavior of the system. While time may either be continuous or discrete, algorithms are naturally represented as discrete-time systems in which the discrete time index represents the iteration of the algorithm. To describe the algorithm, we must therefore describe how the state changes between each iteration. When the update has the same form at each iteration, the system is *time invariant* and we only need to specify the update at some (generic) iteration.
+
+We represent a state transition as:
+```@repl
+@alg x₁, x₂ ∈ R
+@alg t = x₁ → x₂
+```
+This defines a state transition `t` (which is a proposition) that specifies that `x₁` is a component of the algorithm state whose value at the next iteration is `x₂`. An algorithm may have more than one component in the state, and any node on the left side of a transition is considered part of the state. For instance, a state with multiple components is
+```@repl
+@alg y₁, y₂ ∈ Rⁿ
+@alg t = (x₁ → x₂) ∧ (y₁ → y₂)
+```
+This specifies that the state consists of both `x₁` and `y₁` whose values at the next iteration are `x₂` and `y₂`, respectively.
+
+As a more interesting example, consider the following algorithm, which represents gradient descent applied to a differentiable function:
+```@repl
+@alg begin
+    α, μ, L ∈ R
+    x, xs ∈ Rⁿ
+    f ∈ differentiable_functional(Rⁿ)
+    gs = f'(xs)
+    g  = f'(x)
+    x₊ = x - α * g
+    t1 = x → x₊
+    t2 = xs → xs
+    t3 = f → f
+    c1 = sector_bounded(f, μ, L)
+    c2 = gs^2 == zero(R)
+    con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
+    perf = (x - xs)^2
+end
+```
+The main algorithmic update is the first transition, `t1 = x → x₊` where `x` represents the iterate of the algorithm at some generic point in time and `x₊ = x - α * f'(x)` its value at the next iteration. The other two transitions are for the stationary point `xs` and the objective function `f`, which are specified to be time invariant by the transitions `t2 = xs → xs` and `t3 = f → f`.
+
+!!! info
+    State transitions are included in the constraint, as they are propositions.
+
+Given these symbolic expressions, we can symbolically construct the problem of searching for a certificate that guarantees convergence of the algorithm with a particular rate:
+```@repl
+@alg ρ ∈ R
+prob = certify(con, perf, ρ)
+```
+This high-level symbolic object represents searching for a Lyapunov-based stability certificate for the given rate, performance measure, and constraint. Before formulating the search for a Lyapunov function that certifies stability, however, we must first apply several transformations to make the problem tractable. As before, the problem contains the function `f` as a variable, which cannot be used as a numeric decision variable. Instead, we replace the function with the sector bound:
+```@repl
+transformed_prob1 = sector_bounded_interpolation(prob)
+```
+The function `f` has now been completely removed from the problem:
+```@repl
+leaves(transformed_prob1)
+```
+Some of these leaves are vectors in `Rⁿ`, which also cannot be used as numeric decision variables. Replacing these vectors with the constraint that their Gram matrix is positive semidefinite yields the transformed problem:
+```@repl
+transformed_prob2 = gram_transformation(transformed_prob1)
+```
+All inner products have now been flattened to scalar leaf variables:
+```@repl
+leaves(transformed_prob2)
+```
+Also, recall that the state transitions in the original problem involved vectors like `x` and `xs`. Before flattening inner products, these transitions were first propagated to all applicable inner products, which resulted in the following three transitions:
 ```julia
-julia> 2a + 3b
-Scalar in R
-  Decomposition: 3 b + 2 a
+‖xs‖² → ‖xs‖²
+⟨x,xs⟩ → (⟨x,xs⟩ - α * ⟨xs,∇f(x)⟩)
+‖x‖² → ((‖x‖² - α * ⟨x,∇f(x)⟩) - (α * ⟨x,∇f(x)⟩ - α * α * ‖∇f(x)‖²))
 ```
+These transitions were able to be inferred from those of `x` and `xs`. Other inner products, such as `⟨x,∇f(xs)⟩`, however, do not appear as states with a transition since at least one component of the inner product is not a state and therefore has no available transition (in this case, the gradient `∇f(xs)`).
 
-The vector spaces `Rⁿ` and `Rᵐ` have similar algebraic operations as well as an inner product and norm:
-```julia
-julia> @algorithm u, v ∈ Rⁿ
-julia> u'*v
-Scalar in R
-  Label: ⟨u,v⟩
-  Oracles: v*
-
-julia> u^2
-Scalar in R
-  Label: |u|²
-  Oracles: u*
+Now that all expressions in the problem are scalars in `R`, we can formulate the search for a Lyapunov function that certifies convergence with the given rate. Doing so yields the final semidefinite program:
+```@repl
+transformed_prob3 = with_parameters(Dict(ρ => 0.81, α => 0.1, μ => 1.0, L => 10.0)) do
+    lyapunov_transformation(transformed_prob2)
+end
 ```
-The inner product and norm produce scalars in `R`. Moreover, these scalars are given an intuitive label based on the labels of the `u` and `v`. In addition to labels, the scalars formed from the inner product and norm also have a set of `Oracles`, which are functions at which the expressions have been sampled. When forming the inner product, the expression `u'` indicates the transpose of the vector, which is an oracle:
-```julia
-julia> u'
-Oracle
-  Description: Linear functional on Rⁿ
-  Label: u*
-  Properties: Linear()
+While this problem appears quite complex, it is a semidefinite program that is systematically constructed from the transformed problem.
+
+!!! info "Parameters in Lyapunov analysis"
+    The Lyapunov transformation requires all expressions to be scalars in `R`. Moreover, the objective function and each constraint must be affine functions of the decision variables (all flattened inner products). Therefore, this transformation must be executed in a scope in which all parameters are specified (the specific values of the parameters are not used, only which leaf variables have a value).
+
+Now that the problem of searching for a Lyapunov certificate of convergence has been formulated as a semidefinite program, we can evaluate it numerically as before:
+```@repl
+with_numerics(parameters = Dict(ρ => 0.81, α => 0.1, μ => 1.0, L => 10.0)) do
+    evaluate(transformed_prob3)
+end
 ```
-Instead of viewing this as a row vector, this is a linear functional (a function from the vector space to its underlying scalar field) over the vector space `Rⁿ`. Once again, it is given an intuitive label based on the label of the vector `u`. In addition to a label, the oracle has a set of properties, in this case the `Linear()` property. With this understanding, the inner product is applying the linear functional `u'` to the vector `v`, which results in the scalar `u'*v`.
-
-## Constraints
-
-AlgorithmAnalysis.jl can represent constraints on expressions. A constraint `c` has type `Constraint`. The most basic types of constraints are those that are identically satisfied or unsatisfied:
-```julia-repl
-julia> Satisfied()
-Satisfied()
-
-julia> Unsatisfied()
-Unsatisfied()
+For this problem, the symbolic simplification process required applying `sector_bounded_interpolation` followed by `gram_transformation` and then `lyapunov_transformation`. Again, this process is automated with `simplify`, which systematically constructs the final semidefinite program directly from the original problem:
+```@repl
+transformed_prob = with_parameters(Dict(ρ => 0.81, α => 0.1, μ => 1.0, L => 10.0)) do
+    simplify(prob)
+end;
 ```
-
-A constraint enforces that an expression belongs to some set. In AlgorithmAnalysis.jl, a constraint set has type `ConstraintSet`. A particular type of constraint set is a `Cone`, and the corresponding constraint is a `ConeConstraint{K}` where `K<:Cone`. Some types of cones are:
-- `PositiveSemidefiniteCone` is the cone of positive semidefinite matrices
-- `PositiveOrthant` is the positive orthant
-- `ZeroSet` is the set containing only zero
-For convenience, we define the following constants for cone constraints:
-- `Semidefinite` is `ConeConstraint{PositiveSemidefiniteCone}`
-- `PositiveOrthant` is `ConeConstraint{PositiveOrthant}`
-- `Equality` is `ConeConstraint{Zero}`
-
-Cone constraints can be constructed using standard notation. For instance,
-```julia-repl
-julia> a == 0  # equal zero
-julia> u ≥ 0   # positive orthant
-julia> P ⪰ 0   # positive semidefinite
+While `certify` constructed the search for a Lyapunov certificate for a particular rate, we often want to compute the fastest (smallest) rate that can be certified. This can be constructed as:
+```@repl
+opt = rate(con, perf)
 ```
+Evaluating this node performs a bisection search to find the smallest rate for which `certify` is true:
+```@repl
+with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
+    evaluate(simplify(opt))
+end
+```
+For more details on this approach to algorithm analysis, see the [Lyapunov analysis](./../manual/lyap.md) section of the manual.

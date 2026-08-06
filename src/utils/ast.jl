@@ -1,6 +1,10 @@
-export postwalk_with_operators, rewrite, find_nodes, replace_node
-export find_evaluation_points, leaves
+export leaves
 
+"""
+    postwalk_with_operators(f, x)
+
+Apply a postwalk to the symbolic expression `x` in which the function `f` is applied recursively directly to leaf nodes and to both the operator and arguments of `iscall` nodes, starting at the leaves. This is similar to [SymbolicUtils.Rewriters.Postwalk](https://docs.sciml.ai/SymbolicUtils/v4.37/api/#SymbolicUtils.Rewriters) except that the function is also applied to the operator for `iscall` nodes, as these may also be symbolic expressions.
+"""
 function postwalk_with_operators(f, x)
     if iscall(x)
         op = postwalk_with_operators(f, operation(x))
@@ -13,28 +17,28 @@ end
 
 """
     rewrite(node, rules)
+
+Rewrites a node using the given rules. See [`postwalk_with_operators`](@ref).
 """
-rewrite(node::Node, rules) = postwalk_with_operators(Chain(rules), node)
+rewrite(node::Node, rules) = postwalk_with_operators(SymbolicUtils.Rewriters.Chain(rules), node)
 
 """
-    find_nodes(predicate::Function, tree) -> Vector
+    find_nodes(predicate, tree)
 
-Recursively scans a SymbolicUtils AST or algebraic expression. Returns a flat vector 
-containing every sub-tree, terminal node, or variable that satisfies `predicate(node)`.
+Recursively searches a symbolic AST. Returns a vector containing every node that satisfies `predicate(node)`.
 """
 function find_nodes(predicate::Function, node, results::Set = Set())
     if predicate(node)
         push!(results, node)
     end
-    if !iscall(node)
-        return
-    end
-    op = operation(node)
-    args = arguments(node)
+    if iscall(node)
+        op = operation(node)
+        args = arguments(node)
 
-    find_nodes(predicate, op, results)
-    for arg in args
-        find_nodes(predicate, arg, results)
+        find_nodes(predicate, op, results)
+        for arg in args
+            find_nodes(predicate, arg, results)
+        end
     end
     return results
 end
@@ -52,10 +56,9 @@ function replace_node(tree::Node, old_node::Node, new_node::Node)
 end
 
 """
-    find_evaluation_points!(node, state::ExtendedProblemAnalysisState)
+    find_evaluation_points!(f, node)
 
-Recursively crawls your optimization tree. It safely matches standard function calls 
-and looks inside applied adjoint operators to capture gradient evaluation points.
+Finds all evaluations of the function `f` in the symbolic node.
 """
 function find_evaluation_points(f::Node, node::Node)
     evals = find_nodes(x -> iscall(x) && isequal(operation(x), f), node)
@@ -63,10 +66,9 @@ function find_evaluation_points(f::Node, node::Node)
 end
 
 """
-    leaves(v::Node)
+    leaves(node)
 
-Recursively collects all AST leaf nodes (nodes where `iscall(v)` is false) from an expression tree.
-Returns a `Set` of unique leaf nodes.
+Recursively collects all AST leaf nodes (nodes where `iscall(v)` is false) from an expression tree. Returns a `Set` of unique leaf nodes.
 """
 function leaves(node::Node, nodes::Set = Set{Node}())
     if !iscall(node)

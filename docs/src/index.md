@@ -1,4 +1,8 @@
-![Algorithm Analysis Logo](./assets/logo-with-title-dark.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.png">
+  <img alt="AlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.png">
+</picture>
 
 [AlgorithmAnalysis.jl](https://github.com/AutoAlg/AlgorithmAnalysis.jl) is a Julia package for the automated analysis of algorithms.
 
@@ -16,22 +20,22 @@ import Pkg; Pkg.add("AlgorithmAnalysis")
 
 ## Example
 
-This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $m$-strongly convex functions.
+This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $\mu$-strongly convex functions.
 
 ```julia
 using AlgorithmAnalysis
 
 @alg begin
-    α, μ, L, ρ ∈ R
+    α, μ, L ∈ R
     x, xs ∈ Rⁿ
-    f ∈ F(Rⁿ)
+    f ∈ differentiable_functional(Rⁿ)
     gs = f'(xs)
     g  = f'(x)
     x₊ = x - α * g
     t1 = x → x₊
     t2 = xs → xs
-    t3 = (f → f) ∧ (f' → f')
-    c1 = sector_bounded(f, μ, L)
+    t3 = f → f
+    c1 = smooth_strongly_convex(f, μ, L)
     c2 = gs^2 == zero(R)
     con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
     perf = (x - xs)^2
