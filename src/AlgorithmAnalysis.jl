@@ -1,16 +1,16 @@
 module AlgorithmAnalysis
 
 # ------------------------------------------------------
-# USING AND IMPORT
+# IMPORT
 # ------------------------------------------------------
 
-import Base: +, -, *, /, ^
+import Base: +, -, *, /
 import LinearAlgebra as la
 import LinearAlgebra: tr, ⋅
 import TermInterface: maketerm, metadata
 import SymbolicUtils
-import SymbolicUtils: Term, FnType, Rewriters
-import SymbolicUtils: symtype, @rule, issym
+import SymbolicUtils: Term, FnType
+import SymbolicUtils: symtype, issym, @rule
 import SymbolicUtils: iscall, operation, arguments
 import JuMP, Hypatia, Clarabel
 import MathOptInterface as MOI

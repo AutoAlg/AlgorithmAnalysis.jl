@@ -3,3 +3,4 @@
 *.bat
 *.code-workspace
 docs/builds/
+/startup.jl

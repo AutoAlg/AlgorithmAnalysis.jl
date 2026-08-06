@@ -75,18 +75,11 @@ Base.isone(x::Node) = iscall(x) && isequal(operation(x), one)
 function Sⁿ(A::Matrix{Node{R}})
     size(A,1) ≠ size(A,2) && error("Matrix $A is not square")
     n = size(A,1)
-    # for i in 1:n
-    #     for j in 1:i
-    #         if !isequal(A[i,j], A[j,i])
-    #             error("Matrix $A is not symmetric")
-    #         end
-    #     end
-    # end
     return Term{Sⁿ}(Matrix, vec(A))
 end
 
 function Base.convert(::Type{<:Node}, A::Matrix)
-    Sⁿ(Base.convert.(Node, A))
+    Sⁿ(convert.(Node, A))
 end
 
 """
@@ -95,7 +88,6 @@ end
 Trace of a symbolic matrix.
 """
 tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
-# tr(A::Matrix) = la.tr(A)
 
 """
     ⋅(x,y)
@@ -106,7 +98,7 @@ Inner product of two vectors.
 - For vectors, this is `x'(y)`.
 - For matrices, this is `tr(A * B)`.
 """
-⋅(A::Node{Sⁿ}, B::Node{Sⁿ}) = arguments(A) ⋅ arguments(B) # tr(A*B)
+⋅(A::Node{Sⁿ}, B::Node{Sⁿ}) = arguments(A) ⋅ arguments(B)  # tr(A*B)
 
 function Base.size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
     n = Integer(sqrt(length(arguments(A))))
