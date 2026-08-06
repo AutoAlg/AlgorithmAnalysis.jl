@@ -1,4 +1,8 @@
-![Algorithm Analysis Logo](/docs/src/assets/logo-with-title-dark.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.png">
+  <img alt="AlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.png">
+</picture>
 
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/dev/)
 [![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)

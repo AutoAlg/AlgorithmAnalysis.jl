@@ -1,4 +1,8 @@
-![Algorithm Analysis Logo](./assets/logo-with-title-dark.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.png">
+  <img alt="AlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.png">
+</picture>
 
 [AlgorithmAnalysis.jl](https://github.com/AutoAlg/AlgorithmAnalysis.jl) is a Julia package for the automated analysis of algorithms.
 
