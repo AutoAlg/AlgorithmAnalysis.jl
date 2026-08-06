@@ -38,7 +38,8 @@ function lyapunov_transformation(prob::Node{LyapunovCertificate})
     nonreal = filter(v -> !(v isa Node{R}), vars)
 
     if !isempty(nonreal)
-        error("Problem has variables not in R: $nonreal\nConsider first simplifying the problem.")
+        str = join(tostring.(nonreal), ", ")
+        error("Problem has variables not in R: $str\nConsider first simplifying the problem.")
     end
 
     basis = collect(Node{R}, vars)

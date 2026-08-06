@@ -55,11 +55,12 @@ function smooth_strongly_convex_interpolation(opt::Node{<:Optimization}, f::Node
     for x ∈ points, y ∈ points
         gx = f'(x)
         gy = f'(y)
-        interp = interp ∧ ( f(x) ≥ f(y) + gy'(x-y) + 1/(2(1-μ/L)) * ( 1/L * (gx-gy)^2 + μ * (x-y)^2 - 2μ/L * (gx-gy)'(gx-gy) ) )
+        interp = interp ∧ ( f(x) ≥ f(y) + gy'(x-y) + 1/(2(1-μ/L)) * ( 1/L * (gx-gy)^2 + μ * (x-y)^2 - 2μ/L * (x-y)'(gx-gy) ) )
     end
 
-    new_opt = replace_node(opt, smooth_strongly_convex(f, μ, L), interp)
-    new_opt = flatten_evaluations(new_opt, [f, f'])
+    opt = replace_node(opt, smooth_strongly_convex(f, μ, L), interp)
+    opt = propagate_and_remove_transitions(opt, [f, f'])
+    opt = flatten_evaluations(opt, [f, f'])
 
-    return new_opt
+    return opt
 end

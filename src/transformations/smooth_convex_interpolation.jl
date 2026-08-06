@@ -58,8 +58,9 @@ function smooth_convex_interpolation(opt::Node{<:Optimization}, f::Node, L::Node
         interp = interp ∧ ( f(x) ≥ f(y) + gy'(x-y) + 1/2L * (gx-gy)'(gx-gy) )
     end
 
-    new_opt = replace_node(opt, smooth_convex(f, L), interp)
-    new_opt = flatten_evaluations(new_opt, [f, f'])
+    opt = replace_node(opt, smooth_convex(f, L), interp)
+    opt = propagate_and_remove_transitions(opt, [f, f'])
+    opt = flatten_evaluations(opt, [f, f'])
 
-    return new_opt
+    return opt
 end

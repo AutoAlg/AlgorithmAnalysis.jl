@@ -22,6 +22,8 @@ AlgorithmAnalysis.find_nodes
 AlgorithmAnalysis.rewrite
 AlgorithmAnalysis.find_evaluation_points
 AlgorithmAnalysis.postwalk_with_operators
+AlgorithmAnalysis.remove_transitions
+AlgorithmAnalysis.propagate_and_remove_transitions
 ```
 
 ## Transitions

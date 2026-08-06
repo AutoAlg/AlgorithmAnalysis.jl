@@ -22,16 +22,16 @@ This example code finds the worst-case convergence rate of the (squared) distanc
 using AlgorithmAnalysis
 
 @alg begin
-    α, μ, L, ρ ∈ R
+    α, μ, L ∈ R
     x, xs ∈ Rⁿ
-    f ∈ F(Rⁿ)
+    f ∈ differentiable_functional(Rⁿ)
     gs = f'(xs)
     g  = f'(x)
     x₊ = x - α * g
     t1 = x → x₊
     t2 = xs → xs
-    t3 = (f → f) ∧ (f' → f')
-    c1 = sector_bounded(f, μ, L)
+    t3 = f → f
+    c1 = smooth_strongly_convex(f, μ, L)
     c2 = gs^2 == zero(R)
     con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
     perf = (x - xs)^2

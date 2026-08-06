@@ -12,6 +12,10 @@ function remove_constraint(con::Node{Conjunction}, old::Node{<:Prop})
     cons = foldl(∧, cons)
 end
 
+function replace_constraint(ctx::Node{<:Prop}, old::Node{<:Prop}, new::Node{<:Prop})
+    add_constraint(remove_constraint(ctx, old), new)
+end
+
 # TODO: these should use similarterm to keep metadata
 function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
     Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
@@ -26,7 +30,6 @@ function add_constraint(opt::Node{LyapunovCertificate}, new_con::Node{<:Prop})
     op = operation(opt)
     Term{LyapunovCertificate}(op, [con ∧ new_con, perf, ρ])
 end
-
 
 function remove_constraint(opt::Node{LyapunovCertificate}, old_con::Node{<:Prop})
     con, perf, rate = arguments(opt)
@@ -43,6 +46,10 @@ end
 
 function remove_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
     Term{T}(operation(opt), [objective(opt), remove_constraint(constraint(opt), con)])
+end
+
+function remove_constraint(opt::Node{Feasibility}, con::Node{<:Prop})
+    Term{Feasibility}(feasible, remove_constraint(constraint(opt), con))
 end
 
 function replace_constraint(opt::Node{LyapunovCertificate}, old::Node{<:Prop}, new::Node{<:Prop})

@@ -31,15 +31,14 @@ function find_nodes(predicate::Function, node, results::Set = Set())
     if predicate(node)
         push!(results, node)
     end
-    if !iscall(node)
-        return
-    end
-    op = operation(node)
-    args = arguments(node)
+    if iscall(node)
+        op = operation(node)
+        args = arguments(node)
 
-    find_nodes(predicate, op, results)
-    for arg in args
-        find_nodes(predicate, arg, results)
+        find_nodes(predicate, op, results)
+        for arg in args
+            find_nodes(predicate, arg, results)
+        end
     end
     return results
 end
