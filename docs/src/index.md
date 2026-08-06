@@ -1,8 +1,17 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.png">
-  <img alt="AlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.png">
-</picture>
+```@raw html
+<style>
+  /* Default / Light theme */
+  .logo-dark { display: none !important; }
+  .logo-light { display: inline-block !important; }
+
+  /* Documenter Dark theme */
+  html.theme--documenter-dark .logo-dark { display: inline-block !important; }
+  html.theme--documenter-dark .logo-light { display: none !important; }
+</style>
+
+<img class="logo-light" src="assets/logo-with-title-light.png" alt="AlgorithmAnalysis.jl Logo">
+<img class="logo-dark" src="assets/logo-with-title-dark.png" alt="AlgorithmAnalysis.jl Logo">
+```
 
 [AlgorithmAnalysis.jl](https://github.com/AutoAlg/AlgorithmAnalysis.jl) is a Julia package for the automated analysis of algorithms.
 
