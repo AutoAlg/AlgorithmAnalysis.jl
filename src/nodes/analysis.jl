@@ -1,7 +1,7 @@
 export functional, differentiable_functional
 export convex, smooth_convex, smooth_strongly_convex, sector_bounded
 
-const ∇ = Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}},FnType{Tuple{Rⁿ},Rⁿ,Gradient},Nothing}}(:∇)
+const ∇ = SymbolicUtils.Sym{FnType{Tuple{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}},FnType{Tuple{Rⁿ},Rⁿ,Gradient},Nothing}}(:∇)
 
 
 is_gradient(x) = is_function(x) && isequal(operator(x), ∇)
@@ -74,7 +74,7 @@ function differentiable_functional(V::Type{<:VectorSpace})
     return FnType{Tuple{V},field(V),DifferentiableFunctional}
 end
 
-function adjoint(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
+function Base.adjoint(f::Node{FnType{Tuple{V},F,DifferentiableFunctional}}) where {F,V<:VectorSpace{F}}
     return ∇(f)
 end
 

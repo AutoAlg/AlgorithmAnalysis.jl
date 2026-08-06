@@ -24,6 +24,8 @@ Rⁿ
 Sⁿ
 ⪯
 ⪰
+tr
+⋅
 ```
 
 ### Function spaces

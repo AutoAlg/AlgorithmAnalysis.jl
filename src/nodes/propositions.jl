@@ -17,18 +17,18 @@ abstract type Transition{T} <: Prop end
 abstract type Feasibility <: Prop end
 abstract type LyapunovCertificate <: Feasibility end
 
-satisfied() = Sym{Satisfied}()
-unsatisfied() = Sym{Unsatisfied}()
+satisfied() = SymbolicUtils.Sym{Satisfied}()
+unsatisfied() = SymbolicUtils.Sym{Unsatisfied}()
 
-function ==(x::Node{T}, y::Node{T}) where {T}
+function Base.:(==)(x::Node{T}, y::Node{T}) where {T}
     return Term{Equality{T}}(==, [x, y])
 end
 
-function ≤(x::Node{T}, y::Node{T}) where {T}
+function Base.:≤(x::Node{T}, y::Node{T}) where {T}
     return Term{LessThanOrEqualTo{T}}(≤, [x, y])
 end
 
-function ≥(x::Node{T}, y::Node{T}) where {T}
+function Base.:≥(x::Node{T}, y::Node{T}) where {T}
     return Term{LessThanOrEqualTo{T}}(≤, [y, x])
 end
 
@@ -100,8 +100,8 @@ end
 ∧(x::Bool, y::Node{<:Prop}) = x ? y : unsatisfied()
 
 # iterate over conjunctions
-iterate(prop::Node{Conjunction}) = iterate(prop, 1)
-function iterate(prop::Node{Conjunction}, i::Int)
+Base.iterate(prop::Node{Conjunction}) = iterate(prop, 1)
+function Base.iterate(prop::Node{Conjunction}, i::Int)
     args = arguments(prop)
     if i < 0 || i > length(args)
         return nothing
@@ -109,4 +109,4 @@ function iterate(prop::Node{Conjunction}, i::Int)
         return args[i], i+1
     end
 end
-length(prop::Node{Conjunction}) = length(arguments(prop))
+Base.length(prop::Node{Conjunction}) = length(arguments(prop))

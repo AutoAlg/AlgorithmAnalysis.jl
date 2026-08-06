@@ -8,11 +8,7 @@ function flatten_evaluations(tree::Node, f::Node)
         fstr = tostring(f)
         sym = Symbol(fstr, "(", arg, ")")
         x₊ = next(x, tree)
-        if !isnothing(f₊) && !isnothing(x₊)
-            return Sym{T}(sym)
-        else
-            return Sym{T}(sym)
-        end
+        return leaf(T, sym)
     end
     
     rule = @rule( ~x => newsym(~x) where iseval(~x) )
@@ -46,7 +42,7 @@ function flatten_inner_product(v1::Node{V}, v2::Node{V}) where {F, V<:VectorSpac
             first_str, second_str = s1 < s2 ? (s1, s2) : (s2, s1)
             sym = Symbol("⟨", first_str, ",", second_str, "⟩")
         end
-        return Sym{F}(sym)
+        return leaf(F, sym)
     end
 
     if iscall(v1)

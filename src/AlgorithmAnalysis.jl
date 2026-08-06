@@ -4,16 +4,16 @@ module AlgorithmAnalysis
 # USING AND IMPORT
 # ------------------------------------------------------
 
-using SymbolicUtils, TermInterface, Printf
-using SymbolicUtils: Sym, Term, FnType, Rewriters
-using SymbolicUtils: symtype, @rule, iscall, issym, term
-using SymbolicUtils: hasmetadata, setmetadata, getmetadata
-
-import Base: +, -, *, /, ^, ==, ≤, ≥, <=, >=, ∈
-import Base: isequal, hash, adjoint, isless, zero, one
-import Base: iterate, getindex, size, iszero, isone, length
+import Base: +, -, *, /, ^
 import LinearAlgebra as la
-import LinearAlgebra: dot, ⋅
+import LinearAlgebra: tr, ⋅
+import TermInterface: maketerm, metadata
+import SymbolicUtils
+import SymbolicUtils: Term, FnType, Rewriters
+import SymbolicUtils: symtype, @rule, issym
+import SymbolicUtils: iscall, operation, arguments
+import JuMP, Hypatia, Clarabel
+import MathOptInterface as MOI
 
 # ------------------------------------------------------
 # INCLUDE

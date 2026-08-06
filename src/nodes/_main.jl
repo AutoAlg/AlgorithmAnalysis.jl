@@ -39,7 +39,7 @@ const → = function (x, y)
     Term{Transition{T1}}(→, [x, y])
 end
 
-leaf(T::DataType, sym::Symbol) = Sym{T}(sym)
+leaf(T::DataType, sym::Symbol) = SymbolicUtils.Sym{T}(sym)
 branch(T::DataType, sym::Symbol, op, args) = (t=Term{T}(op, args); set_id(t, sym); t)
 to_symbolic(x::Any) = convert(Node, x)
 is_constant(x::Node) = iscall(x) && isequal(operation(x), constant)

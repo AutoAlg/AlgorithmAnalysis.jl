@@ -1,4 +1,4 @@
-export R, Rⁿ, Sⁿ
+export R, Rⁿ, Sⁿ, tr, ⋅
 
 abstract type Field <: NodeType end
 abstract type VectorSpace{F} <: NodeType end
@@ -62,9 +62,9 @@ field(::Node{R}) = R
 field(::Type{Sⁿ}) = R
 field(::Node{Sⁿ}) = R
 
-zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
-zero(::Type{R}) = Term{R}(zero, [])
-one(::Type{R}) = Term{R}(one, [])
+Base.zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
+Base.zero(::Type{R}) = Term{R}(zero, [])
+Base.one(::Type{R}) = Term{R}(one, [])
 R(val::Real) = Term{R}(constant, [val])
 R(x::Node{<:Real}) = R(value(x))
 R(x::Node{R}) = x
@@ -89,11 +89,26 @@ function Base.convert(::Type{<:Node}, A::Matrix)
     Sⁿ(Base.convert.(Node, A))
 end
 
+"""
+    tr(A)
+
+Trace of a symbolic matrix.
+"""
 tr(A::Node{Sⁿ}) = Term{R}(tr, [A])
-tr(A::Matrix) = la.tr(A)
+# tr(A::Matrix) = la.tr(A)
+
+"""
+    ⋅(x,y)
+    x ⋅ y
+
+Inner product of two vectors.
+- For scalars, this is standard multiplication.
+- For vectors, this is `x'(y)`.
+- For matrices, this is `tr(A * B)`.
+"""
 ⋅(A::Node{Sⁿ}, B::Node{Sⁿ}) = arguments(A) ⋅ arguments(B) # tr(A*B)
 
-function size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
+function Base.size(A::Node{Sⁿ}, i::Union{Int, Missing} = missing)
     n = Integer(sqrt(length(arguments(A))))
     if ismissing(i)
         (n,n)
@@ -115,8 +130,6 @@ end
 /(x::T, y::T) where {F<:Field, T<:Node{F}} = Term{F}(/, [x, y])
 -(x::Node{F}) where {F<:Field} = Term{F}(-, [x])
 ⋅(x::T...) where {F<:Field, T<:Node{F}} = *(x...)
-
-
 
 function +(u::Node{V}, v::Node{V}) where {V<:VectorSpace}
     return Term{V}(+, [u, v])
@@ -144,12 +157,11 @@ function Base.adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
 end
 
 function Base.adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
-    # If it's already an adjoint term tree, peel it off to prevent double nesting
+    # the adjoint of the adjoint is the original object
     if iscall(f) && isequal(operation(f), adjoint)
         return arguments(f)[1]
     end
     return Term{V}(adjoint, [f])
-    # return Sym{V}( Symbol(f, "'") )
 end
 
 Base.literal_pow(::typeof(^), x::Node{<:VectorSpace}, ::Val{2}) = x'(x)
@@ -177,6 +189,6 @@ function mat(v::AbstractVector)
 end
 
 mat(A::Node{<:MatrixSpace}) = mat(arguments(A))
-size(A::Node{<:MatrixSpace}) = size(mat(A), 1)
+Base.size(A::Node{<:MatrixSpace}) = size(mat(A), 1)
 
-const Gram = Sym{FnType{Tuple{Vararg{Rⁿ}}, MatrixSpace{R}, Nothing}}(:Gram)
+const Gram = SymbolicUtils.Sym{FnType{Tuple{Vararg{Rⁿ}}, MatrixSpace{R}, Nothing}}(:Gram)

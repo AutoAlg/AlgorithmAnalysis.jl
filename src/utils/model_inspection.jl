@@ -1,5 +1,3 @@
-using JuMP
-
 function inspect(model::JuMP.Model, tolerance = 1e-6)
     status = JuMP.termination_status(model)
     println("-"^50)
@@ -10,7 +8,7 @@ function inspect(model::JuMP.Model, tolerance = 1e-6)
     println("-"^50)
     println("VARIABLES")
     for var in JuMP.all_variables(model)
-        @printf("%20s : %.6f\n", JuMP.name(var), JuMP.value(var))
+        println(JuMP.name(var), JuMP.value(var))
     end
     println("-"^50)
     println("CONSTRAINTS")
