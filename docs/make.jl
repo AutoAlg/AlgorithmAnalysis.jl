@@ -6,8 +6,11 @@ push!(LOAD_PATH,"../src/")
 
 # Ensure the docs environment is active
 Pkg.activate(@__DIR__)
+Pkg.develop(PackageSpec(path="."))
+Pkg.instantiate()
 
-using AlgorithmAnalysis, Documenter, DocumenterCitations, DocumenterInterLinks, DocStringExtensions
+using AlgorithmAnalysis, Documenter, DocumenterCitations
+using DocumenterInterLinks, DocStringExtensions
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "references.bib"))
 
