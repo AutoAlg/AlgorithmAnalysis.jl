@@ -6,11 +6,13 @@ on:
       - main
     tags: ['*']
   pull_request:
+  workflow_dispatch: 
 
 jobs:
   build:
     name: Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       statuses: write

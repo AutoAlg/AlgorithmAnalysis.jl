@@ -1,6 +1,6 @@
 name = "AlgorithmAnalysis"
 uuid = "baa24b6d-515a-48bb-b1d2-0fdd27c035f8"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Bryan Van Scoy <bvanscoy@miamioh.edu>"]
 
 [deps]
