@@ -54,3 +54,11 @@ bsmin
 is_safe
 s_procedure
 ```
+
+## Testing / Documentation Harness
+
+```@docs
+TestFileDescriptor
+Reference
+ResultFile
+```

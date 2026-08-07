@@ -1,5 +1,2 @@
-using Pkg;
-
-Pkg.activate(@__DIR__)
-
-using AlgorithmAnalysis, LiveServer; servedocs()
+using AlgorithmAnalysis, LiveServer;
+servedocs()
