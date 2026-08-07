@@ -1,4 +1,4 @@
-<svg width="2950" height="450" viewBox="0 0 2950 450" xmlns="http://www.w3.org/2000/svg">
+<svg width="4500" height="450" viewBox="0 0 4500 450" xmlns="http://www.w3.org/2000/svg">
 
   <defs>
     <style type="text/css">
@@ -50,8 +50,8 @@
     <path d="M 140 140 Q 170 110 210 120" class="gray" style="stroke: white" stroke-width="15" stroke-linecap="round" fill="none" opacity="0.3" />
   </g>
 
-  <text x="520" y="50%" class="title gray" alignment-baseline="middle">AlgorithmAnalysis.jl</text>
+  <text x="520" y="50%" class="title gray" alignment-baseline="middle">OptimizationAlgorithmAnalysis.jl</text>
 
   <!-- bounding box -->
-  <!-- <rect x="0" y="0" width="2950" height="450" stroke="green" stroke-width="3" fill="none"></rect> -->
+  <!-- <rect x="0" y="0" width="4500" height="450" stroke="green" stroke-width="3" fill="none"></rect> -->
 </svg>
