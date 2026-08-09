@@ -38,7 +38,7 @@ macro alg(ex)
         T = esc(_T)
         sym = QuoteNode(_var)
         return quote
-            $var = AlgorithmAnalysis.leaf($T, $sym); nothing
+            $var = OptimizationAlgorithmAnalysis.leaf($T, $sym); nothing
         end
     end
 
@@ -92,7 +92,7 @@ macro alg(ex)
             sym = QuoteNode(x.args[1])
 
             return quote
-                $lhs = AlgorithmAnalysis.set_id(AlgorithmAnalysis.to_symbolic($rhs), $sym); nothing
+                $lhs = OptimizationAlgorithmAnalysis.set_id(OptimizationAlgorithmAnalysis.to_symbolic($rhs), $sym); nothing
             end
 
         # Fallback

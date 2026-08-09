@@ -9,7 +9,7 @@ Pkg.activate(@__DIR__)
 Pkg.develop(PackageSpec(path="."))
 Pkg.instantiate()
 
-using AlgorithmAnalysis, Documenter, DocumenterCitations
+using OptimizationAlgorithmAnalysis, Documenter, DocumenterCitations
 using DocumenterInterLinks, DocStringExtensions
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "references.bib"))
@@ -47,7 +47,7 @@ links = InterLinks(
 # end
 
 makedocs(
-    sitename = "AlgorithmAnalysis",
+    sitename = "OptimizationAlgorithmAnalysis",
     format = Documenter.HTML(
         edit_link = "main",
         prettyurls = false,
@@ -55,7 +55,7 @@ makedocs(
         collapselevel = 1,
         ansicolor = true,
     ),
-    modules = [AlgorithmAnalysis],
+    modules = [OptimizationAlgorithmAnalysis],
     # checkdocs = :exports,
     plugins = [bib, links],
     pages = [
@@ -76,7 +76,7 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/AutoAlg/AlgorithmAnalysis.jl.git",
+    repo = "github.com/AutoAlg/OptimizationAlgorithmAnalysis.jl.git",
     devbranch = "main",
     push_preview = true
 )
