@@ -2,7 +2,7 @@
 
 Iterative algorithms can be interpreted as dynamical systems, which can then be analyzed using tools from control theory. With this interpretation, convergence of the algorithm corresponds to stability of the system. We now describe one of the main tools to certify stability of a dynamical system: searching for a Lyapunov function.
 
-!!! info "Implementation in AlgorithmAnalysis.jl"
+!!! info "Implementation in OptimizationAlgorithmAnalysis.jl"
     This section provides a mathematical description of the Lyapunov approach to algorithm analysis. To see how this approach is implemented in the package, please see the [overview](./../manual/overview.md) section of the manual.
 
 !!! info "Prerequisite"

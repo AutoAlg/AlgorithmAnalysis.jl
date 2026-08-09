@@ -1,21 +1,21 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.png">
-  <img alt="AlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.svg">
+  <img alt="OptimizationAlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.svg">
 </picture>
 
-[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/dev/)
-[![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://AutoAlg.github.io/OptimizationAlgorithmAnalysis.jl/dev/)
+[![CI](https://github.com/AutoAlg/OptimizationAlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/OptimizationAlgorithmAnalysis.jl/actions/workflows/CI.yml)
 
-AlgorithmAnalysis.jl is a Julia package for the automated analysis of algorithms.
+OptimizationAlgorithmAnalysis.jl is a Julia package for the automated analysis of optimization algorithms.
 
-This package provides a generic way to analyze algorithms in a systematic manner in the [Julia programming language](https://julialang.org/). Algorithm analysis seeks to find a mathematically proven guarantee of an algorithm's performance over a class of problems. AlgorithmAnalysis.jl includes both the performance estimation (PEP) and control theoretic methodologies to analysis.
+This package provides a generic way to analyze optimization algorithms in a systematic manner in the [Julia programming language](https://julialang.org/). Algorithm analysis seeks to find a mathematically proven guarantee of an algorithm's performance over a class of problems. OptimizationAlgorithmAnalysis.jl includes both the performance estimation (PEP) and control theoretic methodologies to analysis.
 
 ## Installation
 
 The package can be installed using the Julia package manager:
 ```julia
-import Pkg; Pkg.add("AlgorithmAnalysis")
+import Pkg; Pkg.add("OptimizationAlgorithmAnalysis")
 ```
 
 ## Example
@@ -23,7 +23,7 @@ import Pkg; Pkg.add("AlgorithmAnalysis")
 This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing L-smooth and μ-strongly convex functions.
 
 ```julia
-using AlgorithmAnalysis
+using OptimizationAlgorithmAnalysis
 
 @alg begin
     α, μ, L, ρ ∈ R

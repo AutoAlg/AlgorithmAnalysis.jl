@@ -1,18 +1,18 @@
 # Overview
 
-Algorithms are mathematical descriptions of computation. AlgorithmAnalysis.jl implements a domain-specific language (DSL) that enables users to represent algorithms symbolically with syntax that closely resembles their mathematical description, and then manipulate the algorithm both symbolically and numerically. We now provide an overview of this process; for more details please see the [API](./../api/index.md).
+Algorithms are mathematical descriptions of computation. OptimizationAlgorithmAnalysis.jl implements a domain-specific language (DSL) that enables users to represent algorithms symbolically with syntax that closely resembles their mathematical description, and then manipulate the algorithm both symbolically and numerically. We now provide an overview of this process; for more details please see the [API](./../api/index.md).
 
 ```@meta
 ShareDefaultModule = true
 ```
 
 ```@setup
-using AlgorithmAnalysis
+using OptimizationAlgorithmAnalysis
 ```
 
 ## Symbolics
 
-Each mathematical object is a symbolic expression in some space. AlgorithmAnalysis defines several common spaces, such as [`R`](@ref) for the field of real numbers, [`Rⁿ`](@ref) for a real finite-dimensional vector space, and [`Prop`](@ref) for the set of propositions. Following standard mathematical notation, we can create variables in a space using the [`@alg`](@ref) macro as follows:
+Each mathematical object is a symbolic expression in some space. OptimizationAlgorithmAnalysis defines several common spaces, such as [`R`](@ref) for the field of real numbers, [`Rⁿ`](@ref) for a real finite-dimensional vector space, and [`Prop`](@ref) for the set of propositions. Following standard mathematical notation, we can create variables in a space using the [`@alg`](@ref) macro as follows:
 ```@repl
 @alg a ∈ R
 @alg u ∈ Rⁿ
@@ -52,13 +52,13 @@ u^2     # squared norm of u
 ```
 The inner product and norm produce scalars in `R`. The inner product uses the function evaluation notation `u'(v)` since the adjoint `u'` of a vector is a linear functional `Rⁿ → R` which can then be evaluated at vectors to produce scalars. The notation `u^2` is not standard mathematical notation, but is a shorthand for `‖u‖²`.
 
-AlgorithmAnalysis can represent constraints on expressions as propositions. For instance, the proposition that two expressions are equal is formed as:
+OptimizationAlgorithmAnalysis can represent constraints on expressions as propositions. For instance, the proposition that two expressions are equal is formed as:
 ```@repl
 a == 0
 ```
 
 !!! warning
-    To follow standard mathematical notation as closely as possible, AlgorithmAnalysis overloads `==` for propositional equality. As such, it should *not* be used to test for equality of two expression. Instead, use `isequal(x,y)` to check if two expressions are the same.
+    To follow standard mathematical notation as closely as possible, OptimizationAlgorithmAnalysis overloads `==` for propositional equality. As such, it should *not* be used to test for equality of two expression. Instead, use `isequal(x,y)` to check if two expressions are the same.
 
 We can also create inequality constraints on real scalars:
 ```@repl
@@ -74,7 +74,7 @@ A ⪰ 0
 
 ## Numerics
 
-While symbolic manipulations enable us to specify algorithms, analyzing them often requires numeric computation. To mix symbolic and numeric computations, AlgorithmAnalysis uses scoped values to construct a local scope in which symbolic expressions are instantiated with numeric values. As a simple example, we can substitute a numeric value for a parameter:
+While symbolic manipulations enable us to specify algorithms, analyzing them often requires numeric computation. To mix symbolic and numeric computations, OptimizationAlgorithmAnalysis uses scoped values to construct a local scope in which symbolic expressions are instantiated with numeric values. As a simple example, we can substitute a numeric value for a parameter:
 ```julia
 @alg let
     a ∈ R
@@ -126,7 +126,7 @@ end
 
 ## Transformations
 
-At this point, AlgorithmAnalysis can be viewed as a domain-specific language for optimization, similar to other DSLs such as JuMP and Convex. The main benefits come when combining symbolic and numeric computations together, which can create emergent behavior that can be useful in analyzing algorithms. To that end, consider the following optimization problem:
+At this point, OptimizationAlgorithmAnalysis can be viewed as a domain-specific language for optimization, similar to other DSLs such as JuMP and Convex. The main benefits come when combining symbolic and numeric computations together, which can create emergent behavior that can be useful in analyzing algorithms. To that end, consider the following optimization problem:
 ```@repl
 @alg begin
     α, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
