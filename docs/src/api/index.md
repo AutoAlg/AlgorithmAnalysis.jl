@@ -1,6 +1,6 @@
 # API
 
-This page lists the public API of OptimizationAlgorithmAnalysis.jl. For an introduction to the package, please see the [Manual](./../manual/overview.md).
+This page lists the public API of AlgorithmAnalysis.jl. For an introduction to the package, please see the [Manual](./../manual/overview.md).
 
 ## Spaces
 

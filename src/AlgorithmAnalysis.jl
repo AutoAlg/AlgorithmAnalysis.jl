@@ -1,4 +1,4 @@
-module OptimizationAlgorithmAnalysis
+module AlgorithmAnalysis
 
 # ------------------------------------------------------
 # IMPORT

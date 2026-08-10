@@ -2,7 +2,7 @@
 
 We now provide an overview of the performance estimation problem (PEP) approach to algorithm analysis. The PEP approach formulates the problem of finding the sequence of iterates and the problem instance for which a given algorithm attains its worst-case behavior in terms of a specified measure of performance over some finite number of iterations [drori-teboulle,pep](@cite).
 
-!!! info "Implementation in OptimizationAlgorithmAnalysis.jl"
+!!! info "Implementation in AlgorithmAnalysis.jl"
     This section provides a mathematical description of the PEP approach to algorithm analysis. To see how this approach is implemented in the package, please see the [overview](./../manual/overview.md) section of the manual.
 
 
@@ -53,7 +53,7 @@ A performance estimation problem (PEP) is an optimization problem whose solution
 ```
 
 !!! tip
-    Here we write the algorithm as depending on only a single oracle. It is trivial to extend this to multiple oracles, and OptimizationAlgorithmAnalysis can analyze algorithms with any number of oracles.
+    Here we write the algorithm as depending on only a single oracle. It is trivial to extend this to multiple oracles, and AlgorithmAnalysis can analyze algorithms with any number of oracles.
 
 At iteration $k$, the next iterate $x_{k+1}$ is constructed from the initial condition $x_0$ and the oracle applied to all the previous iterates, $o(x_0),\ldots,o(x_k)$. Given an oracle class $\mathcal{O}$, a black-box algorithm $A$, and an initial point $x_0$, a typical PEP has the form
 ```math
@@ -145,7 +145,7 @@ The optimal value is the exact worst-case performance after $N$ iterations over 
     ```
     This is a semidefinite program when $n \geq 6$, as the rank constraint is vacuous in that case. Also, the problem can be simplified since the constraint $G_{x_* x_*} = 0$ along with $G\succeq 0$ imply that the corresponding row and column of the Gram matrix must be zero and therefore could be removed from the optimization problem. The Gram matrix is then in $\mathbb{R}^{5\times 5}$, in which case the rank constraint is vacuous if $n\geq 5$.
 
-As the previous example illustrates, the ideas used to transform the PEP into a convex program are quite simple, while the details of doing so can be quite tedious. This is precisely what OptimizationAlgorithmAnalysis does: it allows users to easily construct the performance estimation problem and then uses these techniques behind the scenes to do the analysis and return the result.
+As the previous example illustrates, the ideas used to transform the PEP into a convex program are quite simple, while the details of doing so can be quite tedious. This is precisely what AlgorithmAnalysis does: it allows users to easily construct the performance estimation problem and then uses these techniques behind the scenes to do the analysis and return the result.
 
 !!! tip "Performance estimation as optimization equivalence"
     The fundamental idea behind performance estimation is the equivalence of two optimization problems involving an oracle and its interpolation conditions. Let $X$ and $Y$ be sets, and consider an oracle class $\mathcal{O}$ with domain $X$ and codomain $Y$, a function $f : X^n\times Y^n\to\mathbb{R}$, and a predicate $c : X^n\times Y^n\to\text{Prop}$, where $\text{Prop}$ is the set of propositions. Consider the following optimization problem
