@@ -283,7 +283,7 @@ end;
 ```
 While `certify` constructed the search for a Lyapunov certificate for a particular rate, we often want to compute the fastest (smallest) rate that can be certified. This can be constructed as:
 ```@repl
-opt = rate(con, perf)
+opt = rate(perf, con)
 ```
 Evaluating this node performs a bisection search to find the smallest rate for which `certify` is true:
 ```@repl
