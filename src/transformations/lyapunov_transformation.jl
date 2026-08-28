@@ -29,7 +29,7 @@ where the performance measure and rate are specified by the node.
 """
 function lyapunov_transformation(prob::Node{LyapunovCertificate})
     
-    con, perf, ρ = constraint(prob), performance(prob), rate(prob)
+    ρ, perf, con = rate(prob), performance(prob), constraint(prob)
 
     @info "Applying Lyapunov transformation to performance measure $performance with rate $ρ"
 

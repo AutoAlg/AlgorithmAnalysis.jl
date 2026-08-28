@@ -58,7 +58,7 @@ a == 0
 ```
 
 !!! warning
-    To follow standard mathematical notation as closely as possible, AlgorithmAnalysis overloads `==` for propositional equality. As such, it should *not* be used to test for equality of two expression. Instead, use `isequal(x,y)` to check if two expressions are the same.
+    To follow standard mathematical notation as closely as possible, AlgorithmAnalysis overloads `==` for propositional equality. As such, it should *not* be used to test for equality of two expressions. Instead, use `isequal(x,y)` to check if two expressions are identical.
 
 We can also create inequality constraints on real scalars:
 ```@repl
@@ -86,7 +86,7 @@ end
 ```
 This code constructs a scalar `a`, defines a local scope in which it has the value `2`, and then evaluates it within this scope. Outside of this scope, however, `a` is still a symbolic variable.
 
-We can also formulate symbolic optimization problems and then solve them numerically use JuMP. For instance, the following feasibility problem is (trivially) true:
+We can also formulate symbolic optimization problems and then solve them numerically using JuMP. For instance, the following feasibility problem is (trivially) true:
 ```julia
 @alg let
     x ∈ R
@@ -96,7 +96,7 @@ We can also formulate symbolic optimization problems and then solve them numeric
     end
 end
 ```
-This construct a feasibility problem using [`feasible`](@ref), defines a local scope in which symbolic expressions are evaluated using a JuMP model using [`with_numerics`](@ref), and then solves the feasibility problem within this scope to obtain the boolean literal `true`. While these examples are quite simple, we can use the same ideas to solve more general linear programs:
+This constructs a feasibility problem using [`feasible`](@ref), defines a local scope in which symbolic expressions are evaluated using a JuMP model using [`with_numerics`](@ref), and then solves the feasibility problem within this scope to obtain the boolean literal `true`. While these examples are quite simple, we can use the same ideas to solve more general linear programs:
 ```julia
 @alg let
     x, y ∈ R
@@ -174,7 +174,7 @@ with_numerics(parameters = Dict(α => 0.075, L => 10.0)) do
     evaluate(final_opt)
 end
 ```
-While we manually selected which transformations to apply and in what order (smooth convex interpolation followed by the gram transformation), this process can be *automated*. These transformations and more are implemented in [`simplify`](@ref), which automatically reconstructs the final semidefinite program from the original optimization problem as:
+While we manually selected which transformations to apply and in what order (smooth convex interpolation followed by the Gram transformation), this process can be *automated*. These transformations and more are implemented in [`simplify`](@ref), which automatically reconstructs the final semidefinite program from the original optimization problem as:
 ```@repl
 final_opt = simplify(opt);
 ```
@@ -232,7 +232,7 @@ The main algorithmic update is the first transition, `t1 = x → x₊` where `x`
 Given these symbolic expressions, we can symbolically construct the problem of searching for a certificate that guarantees convergence of the algorithm with a particular rate:
 ```@repl
 @alg ρ ∈ R
-prob = certify(con, perf, ρ)
+prob = certify(ρ, perf, con)
 ```
 This high-level symbolic object represents searching for a Lyapunov-based stability certificate for the given rate, performance measure, and constraint. Before formulating the search for a Lyapunov function that certifies stability, however, we must first apply several transformations to make the problem tractable. As before, the problem contains the function `f` as a variable, which cannot be used as a numeric decision variable. Instead, we replace the function with the sector bound:
 ```@repl
@@ -283,7 +283,7 @@ end;
 ```
 While `certify` constructed the search for a Lyapunov certificate for a particular rate, we often want to compute the fastest (smallest) rate that can be certified. This can be constructed as:
 ```@repl
-opt = rate(con, perf)
+opt = rate(perf, con)
 ```
 Evaluating this node performs a bisection search to find the smallest rate for which `certify` is true:
 ```@repl

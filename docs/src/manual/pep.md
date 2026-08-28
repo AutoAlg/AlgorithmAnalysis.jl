@@ -16,7 +16,7 @@ The automated analysis methodology applies to *black-box* algorithms, which are 
 
 ## Interpolation
 
-The main idea behind both the analysis is to replace all oracles with their *interpolation conditions* [pep](@cite). Consider a class $\mathcal{O}$ of oracles, where each oracle in $\mathcal{O}$ is a set-valued function from $X$ to $Y$. Consider also a set of points $S \subset X\times Y$, where each element of $S$ has the form $(x,y)$ with $x\in X$ and $y\in Y$. The interpolation conditions are necessary and sufficient conditions on the set $S$ for there to exist an oracle $o\in\mathcal{O}$ that interpolates the data:
+The main idea behind the analysis is to replace all oracles with their *interpolation conditions* [pep](@cite). Consider a class $\mathcal{O}$ of oracles, where each oracle in $\mathcal{O}$ is a set-valued function from $X$ to $Y$. Consider also a set of points $S \subset X\times Y$, where each element of $S$ has the form $(x,y)$ with $x\in X$ and $y\in Y$. The interpolation conditions are necessary and sufficient conditions on the set $S$ for there to exist an oracle $o\in\mathcal{O}$ that interpolates the data:
 ```math
   \text{there exists }o\in\mathcal{O} \text{ such that }y = o(x) \text{ for all }(x,y)\in S.
 ```
@@ -79,14 +79,14 @@ Replacing the oracle with its interpolation conditions then transforms the PEP i
       & \text{$S$ is $\mathcal{O}$-interpolable}
   \end{aligned}
 ```
-The optimal value is the exact worst-case performance after $N$ iterations over the oracle class $\mathcal{O}$. Moreover, this problem is typically *convex* can be solved efficiently, for example, using standard interior point methods [boyd,numerical-optimization](@cite). As the size of the problem grows with the time horizon $N$, the complexity of the analysis grows as well, so the PEP approach is typically only tractable for small $N$.
+The optimal value is the exact worst-case performance after $N$ iterations over the oracle class $\mathcal{O}$. Moreover, this problem is typically *convex* and can be solved efficiently, for example, using standard interior point methods [boyd,numerical-optimization](@cite). As the size of the problem grows with the time horizon $N$, the complexity of the analysis grows as well, so the PEP approach is typically only tractable for small $N$.
 
 !!! example "PEP for gradient descent on convex functions"
     Let $\mathcal{F}$ be the class of differentiable convex functions on $\mathbb{R}^n$, and let $o_f$ be the corresponding first-order oracle. Consider applying gradient descent to an objective function $f\in\mathcal{F}$ with initial condition $x_0\in\mathbb{R}^n$ and constant stepsize $\alpha>0$,
     ```math
       x_{k+1} = x_k - \alpha\,\nabla f(x_k).
     ```
-    Suppose we want to analyze the worst-case value of the performance measure $f(x_1) - f_*$, where $f_*\in\mathbb{R}$ is the optimal value. To make the problem bounded, we add the contraint $\|x_0 - x_*\|^2 \leq 1$ on the initial condition, where $x_*\in\mathbb{R}^n$ is an optimal point. This specifies that the initial condition is at most a distance of one from an optimal solution. The performance estimation problem for this setup is
+    Suppose we want to analyze the worst-case value of the performance measure $f(x_1) - f_*$, where $f_*\in\mathbb{R}$ is the optimal value. To make the problem bounded, we add the constraint $\|x_0 - x_*\|^2 \leq 1$ on the initial condition, where $x_*\in\mathbb{R}^n$ is an optimal point. This specifies that the initial condition is at most a distance of one from an optimal solution. The performance estimation problem for this setup is
     ```math
       \begin{aligned}
         \text{maximize} \quad & f(x_1) - f(x_*) \\
@@ -96,7 +96,7 @@ The optimal value is the exact worst-case performance after $N$ iterations over 
           & f \in \mathcal{F}
       \end{aligned}
     ```
-    with variables $x_0,x_1,x_*\in\mathbb{R}^n$ and $f : \mathbb{R}^n\to\mathbb{R}$. This problem is both non-convex and inifinite dimensional. Replacing the convex function $f\in\mathcal{F}$ with the interpolation conditions for convex functions, the problem is equivalent to
+    with variables $x_0,x_1,x_*\in\mathbb{R}^n$ and $f : \mathbb{R}^n\to\mathbb{R}$. This problem is both non-convex and infinite dimensional. Replacing the convex function $f\in\mathcal{F}$ with the interpolation conditions for convex functions, the problem is equivalent to
     ```math
       \begin{aligned}
         \text{maximize} \quad & f_1 - f_* \\
@@ -131,19 +131,19 @@ The optimal value is the exact worst-case performance after $N$ iterations over 
     with variables
     ```math
       G = \begin{bmatrix}
-        G_{x_0 x_0} & G_{x_0 x_1} & G_{x_0 x_*} & G_{x_0 g_0} G_{x_0 g_1} & G_{x_0 g_*} \\
-        G_{x_1 x_0} & G_{x_1 x_1} & G_{x_1 x_*} & G_{x_1 g_0} G_{x_1 g_1} & G_{x_1 g_*} \\
-        G_{x_* x_0} & G_{x_* x_1} & G_{x_* x_*} & G_{x_* g_0} G_{x_* g_1} & G_{x_* g_*} \\
-        G_{g_0 x_0} & G_{g_0 x_1} & G_{g_0 x_*} & G_{g_0 g_0} G_{g_0 g_1} & G_{g_0 g_*} \\
-        G_{g_1 x_0} & G_{g_1 x_1} & G_{g_1 x_*} & G_{g_1 g_0} G_{g_1 g_1} & G_{g_1 g_*} \\
-        G_{g_* x_0} & G_{g_* x_1} & G_{g_* x_*} & G_{g_* g_0} G_{g_* g_1} & G_{g_* g_*}
+        G_{x_0 x_0} & G_{x_0 x_1} & G_{x_0 x_*} & G_{x_0 g_0} & G_{x_0 g_1} & G_{x_0 g_*} \\
+        G_{x_1 x_0} & G_{x_1 x_1} & G_{x_1 x_*} & G_{x_1 g_0} & G_{x_1 g_1} & G_{x_1 g_*} \\
+        G_{x_* x_0} & G_{x_* x_1} & G_{x_* x_*} & G_{x_* g_0} & G_{x_* g_1} & G_{x_* g_*} \\
+        G_{g_0 x_0} & G_{g_0 x_1} & G_{g_0 x_*} & G_{g_0 g_0} & G_{g_0 g_1} & G_{g_0 g_*} \\
+        G_{g_1 x_0} & G_{g_1 x_1} & G_{g_1 x_*} & G_{g_1 g_0} & G_{g_1 g_1} & G_{g_1 g_*} \\
+        G_{g_* x_0} & G_{g_* x_1} & G_{g_* x_*} & G_{g_* g_0} & G_{g_* g_1} & G_{g_* g_*}
       \end{bmatrix} \in \mathbb{R}^{6\times 6}
     ```
     and
     ```math
       F = \begin{bmatrix} f_0 \\ f_1 \\ f_* \end{bmatrix} \in \mathbb{R}^3.
     ```
-    This is a semidefinite program when $n \geq 6$, as the rank constraint is vacuous in that case. Also, the problem can be simplified since the constraint $G_{x_* x_*} = 0$ along with $G\succeq 0$ imply that the corresponding row and column of the Gram matrix must be zero and therefore could be removed from the optimization problem. The Gram matrix is then in $\mathbb{R}^{5\times 5}$, in which case the rank constraint is vacuous if $n\geq 5$.
+    This is a semidefinite program when $n \geq 6$, as the rank constraint is vacuous in that case. Also, the problem can be simplified since the constraint $G_{x_* x_*} = 0$ along with $G\succeq 0$ implies that the corresponding row and column of the Gram matrix must be zero and therefore could be removed from the optimization problem. The Gram matrix is then in $\mathbb{R}^{5\times 5}$, in which case the rank constraint is vacuous if $n\geq 5$.
 
 As the previous example illustrates, the ideas used to transform the PEP into a convex program are quite simple, while the details of doing so can be quite tedious. This is precisely what AlgorithmAnalysis does: it allows users to easily construct the performance estimation problem and then uses these techniques behind the scenes to do the analysis and return the result.
 
@@ -164,7 +164,7 @@ As the previous example illustrates, the ideas used to transform the PEP into a 
         &&& \text{$\{(x_1,y_1),\ldots,(x_n,y_n)\}$ is $\mathcal{O}$-interpolable}
       \end{aligned}
     ```
-    with variables $x_1,\ldots,x_n\in X$ and $y_1,\ldots,y_n\in Y$. The optimal solutions to each problem are related through the interpolation conditions. The equivalence also holds if the objective function and predicate also depend on additional variables.
+    with variables $x_1,\ldots,x_n\in X$ and $y_1,\ldots,y_n\in Y$. The optimal solutions to each problem are related through the interpolation conditions. The equivalence also holds if the objective function and predicate depend on additional variables.
 
 
 ## References
