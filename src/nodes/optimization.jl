@@ -82,8 +82,8 @@ To search for a Lyapunov certificate, the algorithm must have a state as specifi
 2. `V(x⁺) ≤ rate * V(x)`
 Together, these imply that `performance` decreases by a factor of `rate` at each iteration of the algorithm. To make the search tractable, the Lyapunov candidate is parameterized linearly in the state so that `V(x) = θ ⋅ x` with parameter vector `θ`. This node evaluates to a proposition that specifies whether or not such a Lyapunov certificate exists.
 """
-function certify(con::Node{<:Prop}, perf::Node{R}, rate::Node{R})
-    return Term{LyapunovCertificate}(certify, Any[con, perf, rate])
+function certify(rate::Node{R}, perf::Node{R}, con::Node{<:Prop})
+    return Term{LyapunovCertificate}(certify, Any[rate, perf, con])
 end
 
 """
@@ -91,10 +91,10 @@ end
 
 Construct a Lyapunov certification problem that finds the fastest rate for which a Lyapunov certificate exists. This node evaluates to the minimal rate for which [`certify`](@ref) holds.
 """
-function rate(con::Node{<:Prop}, perf::Node{R})
-    return Term{LyapunovCertificate}(rate, Any[con, perf, nothing])
+function rate(perf::Node{R}, con::Node{<:Prop})
+    return Term{LyapunovCertificate}(rate, Any[nothing, perf, con])
 end
 
-constraint(t::Node{LyapunovCertificate}) = arguments(t)[1]
-performance(con::Node{LyapunovCertificate}) = arguments(con)[2]
-rate(t::Node{LyapunovCertificate}) = arguments(t)[3]
+rate(t::Node{LyapunovCertificate}) = arguments(t)[1]
+performance(t::Node{LyapunovCertificate}) = arguments(t)[2]
+constraint(t::Node{LyapunovCertificate}) = arguments(t)[3]

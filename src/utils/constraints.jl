@@ -28,13 +28,13 @@ end
 function add_constraint(opt::Node{LyapunovCertificate}, new_con::Node{<:Prop})
     con, perf, ρ = constraint(opt), performance(opt), rate(opt)
     op = operation(opt)
-    Term{LyapunovCertificate}(op, [con ∧ new_con, perf, ρ])
+    Term{LyapunovCertificate}(op, [ρ, perf, con ∧ new_con])
 end
 
 function remove_constraint(opt::Node{LyapunovCertificate}, old_con::Node{<:Prop})
-    con, perf, rate = arguments(opt)
+    ρ, perf, con = arguments(opt)
     op = operation(opt)
-    Term{LyapunovCertificate}(op, [remove_constraint(con, old_con), perf, rate])
+    Term{LyapunovCertificate}(op, [ρ, perf, remove_constraint(con, old_con)])
 end
 
 function remove_constraint(opt::Node{LyapunovCertificate}, old_con::Node{Conjunction})
