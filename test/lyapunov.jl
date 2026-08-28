@@ -18,7 +18,7 @@
         opt = rate(perf, con)
     end
 
-    with_parameters(Dict(ρ => 0.8100000001, α => 0.1, μ => 1.0, L => 10.0)) do
+    with_parameters(Dict(ρ => 0.810000001, α => 0.1, μ => 1.0, L => 10.0)) do
         
         tprob = simplify(prob)
 
