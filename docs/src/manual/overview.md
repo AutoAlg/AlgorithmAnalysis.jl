@@ -232,7 +232,7 @@ The main algorithmic update is the first transition, `t1 = x → x₊` where `x`
 Given these symbolic expressions, we can symbolically construct the problem of searching for a certificate that guarantees convergence of the algorithm with a particular rate:
 ```@repl
 @alg ρ ∈ R
-prob = certify(con, perf, ρ)
+prob = certify(ρ, perf, con)
 ```
 This high-level symbolic object represents searching for a Lyapunov-based stability certificate for the given rate, performance measure, and constraint. Before formulating the search for a Lyapunov function that certifies stability, however, we must first apply several transformations to make the problem tractable. As before, the problem contains the function `f` as a variable, which cannot be used as a numeric decision variable. Instead, we replace the function with the sector bound:
 ```@repl
