@@ -14,8 +14,8 @@
         c2 = gs^2 == zero(R)
         con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
         perf = (x - xs)^2
-        prob = certify(con, perf, ρ)
-        opt = rate(con, perf)
+        prob = certify(ρ, perf, con)
+        opt = rate(perf, con)
     end
 
     with_parameters(Dict(ρ => 0.8100000001, α => 0.1, μ => 1.0, L => 10.0)) do
