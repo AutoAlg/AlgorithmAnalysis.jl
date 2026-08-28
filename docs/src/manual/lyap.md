@@ -56,7 +56,7 @@ If we can prove something about this system for any iterates $(x_k,y_k)$ that ar
     ```math
         (g_k - \mu x_k)^\top (g_k - L x_k) \leq 0.
     ```
-    This is a now a *constrained* dynamical system, where the constraint is quadratic in the state. We can instead interpret this as a dynamical system in terms of the Gram matrix,
+    This is now a *constrained* dynamical system, where the constraint is quadratic in the state. We can instead interpret this as a dynamical system in terms of the Gram matrix,
     ```math
         G_k = \begin{bmatrix} \|x_k\|^2 & \langle x_k,g_k\rangle \\ \langle g_k,x_k\rangle & \|g_k\|^2 \end{bmatrix} \in \mathbb{R}^{2\times 2}.
     ```
@@ -106,7 +106,7 @@ To certify convergence, we search for a scalar-valued function $V(\xi)$, called 
 - **Performance condition:** $P(\xi) \leq V(\xi)$ for all $\xi$
 - **Decrease condition:** $V(A\xi+Bu) \leq \rho\,V(\xi)$ for all $\xi$ and $u$ in $K$
 
-If there exists such a function $V(x)$, then we have the chain of inequalities:
+If there exists such a function $V(\xi)$, then we have the chain of inequalities:
 ```math
   P(\xi_k) \leq V(\xi_k) \leq \rho\,V(\xi_{k-1}) \leq \ldots \leq \rho^k\,V(\xi_0).
 ```
@@ -138,14 +138,14 @@ and
 then $V(\xi)$ satisfies the performance and decrease conditions and therefore is a Lyapunov function that guarantees convergence of the performance measure with rate $\rho$.
 
 !!! info "S-Procedure"
-    Recall that our goal is to find a function $V(x)$ that satisfies the performance and decrease inequalities subject to the constraint that the state-input pair belong to the constraint set. A sufficient condition is that there exist multipliers that satisfy the above two inequalities, where the constraint is replaced by a search over the dual cone. This process is called the *S-procedure*.
+    Recall that our goal is to find a function $V(\xi)$ that satisfies the performance and decrease inequalities subject to the constraint that the state-input pair belongs to the constraint set. A sufficient condition is that there exist multipliers that satisfy the above two inequalities, where the constraint is replaced by a search over the dual cone. This process is called the *S-procedure*.
 
 ### Parameterization of Lyapunov Candidates
 
 The search over multipliers that satisfy the corresponding performance and decrease conditions is still intractable, as the function $V$ is a decision variable. To make the problem tractable, we parameterize a suitable class of functions, in which case the search becomes convex. Suppose the performance measure and Lyapunov function candidates are both linear in the state:
 ```math
-  P(x) = \langle p, x\rangle \quad\text{and}\quad
-  V(x) = \langle v, x\rangle
+  P(\xi) = \langle p, \xi\rangle \quad\text{and}\quad
+  V(\xi) = \langle v, \xi\rangle
 ```
 for some vectors $p$ and $v$. For the above inequalities to hold for all $\eta = (\xi,u)$, we must have that
 ```math
@@ -155,7 +155,7 @@ and
 ```math
   (A^* v,B^* v) = \rho\,(v,0) - \mu.
 ```
-In other words, if there exist vector $v$ and multipliers $\lambda\in K^*$ and $\mu\in K^*$ that satisfy the above equations, then the performance measure converges at rate $\rho$. These equations are linear in the decision variables, and the multipliers are constrained to a convex cone (the dual cone). Therefore, this is a semidefinite program that can be solved efficiently.
+In other words, if there exists a vector $v$ and multipliers $\lambda\in K^*$ and $\mu\in K^*$ that satisfy the above equations, then the performance measure converges at rate $\rho$. These equations are linear in the decision variables, and the multipliers are constrained to a convex cone (the dual cone). Therefore, this is a semidefinite program that can be solved efficiently.
 
 
 ## Iterating a System
