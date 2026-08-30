@@ -9,7 +9,6 @@ In particular, if ``\alpha = 2/(L+\mu)``, the rate is ``(\kappa-1)/(\kappa+1)`` 
 ## Tests
 ### Gradient Descent over a Smooth Strongly Convex function
 ```julia
-
 @alg begin
     α, μ, L, ρ ∈ R
     x, xs ∈ Rⁿ
@@ -61,5 +60,4 @@ end
 return all_pass
 ``` 
 ## References
-- Yurii Nesterov. *Lectures on Convex Optimization*. 2018. [doi:10.1007/978-3-319-91578-4](https://doi.org/10.1007/978-3-319-91578-4)
-
+- Reference("10.1007/978-3-319-91578-4", "Theorem 2.1.15")
