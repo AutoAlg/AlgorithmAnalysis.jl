@@ -1,4 +1,17 @@
-![Algorithm Analysis Logo](./assets/logo-with-title-dark.svg)
+```@raw html
+<style>
+  /* Default / Light theme */
+  .logo-dark { display: none !important; }
+  .logo-light { display: inline-block !important; }
+
+  /* Documenter Dark theme */
+  html.theme--documenter-dark .logo-dark { display: inline-block !important; }
+  html.theme--documenter-dark .logo-light { display: none !important; }
+</style>
+
+<img class="logo-light" src="assets/logo-with-title-light.png" alt="AlgorithmAnalysis.jl Logo">
+<img class="logo-dark" src="assets/logo-with-title-dark.png" alt="AlgorithmAnalysis.jl Logo">
+```
 
 [AlgorithmAnalysis.jl](https://github.com/AutoAlg/AlgorithmAnalysis.jl) is a Julia package for the automated analysis of algorithms.
 
@@ -16,33 +29,58 @@ import Pkg; Pkg.add("AlgorithmAnalysis")
 
 ## Example
 
-This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $m$-strongly convex functions.
+This example code finds the worst-case convergence rate of the (squared) distance to optimality of the gradient descent algorithm at minimizing $L$-smooth and $\mu$-strongly convex functions.
 
 ```julia
 using AlgorithmAnalysis
 
 @alg begin
+
+    # variables
     α, μ, L, ρ ∈ R
     x, xs ∈ Rⁿ
-    f ∈ F(Rⁿ)
-    gs = f'(xs)
-    g  = f'(x)
-    x₊ = x - α * g
-    t1 = x → x₊
-    t2 = xs → xs
-    t3 = (f → f) ∧ (f' → f')
-    c1 = sector_bounded(f, μ, L)
-    c2 = gs^2 == zero(R)
-    con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
+    f ∈ differentiable_functional(Rⁿ)
+
+    # algorithm update
+    x₊ = x - α * f'(x)
+
+    # state transitions
+    trans = (x → x₊) ∧ (xs → xs)
+
+    # constraints
+    c1 = smooth_strongly_convex(f, μ, L)
+    c2 = f'(xs)^2 == zero(R)
+    con = c1 ∧ c2
+
+    # performance measure
     perf = (x - xs)^2
-    opt = rate(con, perf)
+    perf₊ = (x₊ - xs)^2
+
+    # performance estimation problem
+    pep = maximize(perf₊, con ∧ (perf ≤ 1))
+
+    # Lyapunov-based stability certification
+    cert = certify(ρ, perf, con ∧ trans)
+
+    # optimal rate that is certifiable (using bisection)
+    ρopt = rate(perf, con ∧ trans)
+end
+
+with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
+
+    isapprox(evaluate(simplify(pep)), 0.81, atol=1e-6)  # true
+end
+
+with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0, ρ => 0.81000001)) do
+
+    evaluate(simplify(cert))  # true
 end
 
 with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
     
-    transformed_opt = simplify(opt)
+    ρopt_simplified = simplify(ρopt)
 
-    evaluate(transformed_opt) ≈ 0.81
+    evaluate(ρopt_simplified) ≈ 0.81  # true
 end
 ```
 
@@ -51,8 +89,6 @@ end
 - **Manual:** describes the data structures used by AlgorithmAnalysis.jl
 
 - **API:** a comprehensive list of all public objects exported by AlgorithmAnalysis.jl
-
-- **Results:** illustrate the analyses on a variety of algorithms and problem classes
 
 - **Developer Guide:** helps get researchers started in how to contribute novel algorithms or analysis techniques
 

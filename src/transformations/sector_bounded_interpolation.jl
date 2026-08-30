@@ -16,7 +16,7 @@ end
 """
     sector_bounded_interpolation(opt::Node)
 
-Given an optimization node, replaces all sector bounded functions with their interpolation conditions.
+Given an optimization node, replaces all sector functions with their interpolation conditions.
 """
 function sector_bounded_interpolation(opt::Node{<:Optimization})
     

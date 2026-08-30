@@ -1,6 +1,4 @@
 export with_parameters, with_additional_parameters
-export get_parameters, is_parameter
-export hasvalue, value
 
 const PARAMETERS = Base.ScopedValues.ScopedValue{Dict}(Dict())
 
@@ -14,13 +12,28 @@ function get_parameter(x::Node)
     end
 end
 
-hasvalue(x::Node) = is_constant(x) || is_parameter(x)
+"""
+    hasvalue(node)
 
+Check if a node has a numeric value, either as a constant, as a parameter, or in a JuMP model with values. Use [`value`](@ref) to get the value of the node.
+"""
+function hasvalue(x::Node)
+    return is_constant(x) || is_parameter(x) || (in_model(x) && JuMP.has_values(model()))
+end
+
+
+"""
+    value(node)
+
+Get the numeric value of a node if available. Throws an error if no value is available. Use [`hasvalue`](@ref) to check if the node has a value.
+"""
 function value(x::Node)
     if is_constant(x)
         return arguments(x)[1]
     elseif is_parameter(x)
         return get_parameters()[x]
+    elseif in_model(x) && JuMP.has_values(model())
+        return get_from_model(x)
     else
         error("$x has no value")
     end

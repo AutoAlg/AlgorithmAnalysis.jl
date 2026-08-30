@@ -50,7 +50,9 @@ function evaluate(node::Node)
     # PREWALK (starting with top-level nodes)
     # -------------------------------------------
     if symtype(node) <: Bisection
-        val, feas, minval, maxval, tol = evaluate.(arguments(node))
+        val = evaluate(arguments(node)[1])
+        feas = arguments(node)[2]
+        minval, maxval, tol = evaluate.(arguments(node)[3:5])
         f(x) = with_numerics(parameters = Dict(val => x)) do
             evaluate(feas)
         end

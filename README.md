@@ -1,4 +1,8 @@
-![Algorithm Analysis Logo](/docs/src/assets/logo-with-title-dark.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/logo-with-title-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/src/assets/logo-with-title-light.png">
+  <img alt="AlgorithmAnalysis.jl Logo" src="docs/src/assets/logo-with-title-light.png">
+</picture>
 
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/dev/)
 [![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)
@@ -22,26 +26,52 @@ This example code finds the worst-case convergence rate of the (squared) distanc
 using AlgorithmAnalysis
 
 @alg begin
+
+    # variables
     α, μ, L, ρ ∈ R
     x, xs ∈ Rⁿ
-    f ∈ F(Rⁿ)
-    g  = f'(x)
-    x₊ = x - α * g
-    t1 = x → x₊
-    t2 = xs → xs
-    t3 = (f → f) ∧ (f' → f')
-    c1 = sector_bounded(f, μ, L)
+    f ∈ differentiable_functional(Rⁿ)
+
+    # algorithm update
+    x₊ = x - α * f'(x)
+
+    # state transitions
+    trans = (x → x₊) ∧ (xs → xs)
+
+    # constraints
+    c1 = smooth_strongly_convex(f, μ, L)
     c2 = f'(xs)^2 == zero(R)
-    con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
+    con = c1 ∧ c2
+
+    # performance measure
     perf = (x - xs)^2
-    opt = rate(con, perf)
+    perf₊ = (x₊ - xs)^2
+
+    # performance estimation problem
+    pep = maximize(perf₊, con ∧ (perf ≤ 1))
+
+    # Lyapunov-based stability certification
+    cert = certify(ρ, perf, con ∧ trans)
+
+    # optimal rate that is certifiable (using bisection)
+    ρopt = rate(perf, con ∧ trans)
+end
+
+with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
+
+    isapprox(evaluate(simplify(pep)), 0.81, atol=1e-6)  # true
+end
+
+with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0, ρ => 0.81000001)) do
+
+    evaluate(simplify(cert))  # true
 end
 
 with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
     
-    transformed_opt = simplify(opt)
+    ρopt_simplified = simplify(ρopt)
 
-    evaluate(transformed_opt) ≈ 0.81
+    evaluate(ρopt_simplified) ≈ 0.81  # true
 end
 ```
 

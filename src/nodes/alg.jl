@@ -1,71 +1,15 @@
-export @alg, @var, @def
-
-# ------------------------------------------------------
-# MACROS
-# ------------------------------------------------------
-
-macro var(ex)
-
-    _var(x) = error("Invalid expression for @var macro: $x")
-    _var(x::LineNumberNode) = x
-
-    function _var(x::Expr)
-        if x.head == :call && length(x.args) == 3 && (x.args[1] == :(∈) || x.args[1] == :in)
-            var = x.args[2]
-            T = x.args[3]
-            sym = QuoteNode(x.args[2])
-            quote
-                $lhs = AlgorithmAnalysis.leaf($T, $sym); nothing
-            end
-        elseif x.head == :block || x.head == :tuple
-            Expr(:block, map(_var, x.args)...)
-        else
-            error("Invalid expression for @var macro: $x")
-        end
-    end
-    
-    return esc(quote
-        $(_var(ex)); nothing
-    end)
-end
-
-macro def(ex)
-
-    _def(x) = error("Invalid expression for @def macro: $x")
-    _def(x::LineNumberNode) = x
-
-    function _def(x::Expr)
-        if x.head == :(=)
-            lhs = x.args[1]
-            rhs = x.args[2]
-            sym = QuoteNode(x.args[1])
-            quote
-                $lhs = $rhs
-                $lhs = AlgorithmAnalysis.set_id($lhs, $sym)
-                nothing
-            end
-        elseif x.head == :block || x.head == :tuple
-            Expr(:block, map(_def, x.args)...)
-        else
-            error("Invalid expression for @def macro: $x")
-        end
-    end
-    
-    return esc(quote
-        $(_def(ex)); nothing
-    end)
-end
+export @alg
 
 """
     @alg ex
 
-Domain-specific language (DSL) for algorithmic computation. Constructs and initializes symbolic variables, expression terms, and state transitions.
+Domain-specific language (DSL) for algorithmic computation. Constructs symbolic variables and assigns symbolic expressions.
 
 # Syntax Rules
 
 1. Variables (`∈` or `in`)
 
-   Declare symbolic variables belonging to a specific set or space:
+   Declare symbolic variables belonging to a specific [space](./../api/index.md#Spaces):
    - Single variable: `x ∈ R` or `x in R`
    - Tuple syntax: `x, y ∈ R`
    - Multiple types on single line: `x ∈ Rⁿ, y ∈ Rᵐ`
@@ -75,24 +19,16 @@ Domain-specific language (DSL) for algorithmic computation. Constructs and initi
    Assign a symbolic expression to a variable:
    - `z = 2x - 3y`
 
-3. Transitions (`→`)
-
-   Define state transitions between two variables:
-   - `t = x → x₊`
-
 All expressions are labeled with the symbol used to represent the quantity in the code. Also, all code constructed by the macro returns `nothing` to suppress verbose output. The macro is often used with `begin..end` or `let...end` blocks to specify multiple lines of statements that are evaluated sequentially.
 
 # Example
 
     @alg let
         # Variables
-        a, b ∈ R, u, v ∈ Rⁿ
+        a ∈ R, u ∈ Rⁿ
 
         # Assignment
-        z = a * u + b * v
-
-        # Transition
-        step = u → v
+        z = a * u
     end
 """
 macro alg(ex)
@@ -155,21 +91,8 @@ macro alg(ex)
             rhs = esc(x.args[2])
             sym = QuoteNode(x.args[1])
 
-            raw_rhs = x.args[2]
-
-            if raw_rhs isa Expr && raw_rhs.head == :call &&
-                length(raw_rhs.args) == 3 && raw_rhs.args[1] == :(→)
-
-                src = esc(raw_rhs.args[2])
-                dst = esc(raw_rhs.args[3])
-                
-                return quote
-                    $lhs = set_id(Term{Transition{symtype($src)}}(→, [$src, $dst]), $sym); nothing
-                end
-            end
-
             return quote
-                $lhs = set_id(to_symbolic($rhs), $sym); nothing
+                $lhs = AlgorithmAnalysis.set_id(AlgorithmAnalysis.to_symbolic($rhs), $sym); nothing
             end
 
         # Fallback

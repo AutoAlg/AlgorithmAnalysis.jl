@@ -1,13 +1,12 @@
-export bsmin
-
 """
-simple binary search
-  f: function that evaluates to true or false
-  a: lower bound
-  b: upper bound
-  tol: tolerance
-Assumes f(a)==false and f(b)==true and f is monotone (only one cross-over point)
-Returns the smallest x in between a and b (within tol) such that f(x)==true.
+    bsmin(f, a, b; tol, verbose)
+
+Binary search. Returns the smallest value between `a` and `b` (within `tol`) such that `f(x)` is true.
+
+## Assumptions
+- `f(a)` is false
+- `f(b)` is true
+- `f` is monotone (only one cross-over point)
 """
 function bsmin(f, a::T, b::T; tol=T(1e-5), verbose=false) where T
     a, b = a > b ? (b, a) : (a, b)

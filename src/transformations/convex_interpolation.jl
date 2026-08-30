@@ -50,8 +50,9 @@ function convex_interpolation(opt::Node{<:Optimization}, f::Node)
         interp = interp ∧ ( f(x) ≥ f(y) + f'(y)'(x-y) )
     end
 
-    new_opt = replace_node(opt, convex(f), interp)
-    new_opt = flatten_evaluations(new_opt, [f, f'])
+    opt = replace_node(opt, convex(f), interp)
+    opt = propagate_and_remove_transitions(opt, [f, f'])
+    opt = flatten_evaluations(opt, [f, f'])
 
-    return new_opt
+    return opt
 end

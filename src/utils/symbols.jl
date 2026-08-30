@@ -1,7 +1,3 @@
-export extract_symbols, get_safe_symbol, is_safe
-export subscript, superscript
-export tostring
-
 function tostring(node::Node)
     buf = IOBuffer()
     show(IOContext(buf, :compact => true), node)

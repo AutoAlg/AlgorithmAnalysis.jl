@@ -1,6 +1,4 @@
-export with_numerics, without_numerics
-export model, active_model, default_model
-export instantiate_in_model
+export with_numerics
 
 const JUMP_MODEL = Base.ScopedValues.ScopedValue{Union{JuMP.GenericModel,Nothing}}()
 
@@ -24,7 +22,7 @@ end
         model_constructor = () -> default_model(T),
         parameters = Dict())
 
-Execute code within a local scope with the given JuMP model with data type `T` and (additional) parameters. Within this scope, use `model()` to access the JuMP model.
+Execute code within a local scope with the given JuMP model with data type `T` and (additional) parameters.
 """
 function with_numerics(code::Function;
     T::DataType = Float64,

@@ -1,5 +1,3 @@
-export s_procedure, multiplier
-
 """
     s_procedure(constraint, ctx, f)
 """
@@ -13,6 +11,13 @@ function s_procedure(constraint::Node{<:Prop}, ctx, f)
     end
     return f, con, ctx
 end
+
+"""
+    multiplier(ctx, prop)
+
+Multiplier for a proposition in a context.
+"""
+function multiplier end
 
 function multiplier(ctx, ::Node{Equality{R}})
     sym = get_safe_symbol(:λ, ctx, force_subscript = true)

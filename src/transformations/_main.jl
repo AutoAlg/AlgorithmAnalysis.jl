@@ -1,10 +1,8 @@
 export simplify
 
-using SymbolicUtils
-using SymbolicUtils.Rewriters: Chain, Postwalk, Fixpoint
-
 include("convex_interpolation.jl")
 include("smooth_convex_interpolation.jl")
+include("smooth_strongly_convex_interpolation.jl")
 include("sector_bounded_interpolation.jl")
 include("gram_transformation.jl")
 include("lyapunov_transformation.jl")
@@ -50,6 +48,7 @@ const theory = [
     # --------------------------------------------------
     @rule ~x::convex_interpolation_is_applicable => convex_interpolation(~x)
     @rule ~x::smooth_convex_interpolation_is_applicable => smooth_convex_interpolation(~x)
+    @rule ~x::smooth_strongly_convex_interpolation_is_applicable => smooth_strongly_convex_interpolation(~x)
     @rule ~x::sector_bound_is_applicable => sector_bounded_interpolation(~x)
     @rule ~x::gram_transformation_is_applicable => gram_transformation(~x)
     @rule ~x::lyapunov_transformation_is_applicable => lyapunov_transformation(~x)
@@ -58,6 +57,10 @@ const theory = [
 """
     simplify(expr)
 
-Simplify an expression using any of the available transformations.
+Simplify an expression using any of the available [transformations](./../api/index.md#Transformations).
 """
-simplify = Fixpoint(Postwalk(Chain(theory)))
+const simplify = SymbolicUtils.Rewriters.Fixpoint(
+    SymbolicUtils.Rewriters.Postwalk(
+        SymbolicUtils.Rewriters.Chain(theory)
+    )
+)

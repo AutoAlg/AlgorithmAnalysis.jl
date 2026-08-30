@@ -1,7 +1,8 @@
-export transitions, apply_transition, propagate_transition, propagate_transitions
-export next, has_next, state
-
-"Extract all transitions from a proposition."
+"""
+    transitions(prop)
+    
+Extract all transitions from a proposition.
+"""
 function transitions(con::Node{Conjunction})
     foldl(∧, filter(t -> symtype(t) <: Transition, arguments(con)), init=satisfied())
 end
@@ -95,4 +96,43 @@ function propagate_transitions(ctx::Node, fs::Vector{<:Node})
         ctx = propagate_transitions(ctx, f)
     end
     return ctx
+end
+
+"""
+    remove_transitions(tree, state)
+
+Remove all transitions with `state` from the symbolic node `tree`.
+"""
+function remove_transitions(tree::Node, state::Node)
+    predicate = node -> node isa Node{<:Transition} && isequal(arguments(node)[1], state)
+    ts = find_nodes(predicate, tree)
+    for t in ts
+        tree = replace_node(tree, t, satisfied())
+    end
+    return tree
+end
+
+function remove_transitions(tree::Node, states::Vector{<:Node})
+    for state in states
+        tree = remove_transitions(tree, state)
+    end
+    return tree
+end
+
+"""
+    propagate_and_remove_transitions(tree, state)
+    propagate_and_remove_transitions(tree, states)
+
+Propagate all transitions of state in the tree and then remove all transitions of the state.
+"""
+function propagate_and_remove_transitions(tree::Node, state::Node)
+    tree = propagate_transitions(tree, state)
+    tree = remove_transitions(tree, state)
+    return tree
+end
+
+function propagate_and_remove_transitions(tree::Node, states::Vector{<:Node})
+    tree = propagate_transitions(tree, states)
+    tree = remove_transitions(tree, states)
+    return tree
 end

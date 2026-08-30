@@ -1,5 +1,5 @@
-/Manifest.toml
+Manifest.toml
 *.so
 *.bat
 *.code-workspace
-docs/builds/
+startup.jl

@@ -1,17 +1,3 @@
-export add_constraint, remove_constraint, replace_constraint
-
-# iterate over conjunctions
-iterate(prop::Node{Conjunction}) = iterate(prop, 1)
-function iterate(prop::Node{Conjunction}, i::Int)
-    args = arguments(prop)
-    if i < 0 || i > length(args)
-        return nothing
-    else
-        return args[i], i+1
-    end
-end
-length(prop::Node{Conjunction}) = length(arguments(prop))
-
 function add_constraint(con::Node{<:Prop}, new::Node{<:Prop})
     return con ∧ new
 end
@@ -26,6 +12,10 @@ function remove_constraint(con::Node{Conjunction}, old::Node{<:Prop})
     cons = foldl(∧, cons)
 end
 
+function replace_constraint(ctx::Node{<:Prop}, old::Node{<:Prop}, new::Node{<:Prop})
+    add_constraint(remove_constraint(ctx, old), new)
+end
+
 # TODO: these should use similarterm to keep metadata
 function add_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
     Term{T}(operation(opt), [objective(opt), constraint(opt) ∧ con])
@@ -38,14 +28,13 @@ end
 function add_constraint(opt::Node{LyapunovCertificate}, new_con::Node{<:Prop})
     con, perf, ρ = constraint(opt), performance(opt), rate(opt)
     op = operation(opt)
-    Term{LyapunovCertificate}(op, [con ∧ new_con, perf, ρ])
+    Term{LyapunovCertificate}(op, [ρ, perf, con ∧ new_con])
 end
 
-
 function remove_constraint(opt::Node{LyapunovCertificate}, old_con::Node{<:Prop})
-    con, perf, rate = arguments(opt)
+    ρ, perf, con = arguments(opt)
     op = operation(opt)
-    Term{LyapunovCertificate}(op, [remove_constraint(con, old_con), perf, rate])
+    Term{LyapunovCertificate}(op, [ρ, perf, remove_constraint(con, old_con)])
 end
 
 function remove_constraint(opt::Node{LyapunovCertificate}, old_con::Node{Conjunction})
@@ -57,6 +46,10 @@ end
 
 function remove_constraint(opt::Node{T}, con::Node{<:Prop}) where {T<:Optimization}
     Term{T}(operation(opt), [objective(opt), remove_constraint(constraint(opt), con)])
+end
+
+function remove_constraint(opt::Node{Feasibility}, con::Node{<:Prop})
+    Term{Feasibility}(feasible, remove_constraint(constraint(opt), con))
 end
 
 function replace_constraint(opt::Node{LyapunovCertificate}, old::Node{<:Prop}, new::Node{<:Prop})
