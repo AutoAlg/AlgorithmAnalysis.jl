@@ -62,8 +62,8 @@ For gradient descent with stepsize ``\alpha`` applied to ``μ``-strongly convex 
     \rho = 1-2\alpha \mu L/(L+\mu) \quad \text{if} \quad 0 < \alpha \leq \frac{2}{L+\mu}.
 ```
 The optiomal step size is found if ``\alpha = 2/(L+\mu)``, with the optimal rate ``\rho = (\kappa-1)/(\kappa+1)`` where ``\kappa = L/\mu``.
-
-this approach is internally implemented by searching for a lyapunov function. For an in depth explination, see [Lyapunov Analysis](./../manual/lyap.md)
+    
+This approach is internally implemented by searching for a Lyapunov function. For an in depth explanation, see [Lyapunov Analysis](./../manual/lyap.md)
 """;
 
 

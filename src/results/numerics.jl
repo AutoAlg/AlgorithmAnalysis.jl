@@ -81,7 +81,9 @@ end
 TestFileDescriptor(
     file_contents=raw"""# Numerics
 
-As a consequence of the types of analysis that the framework needs to perform, we are able to model feasinility problems, linear programing problems, and semidefinite programming problems, Linear programming, and semidefinite programmuing
+As a consequence of the types of analysis that the framework needs to perform, we are able to model Feasibility problems, linear programing problems.
+
+
 """,
     named_tests=[
         "Feasibility" => feasibility_tests_handle,

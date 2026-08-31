@@ -27,7 +27,7 @@ end
 TestFileDescriptor(
     file_contents=raw"""# Gradient Descent via the Performance Estimation method
 
-Using the performance estimation we are able to provuded a bounded convergence rate for a fixed number of steps. 
+Using the performance estimation method we are able to provide a bounded convergence rate for a fixed number of steps. 
 For an in depth explanation, see [Lyapunov Analysis](./../manual/lyap.md)
 """,
     named_tests=[
