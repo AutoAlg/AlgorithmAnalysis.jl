@@ -3,3 +3,4 @@ Manifest.toml
 *.bat
 *.code-workspace
 startup.jl
+.vscode/*
