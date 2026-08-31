@@ -5,7 +5,7 @@ verification_handle = @generate_test_handle function verficiation()
     @alg begin
         α, μ, L, ρ ∈ R
         x, xs ∈ Rⁿ
-        f ∈ F(Rⁿ)
+        f ∈ differentiable_functional(Rⁿ)
         gs = f'(xs)
         g = f'(x)
         x₊ = x - α * g

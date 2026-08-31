@@ -2,7 +2,7 @@ using AlgorithmAnalysis
 
 performance_estimation_handle = @generate_test_handle function performance_estimation()
     @alg begin
-        α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
+        α, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
 
         gs = f'(xs)
         g = f'(x)
