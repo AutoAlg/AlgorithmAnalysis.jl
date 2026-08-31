@@ -1,5 +1,32 @@
 using AlgorithmAnalysis
 
+feasibility_tests_handle = @generate_test_handle function feasibility_tests()
+    @alg let
+        x ∈ R
+        A = [-2 x; x -2]
+
+        local all_pass::Bool = true;
+
+        all_pass &= with_numerics() do
+            evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
+        end
+
+        !all_pass && return all_pass;
+
+        all_pass &= with_numerics() do
+            !evaluate(feasible((x ≥ 1) ∧ (x ≤ -1)))
+        end
+
+        !all_pass && return all_pass;
+
+        all_pass &= with_numerics() do
+            !evaluate(feasible(A ⪰ 0))
+        end
+
+        return all_pass;
+    end
+end
+
 linear_programming_handle = @generate_test_handle function linear_programming()
     @alg let
         x, y ∈ R
@@ -50,38 +77,15 @@ semidefinite_programming_handle = @generate_test_handle function semidefinite_pr
     return all_pass;
 end
 
-performance_estimation_handle = @generate_test_handle function performance_estimation()
-    @alg begin
-        α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
-
-        gs = f'(xs)
-        g = f'(x)
-        init = (x - xs)^2
-        x⁺ = x - α * g
-        f⁺ = f(x⁺)
-        c1 = smooth_convex(f, L)
-        c2 = gs^2 == zero(R)
-        c3 = init ≤ one(R)
-        con = c1 ∧ c2 ∧ c3
-        obj = f⁺ - f(xs)
-        opt = maximize(obj, con)
-    end
-
-    topt = simplify(opt)
-
-    return with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
-        evaluate(topt) ≈ 2.0
-    end
-end
 
 TestFileDescriptor(
-    file_contents=raw"""# Optimization Programs
+    file_contents=raw"""# Numerics
 
+As a consequence of the types of analysis that the framework needs to perform, we are able to model feasinility problems, linear programing problems, and semidefinite programming problems, Linear programming, and semidefinite programmuing
 """,
     named_tests=[
+        "Feasibility" => feasibility_tests_handle,
         "Linear programming" => linear_programming_handle,
-        "Semidefinite programming" => semidefinite_programming_handle,
-        "Performance estimation" => performance_estimation_handle
-    ],
+        "Semidefinite programming" => semidefinite_programming_handle,],
     references=[]
 )

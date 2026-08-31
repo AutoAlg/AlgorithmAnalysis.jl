@@ -55,18 +55,20 @@ end
 
 
 fileContents = raw"""
-# Gradient Descent
+# Gradient Descent via the lyapunov method
 
 For gradient descent with stepsize ``\alpha`` applied to ``μ``-strongly convex and ``L``-smooth functions, the distance to optimality converges at a rate of
 ```math
     \rho = 1-2\alpha \mu L/(L+\mu) \quad \text{if} \quad 0 < \alpha \leq \frac{2}{L+\mu}.
 ```
-In particular, if ``\alpha = 2/(L+\mu)``, the rate is ``(\kappa-1)/(\kappa+1)`` where ``\kappa = L/\mu``.
+The optiomal step size is found if ``\alpha = 2/(L+\mu)``, with the optimal rate ``\rho = (\kappa-1)/(\kappa+1)`` where ``\kappa = L/\mu``.
+
+this approach is internally implemented by searching for a lyapunov function. For an in depth explination, see [Lyapunov Analysis](./../manual/lyap.md)
 """;
 
 
 TestFileDescriptor(
     file_contents=fileContents,
-    named_tests=["Gradient Descent over a Smooth Strongly Convex function" => verification_handle],
+    named_tests=["Gradient Descent over a Smooth Strongly Convex function using the Lyapunov function approach" => verification_handle],
     references=[Reference("10.1007/978-3-319-91578-4", "Theorem 2.1.15")]
 )
