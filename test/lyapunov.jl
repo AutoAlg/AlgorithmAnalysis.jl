@@ -5,7 +5,7 @@
         x, xs ∈ Rⁿ
         f ∈ differentiable_functional(Rⁿ)
         gs = f'(xs)
-        g  = f'(x)
+        g = f'(x)
         x₊ = x - α * g
         t1 = x → x₊
         t2 = xs → xs
@@ -19,7 +19,7 @@
     end
 
     with_parameters(Dict(ρ => 0.810000001, α => 0.1, μ => 1.0, L => 10.0)) do
-        
+
         tprob = simplify(prob)
 
         with_numerics() do
@@ -28,7 +28,7 @@
     end
 
     with_parameters(Dict(ρ => 0.8, α => 0.1, μ => 1.0, L => 10.0)) do
-        
+
         tprob = simplify(prob)
 
         with_numerics() do
@@ -37,7 +37,7 @@
     end
 
     with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
-        
+
         topt = simplify(opt)
 
         @test evaluate(topt) ≈ 0.81

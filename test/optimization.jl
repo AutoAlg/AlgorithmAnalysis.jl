@@ -46,22 +46,22 @@ end
     @alg begin
         α, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
 
-        gs   = f'(xs)
-        g    = f'(x)
+        gs = f'(xs)
+        g = f'(x)
         init = (x - xs)^2
-        x⁺   = x - α * g
-        f⁺   = f(x⁺)
-        c1   = smooth_convex(f, L)
-        c2   = gs^2 == zero(R)
-        c3   = init ≤ one(R)
-        con  = c1 ∧ c2 ∧ c3
-        obj  = f⁺ - f(xs)
-        opt  = maximize(obj, con)
+        x⁺ = x - α * g
+        f⁺ = f(x⁺)
+        c1 = smooth_convex(f, L)
+        c2 = gs^2 == zero(R)
+        c3 = init ≤ one(R)
+        con = c1 ∧ c2 ∧ c3
+        obj = f⁺ - f(xs)
+        opt = maximize(obj, con)
     end
 
     topt = simplify(opt)
 
-    @test with_numerics(T = BigFloat, parameters = Dict(α => big"0.075", L => big"10.0")) do
+    @test with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
         evaluate(topt) ≈ 2.0
     end
 end
