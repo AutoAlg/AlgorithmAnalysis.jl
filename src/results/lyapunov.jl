@@ -16,8 +16,8 @@ verification_handle = @generate_test_handle function verficiation()
         c2 = gs^2 == zero(R)
         con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
         perf = (x - xs)^2
-        prob = certify(con, perf, ρ)
-        opt = rate(con, perf)
+        prob = certify(ρ, perf, con)
+        opt = rate(perf, con)
     end
 
 

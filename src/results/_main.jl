@@ -37,7 +37,7 @@ function ReferenceMetadata(raw::Reference)::ReferenceMetadata
     return ReferenceMetadata(title=title, author_names=author_names, year=year, doi=raw.doi)
 end
 
-function show(io::IO, ref::Reference)
+function Base.show(io::IO, ref::Reference)
     local metadata::ReferenceMetadata = ReferenceMetadata(ref);
 
     println(io, join(metadata.author_names, ", ", " and "), ". *", metadata.title, "*. ", metadata.year, ". [doi:", metadata.doi, "](https://doi.org/$(metadata.doi))")
