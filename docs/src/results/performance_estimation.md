@@ -7,7 +7,7 @@ For an in depth explanation, see [Lyapunov Analysis](./../manual/lyap.md)
 ### Performance estimation
 ```julia
 @alg begin
-    α, L ∈ R, x, xs ∈ Rⁿ, f ∈ F(Rⁿ)
+    α, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
 
     gs = f'(xs)
     g = f'(x)

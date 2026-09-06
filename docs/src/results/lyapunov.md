@@ -15,7 +15,7 @@ This approach is internally implemented by searching for a Lyapunov function. Fo
 @alg begin
     α, μ, L, ρ ∈ R
     x, xs ∈ Rⁿ
-    f ∈ F(Rⁿ)
+    f ∈ differentiable_functional(Rⁿ)
     gs = f'(xs)
     g = f'(x)
     x₊ = x - α * g
@@ -26,8 +26,8 @@ This approach is internally implemented by searching for a Lyapunov function. Fo
     c2 = gs^2 == zero(R)
     con = t1 ∧ t2 ∧ t3 ∧ c1 ∧ c2
     perf = (x - xs)^2
-    prob = certify(con, perf, ρ)
-    opt = rate(con, perf)
+    prob = certify(ρ, perf, con)
+    opt = rate(perf, con)
 end
 
 
@@ -63,4 +63,5 @@ end
 return all_pass
 ``` 
 ## References
-- Reference("10.1007/978-3-319-91578-4", "Theorem 2.1.15")
+- Yurii Nesterov. *Lectures on Convex Optimization*. 2018. [doi:10.1007/978-3-319-91578-4](https://doi.org/10.1007/978-3-319-91578-4)
+

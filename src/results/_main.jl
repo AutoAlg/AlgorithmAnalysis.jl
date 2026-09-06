@@ -108,7 +108,7 @@ last expression in the file
 # Fields
 - `file_contents::String`: The contents of a shown documentation file, must start with the name of the page.
 - `named_tests::Vector{Pair{String, TestHandle}}`: The executable tests that will be executable as tests and shown in the documentation.
-- `references::Vector{Reference}`: A list of [Reference](@ref) objects that should be paired along with the generated documentation.
+- `references::Vector{Reference}`: A list of [Reference](@ref AlgorithmAnalysis.Reference) objects that should be paired along with the generated documentation.
 """
 Base.@kwdef struct TestFileDescriptor
     file_contents::String
