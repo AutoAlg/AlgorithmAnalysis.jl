@@ -14,11 +14,19 @@ Scale{S}(scalar::Float64, scaled::Variable{S}) where {S <: Space} = register!(Sc
 
 struct Sum{S <: Space} <: Variable{S}
     id::ExpressionID
-    left::ExpressionID
-    right::ExpressionID
+    expressions::Vector{ExpressionID}
 end
 
-Sum{S}(left::Variable{S}, right::Variable{S}) where {S <: Space} = register!(Sum{S}(allocate_id!(), left.id, right.id))
+Sum{S}(left::Variable{S}, right::Variable{S}) where {S <: Space} = register!(Sum{S}(allocate_id!(), [left.id, right.id]))
+function Sum{S}(v1::Variable{S}, v2::Variable{S}, rest::Variable{S}...) where {S <: Space}
+    ids::Vector{ExpressionID} = [v1.id, v2.id]
+
+    for r in rest
+        push!(ids, r.id)
+    end
+
+    return register!(Sum{S}(allocate_id!(), ids))
+end
 
 +(left::Variable{S}, right::Variable{S}) where {S <: Space} = Sum{S}(left, right)
 -(left::Variable{S}, right::Variable{S}) where {S <: Space} = left + Scale{S}(-1.0, right)
