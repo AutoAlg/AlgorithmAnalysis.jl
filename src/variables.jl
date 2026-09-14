@@ -12,12 +12,12 @@ abstract type Oracle{Domain<:Space,CoDomain<:Space} <: Expression end
 struct ConcretelyValuedVariable{S<:Space} <: Variable{S}
     id::ExpressionID
 end
-ConcretelyValuedVariable{S}() where {S<:Space} = register!(ConcretelyValuedVariable(allocate_id!()))
+ConcretelyValuedVariable{S}() where {S<:Space} = register!(ConcretelyValuedVariable{S}(allocate_id!()))
 
 const R = ConcretelyValuedVariable{RealSpace};
 const Rⁿ = ConcretelyValuedVariable{RealVectorSpace};
 
-struct OracleEvaluation{Domain<:Spaec,CoDomain<:Space} <: Variable{CoDomain}
+struct OracleEvaluation{Domain<:Space,CoDomain<:Space} <: Variable{CoDomain}
     id::ExpressionID
     oracle_id::ExpressionID
     input_id::ExpressionID
@@ -37,7 +37,7 @@ struct Transpose{S<:Space} <: Variable{DualSpace{S}}
     transposed_id::ExpressionID
 end
 
-function Transpose(variable::Variable{S}) where {S<:Space}
+function Transpose{S}(variable::Variable{S}) where {S<:Space}
     ensure_expressions_are_bound_to_current_context(variable)
     return register!(Transpose{S}(allocate_id!(), variable.id))
 end
@@ -49,7 +49,7 @@ struct InnerProduct{S<:Space} <: Variable{RealSpace}
     right::ExpressionID
 end
 
-function InnerProduct(left::Variable{DualSpace{S}}, right::Variable{S}) where {S<:Space}
+function InnerProduct{S}(left::Variable{DualSpace{S}}, right::Variable{S}) where {S<:Space}
     ensure_expressions_are_bound_to_current_context(left, right)
     return register!(InnerProduct{S}(allocate_id!(), left.id, right.id))
 end
