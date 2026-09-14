@@ -25,13 +25,23 @@ performance_estimation_handle = @generate_test_handle function performance_estim
 end
 
 TestFileDescriptor(
-    file_contents=raw"""# Gradient Descent via the Performance Estimation method
+    file_contents=raw"""# Performance Estimation Gradient Descent
+
+For gradient descent over an ``L``-smooth convex function, a common choice for the step size parameter ``\alpha`` is ``\alpha = \frac{1}{L}``.
+
+Additionally, provided that ``\alpha \leq \frac{1}{L}`` it can be shown that ``f(x⁺) - f(xs) \leq \frac{L}{4LN\alpha + 2} \cdot ||x - xs||^2`` where ``N`` is the number of PEP iterations.
+However, in this simple demonstration, we only show one iteration.
+
+Internally this is implemented by rewriting the constraints on the optimization problem in terms of inner products, and then using a Gram matrix.
 
 Using the performance estimation method we are able to provide a bounded convergence rate for a fixed number of steps. 
-For an in depth explanation, see [Lyapunov Analysis](./../manual/lyap.md)
+For an in depth explanation, see [Performance Estimation](./../manual/pep.md)
 """,
     named_tests=[
         "Performance estimation" => performance_estimation_handle
     ],
-    references=[]
+    references=[
+        Reference("10.1137/15M1009597"),
+        Reference("10.1007/s10107-013-0653-0")
+    ]
 )

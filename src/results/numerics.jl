@@ -5,25 +5,25 @@ feasibility_tests_handle = @generate_test_handle function feasibility_tests()
         x ∈ R
         A = [-2 x; x -2]
 
-        local all_pass::Bool = true;
+        local all_pass::Bool = true
 
         all_pass &= with_numerics() do
             evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
         end
 
-        !all_pass && return all_pass;
+        !all_pass && return all_pass
 
         all_pass &= with_numerics() do
             !evaluate(feasible((x ≥ 1) ∧ (x ≤ -1)))
         end
 
-        !all_pass && return all_pass;
+        !all_pass && return all_pass
 
         all_pass &= with_numerics() do
             !evaluate(feasible(A ⪰ 0))
         end
 
-        return all_pass;
+        return all_pass
     end
 end
 
@@ -44,7 +44,7 @@ linear_programming_handle = @generate_test_handle function linear_programming()
 end
 
 semidefinite_programming_handle = @generate_test_handle function semidefinite_programming()
-    local all_pass::Bool = true;
+    local all_pass::Bool = true
 
     @alg let
         x ∈ R
@@ -55,7 +55,7 @@ semidefinite_programming_handle = @generate_test_handle function semidefinite_pr
         end
     end
 
-    !all_pass && return all_pass;
+    !all_pass && return all_pass
 
     @alg let
         x1, x2, x3 ∈ R
@@ -74,16 +74,15 @@ semidefinite_programming_handle = @generate_test_handle function semidefinite_pr
         end
     end
 
-    return all_pass;
+    return all_pass
 end
 
 
 TestFileDescriptor(
     file_contents=raw"""# Numerics
+As a consequence of the types of analysis that AlgorithmAnalysis.jl needs to perform, we are able to model general linear and semidefinite programming problems.
 
-As a consequence of the types of analysis that the framework needs to perform, we are able to model Feasibility problems, linear programing problems.
-
-
+We are able to model feasibility problems as well as minimization and maximization problems.
 """,
     named_tests=[
         "Feasibility" => feasibility_tests_handle,

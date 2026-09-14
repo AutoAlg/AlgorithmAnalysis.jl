@@ -1,6 +1,6 @@
 using AlgorithmAnalysis
 
-verification_handle = @generate_test_handle function verficiation()
+verification_handle = @generate_test_handle function verification_handle()
 
     @alg begin
         α, μ, L, ρ ∈ R
@@ -21,7 +21,7 @@ verification_handle = @generate_test_handle function verficiation()
     end
 
 
-    local all_pass::Bool = true;
+    local all_pass::Bool = true
 
     with_parameters(Dict(ρ => 0.81, α => 0.1, μ => 1.0, L => 10.0)) do
         tprob = simplify(prob)
@@ -31,7 +31,7 @@ verification_handle = @generate_test_handle function verficiation()
         end
     end
 
-    !all_pass && return false;
+    !all_pass && return false
 
     with_parameters(Dict(ρ => 0.8, α => 0.1, μ => 1.0, L => 10.0)) do
         tprob = simplify(prob)
@@ -41,7 +41,7 @@ verification_handle = @generate_test_handle function verficiation()
         end
     end
 
-    !all_pass && return false;
+    !all_pass && return false
 
     with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
 
@@ -55,20 +55,23 @@ end
 
 
 fileContents = raw"""
-# Gradient Descent via the lyapunov method
+# Lyapunov Function Gradient Descent 
+For gradient descent over a ``\mu``-strongly convex and ``L``-smooth function, the optimal step size, ``\alpha`` is calculated as ``\alpha = \frac{2}{L + \mu}``
+With this selection of ``\alpha`` the optimal convergence rate, ``\rho`` can be recovered as ``\rho = (\kappa-1)/(\kappa+1)`` where ``\kappa = L/\mu``.
 
-For gradient descent with stepsize ``\alpha`` applied to ``μ``-strongly convex and ``L``-smooth functions, the distance to optimality converges at a rate of
+For a slightly more general formulation, one can calculate a specific algorithm's ``\rho``, given that ``\alpha \in (0, \frac{2}{L+\mu}]``, the recovered ``\rho`` can be found to be
 ```math
-    \rho = 1-2\alpha \mu L/(L+\mu) \quad \text{if} \quad 0 < \alpha \leq \frac{2}{L+\mu}.
+    \rho^2 = 1-2\alpha \mu L/(L+\mu)
 ```
-The optiomal step size is found if ``\alpha = 2/(L+\mu)``, with the optimal rate ``\rho = (\kappa-1)/(\kappa+1)`` where ``\kappa = L/\mu``.
-    
-This approach is internally implemented by searching for a Lyapunov function. For an in depth explanation, see [Lyapunov Analysis](./../manual/lyap.md)
+
+Internally, this approach is implemented by searching for a Lyapunov function. For an in depth explanation, see [Lyapunov Analysis](./../manual/lyap.md)
 """;
 
 
 TestFileDescriptor(
     file_contents=fileContents,
     named_tests=["Gradient Descent over a Smooth Strongly Convex function using the Lyapunov function approach" => verification_handle],
-    references=[Reference("10.1007/978-3-319-91578-4", "Theorem 2.1.15")]
+    references=[
+        Reference("10.1007/978-3-319-91578-4", "Theorem 2.1.15"),
+        Reference("10.1137/15M1009597")]
 )
