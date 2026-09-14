@@ -1,6 +1,6 @@
 using AlgorithmAnalysis
 
-verification_handle = @generate_test_handle function verification_handle()
+verification_handle = @generate_test_handle function verification()
 
     @alg begin
         α, μ, L, ρ ∈ R
