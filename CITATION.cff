@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Van Scoy"
+  given-names: "Bryan"
+  orcid: "https://orcid.org/0000-0002-8286-2311"
+title: "AlgorithmAnalysis.jl"
+version: 0.1.2
+date-released: 2026-09-18
+url: "https://github.com/AutoAlg/AlgorithmAnalysis.jl"
