@@ -6,7 +6,7 @@
 
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://AutoAlg.github.io/AlgorithmAnalysis.jl/dev/)
 [![CI](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/AutoAlg/AlgorithmAnalysis.jl/actions/workflows/CI.yml)
-[![DOI](https://zenodo.org/badge/1225921776.svg)](https://doi.org/10.5281/zenodo.22837128)
+[![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.22837128-blue)](https://doi.org/10.5281/zenodo.22837128)
 
 AlgorithmAnalysis.jl is a [Julia](https://julialang.org/) package for the automated analysis of algorithms. This package enables users to specify algorithms and their analyses in a domain specific language, transform problems symbolically, and then solve the simplified problem numerically to obtain a mathematical bound on the performance of the algorithm. AlgorithmAnalysis.jl includes both the performance estimation (PEP) and control theoretic (Lyapunov-based) methodologies to analysis. To learn more, see the [documentation](https://AutoAlg.github.io/AlgorithmAnalysis.jl/dev/).
 
