@@ -67,10 +67,8 @@ with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0, ρ => 0.8100000
 end
 
 with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
-    
-    ρopt_simplified = simplify(ρopt)
 
-    evaluate(ρopt_simplified) ≈ 0.81  # true
+    evaluate(simplify(ρopt)) ≈ 0.81  # true
 end
 ```
 
