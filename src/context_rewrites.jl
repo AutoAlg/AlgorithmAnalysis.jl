@@ -41,13 +41,6 @@ function rewrite(
         for r in roots
             rewriteInternal(r, resolved, rule, ctx, new_context)
         end
-
-        # TODO: carry over aliases iff old and new vars are the same type
-        # for (old_id, new_id) in resolved
-        #     if haskey(ctx.expression_aliases, old_id)
-        #         set_alias!(new_context.expressions[new_id], ctx.expression_aliases[old_id], new_context)
-        #     end
-        # end
     end
 
     return RewriteResult(new_context, [resolved[r] for r in roots], resolved)
@@ -59,7 +52,7 @@ function eliminate_unreachable_expressions(
     ctx::AlgorithmContext
 )::RewriteResult
     function rule(old_id::ExpressionID, mappings::Dict{ExpressionID, ExpressionID}, old_ctx::AlgorithmContext, new_ctx::AlgorithmContext)::ExpressionID
-        return replace_expression_context(old_ctx.expressions[old_id], mappings).id
+        return replace_expression_context_with_alias_transfer(old_ctx.expressions[old_id], mappings, old_ctx).id
     end
 
     return rewrite(roots, ctx, rule)

@@ -33,3 +33,13 @@ end
 function replace_expression_context(gf::SSCGradient, mappings::Dict{ExpressionID, ExpressionID})::SSCGradient
     register!(SSCGradient(allocate_id!(), mappings[gf.function_of]))
 end
+
+function replace_expression_context_with_alias_transfer(e::E, mappings::Dict{ExpressionID, ExpressionID}, old_context::AlgorithmContext)::E where {E <: Expression}
+    new_e = replace_expression_context(e, mappings)
+
+    if haskey(old_context.expression_aliases, e.id)
+        set_alias!(new_e, old_context.expression_aliases[e.id])
+    end
+
+    return new_e
+end
