@@ -11,6 +11,9 @@ include("context.jl")
 include("variables.jl")
 include("ssc.jl")
 include("algebra.jl")
+include("dependencies.jl")
+include("replace_expression_context.jl")
+include("context_rewrites.jl")
 
 function test()
     original_context::AlgorithmContext = AlgorithmContext()
@@ -40,9 +43,11 @@ function test()
 
     print(original_context)
 
-    pruned_context::AlgorithmContext = eliminate_unreachable_expressions(original_context, e)
+    result::RewriteResult = eliminate_unreachable_expressions(map((e) -> e.id, e), original_context)
 
-    print(pruned_context)
+    print("\n\n\n")
+
+    print(result)
 
 
 

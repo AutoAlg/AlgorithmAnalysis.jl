@@ -84,3 +84,9 @@ function set_alias!(e::E, alias::String, ctx::AlgorithmContext = get_algorithm_c
 end
 
 try_get_alias(id::ExpressionID, ctx::AlgorithmContext = get_algorithm_context())::Union{String, Nothing} = get(ctx.expression_aliases, id, nothing)
+
+function copy_expression_into_new_context(old_ctx::AlgorithmContext, old_id::ExpressionID, new_ctx::AlgorithmContext)::ExpressionID
+    old_expression::Expression = old_ctx.expressions[old_id]
+
+    # create a new expression of type E, register it and when recreating it take the id from new_ctx
+end
