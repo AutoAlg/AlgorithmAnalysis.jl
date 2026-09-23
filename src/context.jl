@@ -9,6 +9,10 @@ struct ExpressionID
     expression_id::UInt32
 end
 
+function Base.show(io::IO, id::ExpressionID)
+    print(io, "ExpressionID{ctx:$(id.context_id), id:$(id.expression_id)}")
+end
+
 abstract type Expression end
 
 mutable struct AlgorithmContext
@@ -89,4 +93,22 @@ function copy_expression_into_new_context(old_ctx::AlgorithmContext, old_id::Exp
     old_expression::Expression = old_ctx.expressions[old_id]
 
     # create a new expression of type E, register it and when recreating it take the id from new_ctx
+end
+
+
+function Base.show(io::IO, ctx::AlgorithmContext)
+    println("Algorithm Context #$(ctx.context_id), next: $(ctx.next_expression_id)")
+    println("Expressions:")
+    for i in 1:ctx.next_expression_id
+        id::ExpressionID = ExpressionID(ctx.context_id, i)
+
+        if haskey(ctx.expressions, id)
+            e::Expression = ctx.expressions[id]
+            maybeAlias = get(ctx.expression_aliases, id, "")
+
+            println("ID: $(id) | $(maybeAlias)\n$(e)")
+
+        end
+    end
+    println("end")
 end
