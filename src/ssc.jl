@@ -17,3 +17,4 @@ function SSCGradient(f::SSCFunction)
 end
 
 SSC(m::Real, L::Real) = (f = SSCFunction(m, L); (f, SSCGradient(f)))
+

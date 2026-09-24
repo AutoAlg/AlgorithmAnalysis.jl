@@ -12,6 +12,10 @@ function replace_expression_context(product::Product{S}, mappings::Dict{Expressi
     register!(Product{S}(allocate_id!(), mappings[product.left], mappings[product.right]))
 end
 
+function replace_expression_context(::Zero{S}, ::Dict{ExpressionID, ExpressionID})::Zero{S} where {S <: Space}
+    register!(Zero{S}(allocate_id!()))
+end
+
 
 function replace_expression_context(::ConcretelyValuedVariable{S}, ::Dict{ExpressionID, ExpressionID})::ConcretelyValuedVariable{S} where {S <: Space}
     register!(ConcretelyValuedVariable{S}(allocate_id!()))
@@ -33,6 +37,11 @@ end
 function replace_expression_context(gf::SSCGradient, mappings::Dict{ExpressionID, ExpressionID})::SSCGradient
     register!(SSCGradient(allocate_id!(), mappings[gf.function_of]))
 end
+
+function replace_expression_context(c::Constraint, mappings::Dict{ExpressionID, ExpressionID})::Constraint
+    register!(Constraint(allocate_id!(), mappings[c.expression], c.op))
+end
+
 
 function replace_expression_context_with_alias_transfer(e::E, mappings::Dict{ExpressionID, ExpressionID}, old_context::AlgorithmContext)::E where {E <: Expression}
     new_e = replace_expression_context(e, mappings)

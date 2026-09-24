@@ -57,3 +57,29 @@ function eliminate_unreachable_expressions(
 
     return rewrite(roots, ctx, rule)
 end
+
+function constraint_equal_to_zero_eliminator(
+    roots::Vector{ExpressionID},
+    ctx::AlgorithmContext
+)::RewriteResult
+
+    
+
+    equality_constraints::Vector{Constraint} = map(roots) do id::ExpressionID
+        e::Expression = ctx.expressions[id]
+
+        if c isa Constraint
+            c = c::Constraint
+
+            if c.op == EqualConstraint()
+                
+
+            end
+        end
+
+
+
+    end
+
+
+end

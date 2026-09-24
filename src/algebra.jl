@@ -53,3 +53,12 @@ function ^(v::Variable{S}, power::Int)::Variable{RealSpace} where {S <: Space}
     
     return v'*v
 end
+
+struct Zero{S <: Space} <: Variable{S}
+    id::ExpressionID
+end
+
+Zero{S}() where {S <: Space} = register!(Zero{S}(allocate_id!()))
+
+-(::Zero{S}, right::Variable{S}) where {S <: Space} = Scale{S}(-1.0, right)
+-(left::Variable{S}, ::Zero{S}) where {S <: Space} = left

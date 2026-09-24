@@ -11,6 +11,8 @@ include("context.jl")
 include("variables.jl")
 include("ssc.jl")
 include("algebra.jl")
+include("constraint.jl")
+include("interpolation.jl")
 include("dependencies.jl")
 include("replace_expression_context.jl")
 include("context_rewrites.jl")
@@ -19,16 +21,14 @@ function test()
     original_context::AlgorithmContext = AlgorithmContext()
     step_size::Float64 = 0.05
 
-    e = with_context(original_context) do
+    roots = with_context(original_context) do
         f, ∇f = SSC(3, 10)
         set_alias!(f, "f")
         set_alias!(∇f, "∇f")
 
         xs = Rⁿ();
         set_alias!(xs, "xs");
-        # TODO: constraints
 
-        
         x0 = Rⁿ()
         set_alias!(x0, "x0")
 
@@ -38,12 +38,27 @@ function test()
         performance = (x1 - xs)^2;
         set_alias!(performance, "performance");
 
-        [performance]
+        constraints::Vector{Constraint} = Vector{Constraint}()
+        push!(constraints, ∇f(xs) == Zero{RealVectorSpace}())
+
+        points = [xs, x0, x1]
+
+        for x in points
+            for y in points
+                if x.id != y.id
+                    push!(constraints, generate_interpolation_constraint(f, ∇f, x, y))
+                end
+            end
+        end
+
+
+
+        [performance; constraints]
     end
 
     print(original_context)
 
-    result::RewriteResult = eliminate_unreachable_expressions(map((e) -> e.id, e), original_context)
+    result::RewriteResult = eliminate_unreachable_expressions(map((e) -> e.id, roots), original_context)
 
     print("\n\n\n")
 
