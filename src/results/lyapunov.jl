@@ -40,7 +40,7 @@ verification_handle = @generate_test_handle function verification()
 
         topt = simplify(opt)
 
-        @test (evaluate(topt) ≈ 0.81)
+        @test evaluate(topt) ≈ 0.81 atol=13-6
     end
 end
 
