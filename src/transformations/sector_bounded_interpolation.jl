@@ -19,7 +19,7 @@ end
 Given an optimization node, replaces all sector functions with their interpolation conditions.
 """
 function sector_bounded_interpolation(opt::Node{<:Optimization})
-    
+
     predicate = function (c)
         isequal(symtype(c), Prop) && iscall(c) && isequal(operation(c), sector_bounded)
     end
@@ -53,7 +53,7 @@ function sector_bounded_interpolation(opt::Node{<:Optimization}, f::Node, μ::No
     interp = satisfied()
 
     for x ∈ points
-        interp = interp ∧ ( (f'(x) - μ*x)'(f'(x) - L*x) ≤ zero(R) )
+        interp = interp ∧ ((f'(x) - μ*x)'(f'(x) - L*x) ≤ zero(R))
     end
 
     old = sector_bounded(f, μ, L)

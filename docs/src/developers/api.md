@@ -50,3 +50,11 @@ AlgorithmAnalysis.bsmin
 AlgorithmAnalysis.s_procedure
 AlgorithmAnalysis.multiplier
 ```
+
+## Automatic Test Harness
+
+```@docs
+AlgorithmAnalysis.ResultFile
+AlgorithmAnalysis.TestFileDescriptor
+AlgorithmAnalysis.Reference
+```
