@@ -1,8 +1,7 @@
 # Numerics
+As a consequence of the types of analysis that AlgorithmAnalysis.jl needs to perform, we are able to model general linear and semidefinite programming problems.
 
-As a consequence of the types of analysis that the framework needs to perform, we are able to model Feasibility problems, linear programing problems.
-
-
+We are able to model feasibility problems as well as minimization and maximization problems.
 
 ## Tests
 ### Feasibility
@@ -11,25 +10,17 @@ As a consequence of the types of analysis that the framework needs to perform, w
     x ∈ R
     A = [-2 x; x -2]
 
-    local all_pass::Bool = true;
-
-    all_pass &= with_numerics() do
-        evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
+    with_numerics() do
+        @test evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
     end
 
-    !all_pass && return all_pass;
-
-    all_pass &= with_numerics() do
-        !evaluate(feasible((x ≥ 1) ∧ (x ≤ -1)))
+    with_numerics() do
+        @test !evaluate(feasible((x ≥ 1) ∧ (x ≤ -1)))
     end
 
-    !all_pass && return all_pass;
-
-    all_pass &= with_numerics() do
-        !evaluate(feasible(A ⪰ 0))
+    with_numerics() do
+        @test !evaluate(feasible(A ⪰ 0))
     end
-
-    return all_pass;
 end
 ``` 
 ### Linear programming
@@ -43,25 +34,23 @@ end
     cons = c1 ∧ c2 ∧ c3 ∧ c4
     obj = x + y - 50
     opt = maximize(obj, cons)
-    return with_numerics() do
-        evaluate(opt) ≈ 1.25 && evaluate(x) ≈ 45.0 && evaluate(y) ≈ 6.25
+    with_numerics() do
+        @test evaluate(opt) ≈ 1.25
+        @test evaluate(x) ≈ 45.0
+        @test evaluate(y) ≈ 6.25
     end
 end
 ``` 
 ### Semidefinite programming
 ```julia
-local all_pass::Bool = true;
-
 @alg let
     x ∈ R
     A = [2 x; x 2]
     opt = maximize(x, A ⪰ 0)
-    all_pass &= with_numerics() do
-        evaluate(opt) ≈ 2.0
+    with_numerics() do
+        @test evaluate(opt) ≈ 2.0
     end
 end
-
-!all_pass && return all_pass;
 
 @alg let
     x1, x2, x3 ∈ R
@@ -75,10 +64,9 @@ end
     con = c1 ∧ c2 ∧ c3
     obj = tr(C * X)
     opt = minimize(obj, con)
-    all_pass &= with_numerics() do
-        evaluate(opt) ≈ -2.0 && evaluate(X) ≈ [1 -1; -1 1]
+    with_numerics() do
+        @test evaluate(opt) ≈ -2.0
+        @test evaluate(X) ≈ [1 -1; -1 1]
     end
 end
-
-return all_pass;
 ``` 

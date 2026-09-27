@@ -19,8 +19,8 @@ performance_estimation_handle = @generate_test_handle function performance_estim
 
     topt = simplify(opt)
 
-    return with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
-        evaluate(topt) ≈ 2.0
+    with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
+        @test evaluate(topt) ≈ 2.0
     end
 end
 

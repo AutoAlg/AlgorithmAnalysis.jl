@@ -20,37 +20,28 @@ verification_handle = @generate_test_handle function verification()
         opt = rate(perf, con)
     end
 
-
-    local all_pass::Bool = true
-
     with_parameters(Dict(ρ => 0.81, α => 0.1, μ => 1.0, L => 10.0)) do
         tprob = simplify(prob)
 
         with_numerics() do
-            all_pass &= evaluate(tprob)
+            @test evaluate(tprob)
         end
     end
-
-    !all_pass && return false
 
     with_parameters(Dict(ρ => 0.8, α => 0.1, μ => 1.0, L => 10.0)) do
         tprob = simplify(prob)
 
         with_numerics() do
-            all_pass &= !evaluate(tprob)
+            @test !evaluate(tprob)
         end
     end
-
-    !all_pass && return false
 
     with_parameters(Dict(α => 0.1, μ => 1.0, L => 10.0)) do
 
         topt = simplify(opt)
 
-        all_pass = (evaluate(topt) ≈ 0.81)
+        @test (evaluate(topt) ≈ 0.81)
     end
-
-    return all_pass
 end
 
 

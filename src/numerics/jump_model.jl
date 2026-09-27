@@ -126,6 +126,10 @@ function instantiate_in_model(opt::Node{Feasibility})
 
     status = JuMP.termination_status(model())
 
+    if !(status ∈ [MOI.OPTIMAL, MOI.ALMOST_OPTIMAL, MOI.INFEASIBLE])
+        @warn "Feasibility terminated with status $status"
+    end
+
     return status ∈ [MOI.OPTIMAL, MOI.ALMOST_OPTIMAL]
 end
 

@@ -5,25 +5,17 @@ feasibility_tests_handle = @generate_test_handle function feasibility_tests()
         x ∈ R
         A = [-2 x; x -2]
 
-        local all_pass::Bool = true
-
-        all_pass &= with_numerics() do
-            evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
+        with_numerics() do
+            @test evaluate(feasible((x ≥ 1) ∧ (x ≤ 2)))
         end
 
-        !all_pass && return all_pass
-
-        all_pass &= with_numerics() do
-            !evaluate(feasible((x ≥ 1) ∧ (x ≤ -1)))
+        with_numerics() do
+            @test !evaluate(feasible((x ≥ 1) ∧ (x ≤ -1)))
         end
 
-        !all_pass && return all_pass
-
-        all_pass &= with_numerics() do
-            !evaluate(feasible(A ⪰ 0))
+        with_numerics() do
+            @test !evaluate(feasible(A ⪰ 0))
         end
-
-        return all_pass
     end
 end
 
@@ -37,25 +29,23 @@ linear_programming_handle = @generate_test_handle function linear_programming()
         cons = c1 ∧ c2 ∧ c3 ∧ c4
         obj = x + y - 50
         opt = maximize(obj, cons)
-        return with_numerics() do
-            evaluate(opt) ≈ 1.25 && evaluate(x) ≈ 45.0 && evaluate(y) ≈ 6.25
+        with_numerics() do
+            @test evaluate(opt) ≈ 1.25
+            @test evaluate(x) ≈ 45.0
+            @test evaluate(y) ≈ 6.25
         end
     end
 end
 
 semidefinite_programming_handle = @generate_test_handle function semidefinite_programming()
-    local all_pass::Bool = true
-
     @alg let
         x ∈ R
         A = [2 x; x 2]
         opt = maximize(x, A ⪰ 0)
-        all_pass &= with_numerics() do
-            evaluate(opt) ≈ 2.0
+        with_numerics() do
+            @test evaluate(opt) ≈ 2.0
         end
     end
-
-    !all_pass && return all_pass
 
     @alg let
         x1, x2, x3 ∈ R
@@ -69,12 +59,11 @@ semidefinite_programming_handle = @generate_test_handle function semidefinite_pr
         con = c1 ∧ c2 ∧ c3
         obj = tr(C * X)
         opt = minimize(obj, con)
-        all_pass &= with_numerics() do
-            evaluate(opt) ≈ -2.0 && evaluate(X) ≈ [1 -1; -1 1]
+        with_numerics() do
+            @test evaluate(opt) ≈ -2.0
+            @test evaluate(X) ≈ [1 -1; -1 1]
         end
     end
-
-    return all_pass
 end
 
 

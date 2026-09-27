@@ -1,7 +1,14 @@
-# Gradient Descent via the Performance Estimation method
+# Performance Estimation Gradient Descent
+
+For gradient descent over an ``L``-smooth convex function, a common choice for the step size parameter ``\alpha`` is ``\alpha = \frac{1}{L}``.
+
+Additionally, provided that ``\alpha \leq \frac{1}{L}`` it can be shown that ``f(x⁺) - f(xs) \leq \frac{L}{4LN\alpha + 2} \cdot ||x - xs||^2`` where ``N`` is the number of PEP iterations.
+However, in this simple demonstration, we only show one iteration.
+
+Internally this is implemented by rewriting the constraints on the optimization problem in terms of inner products, and then using a Gram matrix.
 
 Using the performance estimation method we are able to provide a bounded convergence rate for a fixed number of steps. 
-For an in depth explanation, see [Lyapunov Analysis](./../manual/lyap.md)
+For an in depth explanation, see [Performance Estimation](./../manual/pep.md)
 
 ## Tests
 ### Performance estimation
@@ -24,7 +31,12 @@ end
 
 topt = simplify(opt)
 
-return with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
-    evaluate(topt) ≈ 2.0
+with_numerics(T=BigFloat, parameters=Dict(α => big"0.075", L => big"10.0")) do
+    @test evaluate(topt) ≈ 2.0
 end
 ``` 
+## References
+- Laurent Lessard, Benjamin Recht and Andrew Packard. *Analysis and Design of Optimization Algorithms via Integral Quadratic Constraints*. 2016. [doi:10.1137/15M1009597](https://doi.org/10.1137/15M1009597)
+
+- Yoel Drori and Marc Teboulle. *Performance of first-order methods for smooth convex minimization: a novel approach*. 2013. [doi:10.1007/s10107-013-0653-0](https://doi.org/10.1007/s10107-013-0653-0)
+
