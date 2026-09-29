@@ -14,7 +14,7 @@ TermInterface = "8ea1fca8-c5ef-4a55-8b96-4e9afe9c9a3c"
 
 [compat]
 Clarabel = "0.11.1"
-Hypatia = "0.10.0"
+Hypatia = "0.10.0, 0.11"
 JuMP = "1"
 LinearAlgebra = "1.10.0"
 MathOptInterface = "1.51.1"
