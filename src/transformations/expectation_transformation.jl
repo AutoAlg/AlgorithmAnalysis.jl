@@ -15,9 +15,14 @@ function is_expectation_transform_applicable(node::Node{R})::Bool
     if iscall(node)
         if operation(node) == E
             return true
+        elseif operation(node) == Var
+            return true
+        elseif operation(node) == Cov
+            return true
+        else
             # subexpr = arguments(node)[1]
 
-            print("found subexpr $(subexpr)\n")
+            # print("found subexpr $(subexpr)\n")
             # if iscall(subexpr)
             #     print("$(subexpr)\n")
             #     if operation(subexpr) == + 
@@ -51,8 +56,10 @@ function expectation_transformation(node::Node{R})
     #     if operation(subexpression) == +
     rewrite(node, [
         @rule(E(~X + ~Y) => E(~X) + E(~Y)),
-        @rule(E(~X) => mean_component(~X) where issym(~X)) # isleaf
-        
+        @rule(E(~X) => mean_component(~X) where issym(~X)), # isleaf
+        @rule(Var(~X + ~Y) => Var(~X) + 2 * Cov(~X, ~Y) + Var(~Y)),
+        @rule(Var(~X) => Cov(~X, ~X)),
+        @rule(Cov(~X, ~Y) => get_cov_leaf(~X, ~Y) where (issym(~X) && issym(~Y))),
         ])
     #     end
     # end
