@@ -6,6 +6,7 @@ include("smooth_strongly_convex_interpolation.jl")
 include("sector_bounded_interpolation.jl")
 include("gram_transformation.jl")
 include("lyapunov_transformation.jl")
+include("expectation_transformation.jl")
 
 is_vector(x) = symtype(x) <: VectorSpace
 is_scalar(x) = symtype(x) <: Field
@@ -52,6 +53,8 @@ const theory = [
     @rule ~x::sector_bound_is_applicable => sector_bounded_interpolation(~x)
     @rule ~x::gram_transformation_is_applicable => gram_transformation(~x)
     @rule ~x::lyapunov_transformation_is_applicable => lyapunov_transformation(~x)
+
+    @rule ~x::is_expectation_transform_applicable => expectation_transformation(~x)
 ]
 
 """

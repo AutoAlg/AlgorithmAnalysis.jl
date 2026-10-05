@@ -24,6 +24,7 @@ include("linear_algebra.jl")
 include("analysis.jl")
 include("propositions.jl")
 include("optimization.jl")
+include("random.jl")
 
 """
     →(x,y)
