@@ -54,7 +54,7 @@ function gram_transformation(opt::Node{<:Optimization})
 
         opt = replace_constraint(opt, old, new)
 
-        opt = add_constraint(opt, G ⪰ 0)
+        opt = add_constraint(opt, G ⪰ 0) 
 
         rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2) where is_inner_product(~v1,~v2)
         

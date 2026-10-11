@@ -1,6 +1,9 @@
 export RandomR, E, mean_component, centered_component, Var, Cov, get_cov_leaf
 
-abstract type RandomR <: Field end
+abstract type RandomField <: Field end
+
+abstract type RandomR <: RandomField end
+abstract type RandomRCenteredComponent <: RandomField end
 
 function mean_component(x::Node{RandomR}) 
     if issym(x)
@@ -13,7 +16,7 @@ end
 
 function centered_component(x::Node{RandomR}) 
     if issym(x)
-        return leaf(R, Symbol("c_$(x)"))
+        return leaf(RandomRCenteredComponent, Symbol("c_$(x)"))
     else
         error("Cannot call centered_component on a RandomR that is not a leaf node itself!")
     end
@@ -32,7 +35,13 @@ Cov(left::Node{RandomR}, right::Node{RandomR}) = Term{R}(Cov, [left, right])
 
 function get_cov_leaf(left::Node{RandomR}, right::Node{RandomR})
     if issym(left) && issym(right)
-        return leaf(R, Symbol("E⟨$(left), $(right)⟩")) # TODO: flatten if theyre the same and also this E is different...
+
+        if "$(left)" < "$(right)"
+            return leaf(R, Symbol("E⟨$(left), $(right)⟩"))
+        else  
+            return leaf(R, Symbol("E⟨$(right), $(left)⟩"))
+        end
+        
     else
         error("cannot call get_cov_leaf on non leaf nodes")
 

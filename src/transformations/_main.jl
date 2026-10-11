@@ -7,6 +7,7 @@ include("sector_bounded_interpolation.jl")
 include("gram_transformation.jl")
 include("lyapunov_transformation.jl")
 include("expectation_transformation.jl")
+include("random_gram_transformation.jl")
 
 is_vector(x) = symtype(x) <: VectorSpace
 is_scalar(x) = symtype(x) <: Field
@@ -55,6 +56,7 @@ const theory = [
     @rule ~x::lyapunov_transformation_is_applicable => lyapunov_transformation(~x)
 
     @rule ~x::is_expectation_transform_applicable => expectation_transformation(~x)
+    @rule ~x::is_random_gram_transformation_applicable => random_gram_transformation(~x)
 ]
 
 """
