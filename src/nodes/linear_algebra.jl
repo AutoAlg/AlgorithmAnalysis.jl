@@ -66,6 +66,7 @@ Base.zero(::Type{Rⁿ}) = Term{Rⁿ}(zero, [])
 Base.zero(::Type{R}) = Term{R}(zero, [])
 Base.one(::Type{R}) = Term{R}(one, [])
 R(val::Real) = Term{R}(constant, [val])
+SymbolicUtils.promote_symtype(::typeof(constant), _...) = R 
 R(x::Node{<:Real}) = R(value(x))
 R(x::Node{R}) = x
 

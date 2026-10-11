@@ -22,30 +22,51 @@ function centered_component(x::Node{RandomR})
     end
 end
 
-
-E(x::Node{RandomR})::Node = Term{R}(E, [x])
-
-# Var(X)
-# Cov(X, X)
-# E<c_X, c_X>
-# E||c_X||^2
-Var(x::Node{RandomR})::Node = Term{R}(Var, [x])
-
-Cov(left::Node{RandomR}, right::Node{RandomR}) = Term{R}(Cov, [left, right])
-
 function get_cov_leaf(left::Node{RandomR}, right::Node{RandomR})
     if issym(left) && issym(right)
 
         if "$(left)" < "$(right)"
-            return leaf(R, Symbol("E⟨$(left), $(right)⟩"))
+            return leaf(R, Symbol("E⟨c_$(left), c_$(right)⟩"))
         else  
-            return leaf(R, Symbol("E⟨$(right), $(left)⟩"))
+            return leaf(R, Symbol("E⟨c_$(right), c_$(left)⟩"))
         end
         
     else
         error("cannot call get_cov_leaf on non leaf nodes")
-
     end
-
 end
+
+E(x::Node{RandomR})::Node = Term{R}(E, [x])
+Var(x::Node{RandomR})::Node = Term{R}(Var, [x])
+Cov(left::Node{RandomR}, right::Node{RandomR}) = Term{R}(Cov, [left, right])
+
+
+E(x::Node{R}) = x
+Var(::Node{R}) = zero(R)
+Cov(::Node{R}, ::Node{RandomR}) = zero(R)
+Cov(::Node{RandomR}, ::Node{R}) = zero(R)
+Cov(::Node{R}, ::Node{R}) = zero(R)
+
+
++(left::Node{R}, right::Node{RandomR}) = Term{RandomR}(+, [left, right])
++(left::Node{RandomR}, right::Node{R}) = right + left
+
+# TODO: HACK: rewrite this to use a true Term with operation == -, this is equivalent but it doesnt look as nice
+-(left::Node{R}, right::Node{RandomR}) = left + (R(-1.0) * right)
+-(left::Node{RandomR}, right::Node{R}) = left + (R(-1.0) * right)
+
+*(left::Node{R}, right::Node{RandomR}) = Term{RandomR}(*, [left, right])
+*(left::Node{RandomR}, right::Node{R}) = right * left
+
+
++(left::Number, right::Node{RandomR}) = R(left) + right
++(left::Node{RandomR}, right::Number) = left + R(right)
+
+-(left::Number, right::Node{RandomR}) = R(left) - right
+-(left::Node{RandomR}, right::Number) = left - R(right)
+
+*(left::Number, right::Node{RandomR}) = R(left) * right
+*(left::Node{RandomR}, right::Number) = left * R(right)
+
+
 
