@@ -219,12 +219,12 @@ end
         @test isequal(simplify(E(X * Y * Z)), E(X * Y * Z))
         @test isequal(simplify(Cov(X * Y, Z)), Cov(X * Y, Z))
 
-        @test isequal(get_cov_leaf(Y, X), get_cov_leaf(X, Y))
+        @test isequal(centered_product_leaf(centered_component(Y), centered_component(X)), centered_product_leaf(centered_component(X), centered_component(Y)))
         @test_throws ErrorException mean_component(X + Y)
-        @test_throws ErrorException get_cov_leaf(X + Y, Z)
+        @test_throws ErrorException centered_product_leaf(centered_component(X + Y), centered_component(Z))
 
         @test isequal(objective(simplify(minimize(E(X + Y), E(X) == 2.0))), mean_component(X) + mean_component(Y))
-        @test isequal(objective(simplify(minimize(Var(X), Var(X) == 2.0))), get_cov_leaf(X, X))
+        @test isequal(objective(simplify(minimize(Var(X), Var(X) == 2.0))), centered_product_leaf(centered_component(X), centered_component(X)))
     end
 
 end

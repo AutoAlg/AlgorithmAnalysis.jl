@@ -32,22 +32,32 @@ function is_random_gram_transformation_applicable(node::Node{<:Optimization})
 end
 
 function random_gram_transformation(node::Node{<:Optimization})
+    
+    # because of the guard, these are all leaf nodes
     all_cov_nodes = find_nodes(x -> iscall(x) && operation(x) == Cov, node)
-    # because of above, these are all leaf nodes
 
+    node = rewrite(node, [
+        @rule(Cov(~X, ~Y) => E(centered_component(~X)'*centered_component(~Y)) where (issym(~X) && issym(~Y)))
+    ])
+
+  
     if !isempty(all_cov_nodes)
         allRandomRs::Vector{Node{RandomR}} = collect(Iterators.flatmap(n -> [arguments(n)[1], arguments(n)[2]], all_cov_nodes))
         unique!(allRandomRs)
 
-        # TODO: replace this with a proper E(x'*y) call, as that would prove the algebra
-        # works generically
-        gramMatrix = Sⁿ([ get_cov_leaf(x, y) for x in allRandomRs, y in allRandomRs ])
+        allCenteredRandomRs::Vector{Node{RandomRCenteredComponent}} = map(x -> centered_component(x), allRandomRs)
+
+        gramMatrix = Sⁿ([E(x'*y) for x in allCenteredRandomRs, y in allCenteredRandomRs ])
 
         node = add_constraint(node, gramMatrix ⪰ 0)
     end
 
+    is_centered_leaf(x) = issym(x) && symtype(x) <: RandomRCenteredComponent
+
     node = rewrite(node, [
-        @rule(Cov(~X, ~Y) => get_cov_leaf(~X, ~Y) where (issym(~X) && issym(~Y))),
+        # By construction, this rule should only match on ~X and ~Y where is_centered_leaf is true
+        # if that doesn't happen, you're representing something uncomputable in jump
+        @rule(E(~X * ~Y) => centered_product_leaf(~X, ~Y)), # where (is_centered_leaf(~a) && is_centered_leaf(~b)))
         @rule(E(~X) => mean_component(~X) where issym(~X)), # isleaf
     ])
 

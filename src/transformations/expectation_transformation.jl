@@ -30,7 +30,7 @@ function expectation_transformation(node::Node{R})
 
         @rule(E(+(~~X)) => sum(map(expr -> E(expr), ~~X))),
 
-        @rule(E(~X - ~Y) => E(~X) - E(~Y)), # TODO: handle subtractions larger than two elements
+        @rule(E(~X - ~Y) => E(~X) - E(~Y)),
         @rule(E(-(~X)) => R(-1.0) * E(~X)),
 
         @rule(E(~X * ~Y) => (E(~X) * E(~Y) + Cov(~X, ~Y)) where are_random(~X, ~Y)),
@@ -46,7 +46,7 @@ function expectation_transformation(node::Node{R})
         @rule(Cov(-(~X), ~Y) => (R(-1.0) * Cov(~X, ~Y))),
         @rule(Cov(~X, -(~Y)) => (R(-1.0) * Cov(~X, ~Y))),
 
-        @rule(Cov(~X - ~Y, ~Z) => Cov(~X, ~Z) - Cov(~Y, ~Z)), # TODO: handle subtractions larger than two elements
+        @rule(Cov(~X - ~Y, ~Z) => Cov(~X, ~Z) - Cov(~Y, ~Z)),
         @rule(Cov(~Z, ~X - ~Y) => Cov(~Z, ~X) - Cov(~Z, ~Y)),
 
         @rule(Cov(+(~~X), ~Y) => sum(map(x -> Cov(x, ~Y), ~~X))),
