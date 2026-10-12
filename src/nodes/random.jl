@@ -33,7 +33,6 @@ function centered_product_leaf(
     right::Node{RandomRCenteredComponent}
 )
     if issym(left) && issym(right)
-
         if "$(left)" < "$(right)"
             return leaf(R, Symbol("E⟨$(left), $(right)⟩"))
         else  
