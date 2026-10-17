@@ -1,4 +1,4 @@
-SSA stuff is a dead end because of interpolation conditions & the ensuing blow up
+7SSA stuff is a dead end because of interpolation conditions & the ensuing blow up
 docs is ready for merging now
 how do we want the syntax to look for these problems
 
@@ -31,6 +31,7 @@ end
 
 
 # Expected Inner products
+# E[XY] = E[X]*E[Y] + Cov(X, Y)
 # E[X'*Y] = E[X]'*E[Y] + Tr(Cov(X, Y))
 # E[X'*Y] = E[X]'*E[Y] + E[c_Y '* c_X]
 

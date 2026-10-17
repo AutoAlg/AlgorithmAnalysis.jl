@@ -184,7 +184,7 @@ end
         X, Y, Z ∈ RandomR
         a ∈ R
 
-        @test isequal(simplify(E(X + Y)), E(X) + E(Y))=
+        @test isequal(simplify(E(X + Y)), E(X) + E(Y))
         @test isequal(simplify(E(X - Y)), E(X) - E(Y))
         @test isequal(simplify(E(-X)), -1.0 * E(X))
 
@@ -218,62 +218,69 @@ end
 
 end
 
+@testitem "deterministic means of random vectors" begin
+    @alg begin
+        X, Y ∈ RandomRⁿ
 
-# @testitem "Means of Random Vectors" begin
-#     @alg begin
-#         X, Y ∈ RandomRⁿ
+        cμ_X = E(X)^2 == 4.0
+        cμ_Y = E(Y)^2 == 1.0
+
+        # E(X + Y)^2
+        # (E(X) + E(Y))^2
+        # (E(X) + E(Y))'*(E(X) + E(Y))
+        # E(X)^2 + 2 * E(X)'*E(Y) + E(Y)^2
+
+        # |E(X)'*E(Y)| <= sqrt(E(X)^2 * E(Y)^2)
+        # |E(X)'*E(Y)| <= sqrt(4.0 * 1.0)
+        # |E(X)'*E(Y)| <= 2.0
+        # E(X)'*E(Y) ∈ [-2.0, 2.0]
+
+        # E(X)^2 + 2 * E(X)'*E(Y) + E(Y)^2
+        # 4.0 + [-4.0, 4.0] + 1.0
+        # 5.0 + [-4.0, 4.0]
+        # [1.0, 9.0]
+
+        with_numerics() do
+            @test evaluate(simplify(minimize(E(X + Y)^2, cμ_X ∧ cμ_Y))) ≈ 1.0
+        end
+
+        with_numerics() do
+            @test evaluate(simplify(maximize(E(X + Y)^2, cμ_X ∧ cμ_Y))) ≈ 9.0
+        end
+
+    end
+end
+
+
+@testitem "Means of Random Vectors" begin
+    @alg begin
+        X, Y ∈ RandomRⁿ
         
-#         cμ_X = E(X^2) == 4.0
-#         cμ_Y = E(Y^2) == 1.0
+        cμ_X = E(X^2) == 4.0
+        cμ_Y = E(Y^2) == 1.0
 
-#         # E((X + Y)^2)
-#         # E(X^2 + 2 * X'*Y + Y^2)
-#         # E(X^2) + 2 * E(X'*Y) + E(Y^2))
-#         # 4.0 + 2 * E(X'*Y) + 1.0
+        # E((X + Y)^2)
+        # E(X^2 + 2 * X'*Y + Y^2)
+        # E(X^2) + 2 * E(X'*Y) + E(Y^2)
+        # 4.0 + 2 * E(X'*Y) + 1.0
 
-#         # |E(X'*Y)| <= sqrt(E(X^2) * E(Y^2))
-#         # |E(X'*Y)| <= sqrt(4.0 * 1.0)
-#         # |E(X'*Y)| <= 2.0
-#         # E(X'*Y) ∈ [-2.0, 2.0]
-#         # 4.0 + 2 * E(X'*Y) + 1.0
-#         # 4.0 + 2 * [-2.0, 2.0] + 1.0
-#         # 5.0 + [-4.0, 4.0]
-#         # [1.0, 9.0]
+        # |E(X'*Y)| <= sqrt(E(X^2) * E(Y^2))
+        # |E(X'*Y)| <= sqrt(4.0 * 1.0)
+        # |E(X'*Y)| <= 2.0
+        # E(X'*Y) ∈ [-2.0, 2.0]
+        # 4.0 + 2 * E(X'*Y) + 1.0
+        # 4.0 + 2 * [-2.0, 2.0] + 1.0
+        # 5.0 + [-4.0, 4.0]
+        # [1.0, 9.0]
 
-#         with_numerics() do
-#             @test evaluate(simplify(minimize(E((X + Y))^2, cμ_X ∧ cμ_Y))) ≈ 1.0
-#         end
-
-#         with_numerics() do
-#             @test evaluate(simplify(maximize(E((X + Y))^2, cμ_X ∧ cμ_Y))) ≈ 9.0
-#         end
-
-
-#         # E(X + Y)^2
-#         # (E(X) + E(Y))^2
-#         # E(X)^2 + 2 * (E(X)'*E(Y)) + E(Y)^2
-
-#         # identity E(X'*Y) = E(X)'*E(Y) + Tr(Cov(X, Y))
-#         # identity E(X^2) = E(X)^2 + Tr(Cov(X, X))
-#         # E(X'*Y) ∈ [-2.0, 2.0]
-
-#         # E(X^2) - Tr(Cov(X, X)) = E(X)^2
-#         # 4.0 - Tr(Cov(X, X)) = E(X)^2
-#         # Tr(Cov(X, X)) >= 0
-#         # 4.0 - [0, inf] = E(X)^2
-#         # 4.0 + [-inf, 0] = E(X)^2
-#         # [-inf, 4.0] = E(X)^2
-#         # E(X)^2 >= 0
-#         # [0, 4.0] = E(X)^2
-#         # [0, 1.0] = E(Y)^2
-#         with_numerics() do
-#             @test evaluate(simplify(minimize(E((X + Y))^2, cμ_X ∧ cμ_Y))) ≈ 1.0
-#         end
-
-#         with_numerics() do
-#             @test evaluate(simplify(maximize(E((X + Y))^2, cμ_X ∧ cμ_Y))) ≈ 9.0
-#         end
-#     end
-# end
+        with_numerics() do
+            @test evaluate(simplify(minimize(E((X + Y)^2), cμ_X ∧ cμ_Y))) ≈ 1.0
+        end
+        
+        with_numerics() do
+            @test evaluate(simplify(maximize(E((X + Y)^2), cμ_X ∧ cμ_Y))) ≈ 9.0
+        end      
+    end
+end
 
 
