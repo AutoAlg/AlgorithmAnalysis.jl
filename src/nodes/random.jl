@@ -95,19 +95,19 @@ Cov(::Node{RandomRⁿ}, ::Node{Rⁿ}) = zero(R)
 Cov(::Node{Rⁿ}, ::Node{Rⁿ}) = zero(R)
 
 E(x::Node{RandomR}) = Term{R}(E, [x])
-E(x::Node{RandomRCenteredComponent}) = issym(x) ? zero(R) : Term{R}(E, [x])
+E(x::Node{RandomRCenteredComponent}) = issym(x) ? zero(R) : Term{R}(E, [x]) # E(centered_component(X) + 4.0) triggers this and its not zero
 Var(x::Node{RandomR}) = Term{R}(Var, [x])
 Cov(left::Node{RandomR}, right::Node{RandomR}) = Term{R}(Cov, [left, right])
 
 E(x::Node{RandomRⁿ}) = Term{Rⁿ}(E, [x])
-E(x::Node{RandomRⁿCenteredComponent}) = issym(x) ? zero(R) : Term{Rⁿ}(E, [x])
+E(x::Node{RandomRⁿCenteredComponent}) = issym(x) ? zero(Rⁿ) : Term{R}(E, [x]) 
 # also when writing the paper can I just define the covariance as the inner oroduct rather than the 
 # trace of the outer product
 Var(x::Node{RandomRⁿ}) = Term{R}(Var, [x]) # TODO: think about how to generalize this fact (RandomR'*RandomR -> R, but rn goes to R still)
 Cov(left::Node{RandomRⁿ}, right::Node{RandomRⁿ}) = Term{R}(Cov, [left, right])
 
-Cov(left::Node{RandomRCenteredComponent}, right::Node{RandomRCenteredComponent}) = error("This should never be constructed")
-Cov(left::Node{RandomRⁿCenteredComponent}, right::Node{RandomRⁿCenteredComponent}) = error("This should never be constructed")
+Cov(left::Node{RandomRCenteredComponent}, right::Node{RandomRCenteredComponent}) = error("This should never be called")
+Cov(left::Node{RandomRⁿCenteredComponent}, right::Node{RandomRⁿCenteredComponent}) = error("This should never be called")
 
 
 

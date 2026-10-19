@@ -221,6 +221,7 @@ end
     @alg begin
         x, y, z, w ∈ Rⁿ
         X, Y, Z, W ∈ RandomRⁿ
+        a ∈ R
 
         @test Var(x) isa Node{R}
         @test Cov(x, X) isa Node{R}
@@ -266,6 +267,22 @@ end
         @test isequal(x'*X, x ⋅ X)
         @test isequal(X'*Y, X ⋅ Y)
         @test isequal(Z'*y, Z ⋅ y)
+
+        @test isequal(simplify(E(2.0 * X)), 2.0 * E(X))
+        @test isequal(simplify(E(X * 2.0)), 2.0 * E(X))
+        @test isequal(simplify(E(a * X)), a * E(X))
+
+        @test isequal(E(E(X)), E(X))
+        @test isequal(Cov(X, x), zero(R))
+
+        @test isequal(simplify(Var(X)), Cov(X, X))
+
+        @test isequal(simplify(Cov(2.0 * X, Y)), 2.0 * Cov(X, Y))
+        @test isequal(simplify(Cov(X, 3.0 * Y)), 3.0 * Cov(X, Y))
+        @test isequal(simplify(Cov(-X, Y)), -1.0 * Cov(X, Y))
+
+        @test isequal(simplify(E(X ⋅ Y)), E(X) ⋅ E(Y) + Cov(X, Y))
+        @test isequal(simplify(E(X ⋅ X)), E(X) ⋅ E(X) + Cov(X, X))
     end
 end
 
