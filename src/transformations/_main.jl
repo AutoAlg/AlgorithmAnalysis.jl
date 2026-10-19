@@ -45,6 +45,10 @@ const theory = [
     # @rule ~x * ~y => ~x where isone(~y)
     @rule ~x * ~y => zero(symtype(~y)) where (is_scalar_and_vector(~x, ~y) && isequal(~x, zero(symtype(~x))))
 
+
+    @rule ~x::is_expectation_transform_applicable => expectation_transformation(~x)
+    @rule ~x::is_random_gram_transformation_applicable => random_gram_transformation(~x)
+
     # --------------------------------------------------
     # TRANSFORMATIONS
     # --------------------------------------------------
@@ -55,8 +59,6 @@ const theory = [
     @rule ~x::gram_transformation_is_applicable => gram_transformation(~x)
     @rule ~x::lyapunov_transformation_is_applicable => lyapunov_transformation(~x)
 
-    @rule ~x::is_expectation_transform_applicable => expectation_transformation(~x)
-    @rule ~x::is_random_gram_transformation_applicable => random_gram_transformation(~x)
 ]
 
 """

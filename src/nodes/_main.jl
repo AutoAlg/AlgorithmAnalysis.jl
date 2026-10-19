@@ -1,4 +1,4 @@
-export →
+export →, Node
 
 """
     Node{T} = SymbolicUtils.BasicSymbolic{T}
@@ -10,7 +10,7 @@ const Node{T} = SymbolicUtils.BasicSymbolic{T}
 abstract type NodeType end
 
 abstract type Category end
-abstract type LinearFunctional <: Category end
+# abstract type LinearFunctional <: Category end
 abstract type DifferentiableFunctional <: Category end
 abstract type Gradient <: Category end
 abstract type GramMatrix <: Category end

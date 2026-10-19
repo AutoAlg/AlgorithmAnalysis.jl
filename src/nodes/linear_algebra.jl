@@ -142,22 +142,22 @@ function *(scalar::Node{F}, v::Node{V}) where {F,V<:VectorSpace{F}}
     return Term{V}(*, [scalar, v])
 end
 
-(⋅)(u::Node{V}, v::Node{V}) where {F,V<:VectorSpace{F}} = u'(v)
+abstract type CoVector{V} <: NodeType end
 
-function Base.adjoint(x::Node{V}) where {F,V<:VectorSpace{F}}
-    iszero(x) && return Term{FnType{Tuple{V},F,LinearFunctional}}(zero, [])
-    return Term{FnType{Tuple{V},F,LinearFunctional}}(adjoint, [x])
-end
+Base.adjoint(x::Node{V}) where {V<:VectorSpace} = Term{CoVector{V}}(adjoint, [x])
+Base.adjoint(x::Node{<:CoVector}) = arguments(x)[1]
 
-function Base.adjoint(f::Node{FnType{Tuple{V},F,LinearFunctional}}) where {F,V<:VectorSpace{F}}
-    # the adjoint of the adjoint is the original object
-    if iscall(f) && isequal(operation(f), adjoint)
-        return arguments(f)[1]
-    end
-    return Term{V}(adjoint, [f])
-end
+*(x::Node{CoVector{V}}, y::Node{V}) where {F,V<:VectorSpace{F}} = Term{F}(⋅, [arguments(x)[1], y])
 
-Base.literal_pow(::typeof(^), x::Node{<:VectorSpace}, ::Val{2}) = x'(x)
+(x::Node{<:CoVector})(y::Node) = x * y
+
+*(a::Node{R}, x::Node{<:CoVector}) = (a * arguments(x)[1])'
+*(a::Number, x::Node{<:CoVector}) = R(a) * x
+-(x::Node{<:CoVector}) = (-arguments(x)[1])'
+
+(⋅)(u::Node{V}, v::Node{V}) where {F,V<:VectorSpace{F}} = u'*v
+
+Base.literal_pow(::typeof(^), x::Node{<:VectorSpace}, ::Val{2}) = x'*x
 
 function (f::Node{FnType{Tuple{V},F,Nothing}})(x::V) where {F,V<:VectorSpace{F}}
     return Term{F}(f, [x])

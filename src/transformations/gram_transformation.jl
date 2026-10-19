@@ -15,6 +15,17 @@ function gram_transformation_is_applicable(opt::Node{<:Optimization})
         return false
     elseif isempty(find_nodes(x -> symtype(x) <: VectorSpace, opt))
         return false
+    else
+
+        all_var_nodes = find_nodes(x -> iscall(x) && operation(x) == Var, opt)
+        all_cov_nodes = find_nodes(x -> iscall(x) && operation(x) == Cov, opt)
+        all_expectation_nodes = find_nodes(x -> iscall(x) && operation(x) == E, opt)
+
+        if !isempty(all_var_nodes) || !isempty(all_cov_nodes) || !isempty(all_expectation_nodes)
+            return false
+        else
+            return true
+        end
     end
     return true
 end
@@ -56,7 +67,7 @@ function gram_transformation(opt::Node{<:Optimization})
 
         opt = add_constraint(opt, G ⪰ 0)
 
-        rule = @rule adjoint(~v1)(~v2) => flatten_inner_product(~v1, ~v2) where is_inner_product(~v1,~v2)
+        rule = @rule ⋅(~v1, ~v2) => flatten_inner_product(~v1, ~v2) where is_inner_product(~v1,~v2)
         
         opt = rewrite(opt, [rule])
     end

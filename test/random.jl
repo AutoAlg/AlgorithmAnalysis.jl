@@ -179,7 +179,7 @@ end
     end
 end
 
-@testitem "reductions" begin
+@testitem "scalar reductions" begin
       @alg begin
         X, Y, Z ∈ RandomR
         a ∈ R
@@ -215,7 +215,58 @@ end
         @test isequal(simplify(E(X * Y * Z)), E(X * Y * Z))
         @test isequal(simplify(Cov(X * Y, Z)), Cov(X * Y, Z))
     end
+end
 
+@testitem "vector reductions" begin
+    @alg begin
+        x, y, z, w ∈ Rⁿ
+        X, Y, Z, W ∈ RandomRⁿ
+
+        @test Var(x) isa Node{R}
+        @test Cov(x, X) isa Node{R}
+        @test Cov(X, x) isa Node{R}
+        @test Cov(x, y) isa Node{R}
+        @test Var(X) isa Node{R}
+        @test Cov(X, Y) isa Node{R}
+
+        @test E(X) isa Node{Rⁿ}
+        @test E(x) isa Node{Rⁿ}
+        @test iszero(E(centered_component(X)))
+        @test isequal(E(x), x)
+
+        @test isequal(simplify(Var(X + x)), Cov(X, X))
+        @test isequal(simplify(Cov(X + x, Y)), Cov(X, Y))
+        @test isequal(simplify(Cov(X, Y + x)), Cov(X, Y))
+        @test isequal(simplify(Var(2.0 * X + x)), simplify(Var(2.0 * X)))
+
+        @test isequal(simplify(E(X + Y)), E(X) + E(Y))
+        @test isequal(simplify(E(X + x)), x + E(X))
+
+        @test mean_component(X) isa Node{Rⁿ}
+        @test centered_component(X) isa Node{RandomRⁿCenteredComponent}
+        @test centered_product_leaf(centered_component(X), centered_component(Y)) isa Node{R}
+        @test isequal(centered_product_leaf(centered_component(Y), centered_component(X)), centered_product_leaf(centered_component(X), centered_component(Y)))
+        @test_throws ErrorException mean_component(X + Y)
+        @test_throws ErrorException centered_component(X + Y)
+
+        @test isequal(x'y, x'(y))
+        @test isequal(x'y, x ⋅ y)
+        @test isequal(x'*y, x ⋅ y)
+        @test isequal(X^2, X'X)
+        @test X'Y isa Node{RandomR}
+        @test x'X isa Node{RandomR}
+        @test_throws MethodError x'y'
+        @test_throws MethodError X * Y
+
+        @test isequal(simplify(E(2.0 * X)), 2.0 * E(X))
+        @test isequal(simplify(E(X - Y)), E(X) + -1.0 * E(Y))
+        @test isequal(simplify(E(X'*Y)), E(X)'*E(Y) + Cov(X, Y))
+        @test isequal(simplify(E(x'*X)), x'*E(X))
+
+        @test isequal(x'*X, x ⋅ X)
+        @test isequal(X'*Y, X ⋅ Y)
+        @test isequal(Z'*y, Z ⋅ y)
+    end
 end
 
 @testitem "deterministic means of random vectors" begin

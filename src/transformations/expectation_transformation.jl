@@ -1,7 +1,7 @@
 export expectation_transformation, is_expectation_transform_applicable
 
 is_expectation_transform_applicable(::Any) = false
-function is_expectation_transform_applicable(node::Node{R})::Bool
+function is_expectation_transform_applicable(node::Node{<:Union{R, Rⁿ}})::Bool
     if iscall(node)
         if operation(node) == E
             return true
@@ -18,14 +18,15 @@ function is_expectation_transform_applicable(node::Node{R})::Bool
 end
 
 # TODO this needs to be expanded to a type level thing, i.e there is {DeterministicField, RandomField} <: Field
-is_deterministic(x::Any) = true
-is_deterministic(x::Node) = symtype(x) <: R
-are_deterministic(xs::Any...) = all(map(is_deterministic, xs))
-
-is_random(x::Node) = symtype(x) <: RandomR
+is_random(x::Any) = false
+is_random(x::Node) = symtype(x) <: RandomField || symtype(x) <: RandomVectorSpace
 are_random(xs::Node...) = all(map(is_random, xs))
 
-function expectation_transformation(node::Node{R})
+is_deterministic(x::Any) = !is_random(x)
+are_deterministic(xs::Any...) = all(map(is_deterministic, xs))
+
+
+function expectation_transformation(node::Node{<:Union{R, Rⁿ}})
     return rewrite(node, [
 
         @rule(E(+(~~X)) => sum(map(expr -> E(expr), ~~X))),
@@ -34,9 +35,12 @@ function expectation_transformation(node::Node{R})
         @rule(E(-(~X)) => R(-1.0) * E(~X)),
 
         @rule(E(~X * ~Y) => (E(~X) * E(~Y) + Cov(~X, ~Y)) where are_random(~X, ~Y)),
+        @rule(E(~X ⋅ ~Y) => (E(~X) ⋅ E(~Y) + Cov(~X, ~Y)) where are_random(~X, ~Y)),
 
         @rule(E(~a * ~X) => (~a * E(~X)) where (is_random(~X) && is_deterministic(~a))),
         @rule(E(~X * ~a) => (~a * E(~X)) where (is_random(~X) && is_deterministic(~a))),
+        @rule(E(~a ⋅ ~X) => (~a ⋅ E(~X)) where (is_random(~X) && is_deterministic(~a))),
+        @rule(E(~X ⋅ ~a) => (~a ⋅ E(~X)) where (is_random(~X) && is_deterministic(~a))),
 
         @rule(Var(~X) => Cov(~X, ~X)),
 

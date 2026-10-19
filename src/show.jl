@@ -197,18 +197,25 @@ function show_call(io::IO, t::Node, use_id::Bool)
     end
 
     if !isempty(args)
-        # u'(u) → ‖u‖²
-        if symtype(t) <: R &&
-            length(args) == 1 &&
-            op isa Node &&
-            iscall(op) &&
-            operation(op) === adjoint &&
-            length(arguments(op)) == 1 &&
-            isequal(arguments(op)[1], args[1])
-            
-            print(io, "‖")
-            show_value(io, args[1], use_id)
-            print(io, "‖²")
+        if op === (⋅) && length(args) == 2
+            if isequal(args[1], args[2])
+                print(io, "‖")
+                show_value(io, args[1], use_id)
+                print(io, "‖²")
+            else
+                for (arg, suffix) in ((args[1], "'"), (args[2], ""))
+                    needsWrappingParenthesis = arg isa Node && iscall(arg) && op_symbol(operation(arg)) in [:+, :-, :*, :/]
+                    
+                    if needsWrappingParenthesis
+                        print(io, "(")
+                    end
+                    show_value(io, arg, use_id)
+                    if needsWrappingParenthesis
+                        print(io, ")")
+                    end
+                    print(io, suffix)
+                end
+            end
             return
         end
 
