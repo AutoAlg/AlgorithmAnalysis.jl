@@ -223,66 +223,66 @@ end
         X, Y, Z, W ∈ RandomRⁿ
         a ∈ R
 
+        @test E(X) isa Node{Rⁿ}
+        @test E(x) isa Node{Rⁿ}
+
+        @test Var(X) isa Node{R}
         @test Var(x) isa Node{R}
+
+        @test Cov(X, Y) isa Node{R}
         @test Cov(x, X) isa Node{R}
         @test Cov(X, x) isa Node{R}
         @test Cov(x, y) isa Node{R}
-        @test Var(X) isa Node{R}
-        @test Cov(X, Y) isa Node{R}
 
-        @test E(X) isa Node{Rⁿ}
-        @test E(x) isa Node{Rⁿ}
-        @test iszero(E(centered_component(X)))
-        @test isequal(E(x), x)
-
-        @test isequal(simplify(Var(X + x)), Cov(X, X))
-        @test isequal(simplify(Cov(X + x, Y)), Cov(X, Y))
-        @test isequal(simplify(Cov(X, Y + x)), Cov(X, Y))
-        @test isequal(simplify(Var(2.0 * X + x)), simplify(Var(2.0 * X)))
-
-        @test isequal(simplify(E(X + Y)), E(X) + E(Y))
-        @test isequal(simplify(E(X + x)), x + E(X))
+        @test X'*Y isa Node{RandomR}
+        @test x'*X isa Node{RandomR}
 
         @test mean_component(X) isa Node{Rⁿ}
         @test centered_component(X) isa Node{RandomRⁿCenteredComponent}
-        @test centered_product_leaf(centered_component(X), centered_component(Y)) isa Node{R}
-        @test isequal(centered_product_leaf(centered_component(Y), centered_component(X)), centered_product_leaf(centered_component(X), centered_component(Y)))
-        @test_throws ErrorException mean_component(X + Y)
-        @test_throws ErrorException centered_component(X + Y)
 
-        @test isequal(x'y, x'(y))
-        @test isequal(x'y, x ⋅ y)
-        @test isequal(x'*y, x ⋅ y)
-        @test isequal(X^2, X'X)
-        @test X'Y isa Node{RandomR}
-        @test x'X isa Node{RandomR}
-        @test_throws MethodError x'y'
-        @test_throws MethodError X * Y
-
-        @test isequal(simplify(E(2.0 * X)), 2.0 * E(X))
+        @test isequal(E(x), x)
+        @test iszero(E(centered_component(X)))
+        @test isequal(simplify(E(X + Y)), E(X) + E(Y))
+        @test isequal(simplify(E(X + x)), x + E(X))
         @test isequal(simplify(E(X - Y)), E(X) + -1.0 * E(Y))
+        @test isequal(simplify(E(2.0 * X)), 2.0 * E(X))
+        @test isequal(simplify(E(X * 2.0)), 2.0 * E(X))
         @test isequal(simplify(E(X'*Y)), E(X)'*E(Y) + Cov(X, Y))
+        @test isequal(simplify(E(X ⋅ Y)), E(X) ⋅ E(Y) + Cov(X, Y))
+        @test isequal(simplify(E(X ⋅ X)), E(X) ⋅ E(X) + Cov(X, X))
         @test isequal(simplify(E(x'*X)), x'*E(X))
+        @test isequal(simplify(E(a * X)), a * E(X))
+        @test isequal(E(E(X)), E(X))
+
+        @test isequal(simplify(Var(x)), zero(Rⁿ))
+        @test isequal(simplify(Var(X + x)), Cov(X, X))
+        @test isequal(simplify(Var(2.0 * X + x)), simplify(Var(2.0 * X)))
+
+        @test isequal(simplify(Var(X)), Cov(X, X))
+        @test isequal(simplify(Cov(X + x, Y)), Cov(X, Y))
+        @test isequal(simplify(Cov(X, Y + x)), Cov(X, Y))
+        @test isequal(simplify(Cov(2.0 * X, Y)), 2.0 * Cov(X, Y))
+        @test isequal(simplify(Cov(X, 3.0 * Y)), 3.0 * Cov(X, Y))
+        @test isequal(simplify(Cov(-X, Y)), -1.0 * Cov(X, Y))
+        @test isequal(Cov(X, x), zero(R))
+        @test isequal(Cov(x, y), zero(R))
+        @test isequal(Cov(y, X), zero(R))
 
         @test isequal(x'*X, x ⋅ X)
         @test isequal(X'*Y, X ⋅ Y)
         @test isequal(Z'*y, Z ⋅ y)
 
-        @test isequal(simplify(E(2.0 * X)), 2.0 * E(X))
-        @test isequal(simplify(E(X * 2.0)), 2.0 * E(X))
-        @test isequal(simplify(E(a * X)), a * E(X))
+        @test isequal(x'*y, x'(y))
+        @test isequal(x'*y, x ⋅ y)
+        @test isequal(x'*y, x'y)
+        @test isequal(X^2, X'*X)
+        @test_throws MethodError x'*y'
+        @test_throws MethodError X * Y
 
-        @test isequal(E(E(X)), E(X))
-        @test isequal(Cov(X, x), zero(R))
-
-        @test isequal(simplify(Var(X)), Cov(X, X))
-
-        @test isequal(simplify(Cov(2.0 * X, Y)), 2.0 * Cov(X, Y))
-        @test isequal(simplify(Cov(X, 3.0 * Y)), 3.0 * Cov(X, Y))
-        @test isequal(simplify(Cov(-X, Y)), -1.0 * Cov(X, Y))
-
-        @test isequal(simplify(E(X ⋅ Y)), E(X) ⋅ E(Y) + Cov(X, Y))
-        @test isequal(simplify(E(X ⋅ X)), E(X) ⋅ E(X) + Cov(X, X))
+        @test centered_product_leaf(centered_component(X), centered_component(Y)) isa Node{R}
+        @test isequal(centered_product_leaf(centered_component(Y), centered_component(X)), centered_product_leaf(centered_component(X), centered_component(Y)))
+        @test_throws ErrorException mean_component(X + Y)
+        @test_throws ErrorException centered_component(X + Y)
     end
 end
 
@@ -347,8 +347,43 @@ end
         
         with_numerics() do
             @test evaluate(simplify(maximize(E((X + Y)^2), cμ_X ∧ cμ_Y))) ≈ 9.0
-        end      
+        end     
+        
     end
 end
 
+@testitem "complete lowering" begin
+    @alg begin
+        # E((X + Y)^2)
+        # E(X^2 + 2 * X'*Y + Y^2)
+        # E(X^2) + 2 * E(X'*Y) + E(Y^2)
+        # E(X)^2 + Var(X) ++ 2 * Cov(X, Y) +  + Var(Y)
+        # E(X)^2 + 2 E(X)'*E(Y) + E(Y)^2 + Var(X) + 2 Cov(X, Y) + Var(Y)
+        # 55.0 = 3.0 + 2 * 5.0 + 11.0 + 13.0 + 2 * 2.0 + 17.0
 
+        X, Y ∈ RandomRⁿ
+    end
+
+        parts = [
+            (E(X)^2,       3.0),
+            (E(X)'*E(Y),   5.0),
+            (E(Y)^2,       11.0),
+            (Var(X),       13.0),
+            (Cov(X, Y),    2.0),
+            (Var(Y),       17.0),
+            (E((X + Y)^2), 58.0),
+        ]
+
+    for (i, (expr, value)) in enumerate(parts)
+        constraints = reduce(∧, [e == v for (j, (e, v)) in enumerate(parts) if j != i])
+
+        @testset "without $(expr)" begin
+            with_numerics() do
+                @test evaluate(simplify(minimize(expr, constraints))) ≈ value atol = 1e-6
+            end
+            with_numerics() do
+                @test evaluate(simplify(maximize(expr, constraints))) ≈ value atol = 1e-6
+            end
+        end
+    end
+end

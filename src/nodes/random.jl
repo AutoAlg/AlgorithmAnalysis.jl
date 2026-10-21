@@ -109,8 +109,6 @@ Cov(left::Node{RandomRⁿ}, right::Node{RandomRⁿ}) = Term{R}(Cov, [left, right
 Cov(left::Node{RandomRCenteredComponent}, right::Node{RandomRCenteredComponent}) = error("This should never be called")
 Cov(left::Node{RandomRⁿCenteredComponent}, right::Node{RandomRⁿCenteredComponent}) = error("This should never be called")
 
-
-
 # TODO: once you properly bifrucate VectorSpace into DeterministicVectorSpace and RandomVectorSpace, this should be automatic
 Base.adjoint(x::Node{RandomR}) = x
 Base.adjoint(x::Node{RandomRCenteredComponent}) = x
