@@ -359,9 +359,9 @@ end
         # E(X^2) + 2 * E(X'*Y) + E(Y^2)
         # E(X)^2 + Var(X) ++ 2 * Cov(X, Y) +  + Var(Y)
         # E(X)^2 + 2 E(X)'*E(Y) + E(Y)^2 + Var(X) + 2 Cov(X, Y) + Var(Y)
-        # 55.0 = 3.0 + 2 * 5.0 + 11.0 + 13.0 + 2 * 2.0 + 17.0
+        # 58.0 = 3.0 + 2 * 5.0 + 11.0 + 13.0 + 2 * 2.0 + 17.0
 
-        X, Y ∈ RandomRⁿ
+        X, Y ∈ RandomRⁿ 
     end
 
         parts = [
@@ -373,7 +373,7 @@ end
             (Var(Y),       17.0),
             (E((X + Y)^2), 58.0),
         ]
-
+ 
     for (i, (expr, value)) in enumerate(parts)
         constraints = reduce(∧, [e == v for (j, (e, v)) in enumerate(parts) if j != i])
 
@@ -384,6 +384,36 @@ end
             with_numerics() do
                 @test evaluate(simplify(maximize(expr, constraints))) ≈ value atol = 1e-6
             end
+        end
+    end
+end
+
+@testitem "PEP stochastic gradient descent" begin
+    @alg begin
+        α, μ, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
+        ξ ∈ RandomRⁿ  
+    end
+
+    cμ_ξ = (E(ξ)^2 == 0.0)
+    cdist_x = ((x - xs)^2 <= 1.0)
+    cf = (f'(xs)^2 == 0.0) ∧ sector_bounded(f, μ, L)
+
+    constraints = cμ_ξ ∧ cdist_x ∧ cf
+
+    cξ_0 = (E(ξ^2) <= 0.0)
+    cξ_1 = (E(ξ^2) <= 1.0)
+
+    x_n = x - α * (f'(x) + ξ)
+    perf = E((x_n - xs)^2)
+
+    cases = [
+        (0.1,  constraints ∧ cξ_1,         0.82),
+        (0.15, constraints ∧ cξ_1,         0.745),
+        (0.1,  constraints ∧ cξ_0,         0.81),
+    ]
+    for (a, con, value) in cases
+        with_numerics(parameters = Dict(α => a, μ => 1.0, L => 10.0)) do
+            @test evaluate(simplify(maximize(perf, con))) ≈ value atol = 1e-5
         end
     end
 end

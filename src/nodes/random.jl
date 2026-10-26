@@ -118,6 +118,10 @@ Base.adjoint(x::Node{RandomRⁿCenteredComponent}) = Term{CoVector{RandomRⁿCen
 
 
 
+SymbolicUtils.promote_symtype(::Node{FnType{Tuple{Rⁿ},R,DifferentiableFunctional}}, ::Type{RandomRⁿ}) = RandomR
+SymbolicUtils.promote_symtype(::Node{FnType{Tuple{Rⁿ},Rⁿ,Gradient}}, ::Type{RandomRⁿ}) = RandomRⁿ
+
+
 +(left::Node{R}, right::Node{RandomR}) = Term{RandomR}(+, [left, right])
 +(left::Node{RandomR}, right::Node{R}) = right + left
 

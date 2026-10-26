@@ -53,7 +53,7 @@ function sector_bounded_interpolation(opt::Node{<:Optimization}, f::Node, μ::No
     interp = satisfied()
 
     for x ∈ points
-        interp = interp ∧ ( (f'(x) - μ*x)'(f'(x) - L*x) ≤ zero(R) )
+        interp = interp ∧ ( E((f'(x) - μ*x)'(f'(x) - L*x)) ≤ zero(R) )
     end
 
     old = sector_bounded(f, μ, L)

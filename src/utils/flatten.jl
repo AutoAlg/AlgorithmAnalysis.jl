@@ -1,14 +1,13 @@
 function flatten_evaluations(tree::Node, f::Node)
 
     f₊ = next(f, tree)
-    T = symtype(f).parameters[2]
     iseval(x) = iscall(x) && isequal(operation(x), f)
     newsym(x) = begin
         arg = tostring(arguments(x)[1])
         fstr = tostring(f)
         sym = Symbol(fstr, "(", arg, ")")
         x₊ = next(x, tree)
-        return leaf(T, sym)
+        return leaf(symtype(x), sym)
     end
     
     rule = @rule( ~x => newsym(~x) where iseval(~x) )

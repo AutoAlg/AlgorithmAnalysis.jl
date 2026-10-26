@@ -28,6 +28,25 @@ function is_random_gram_transformation_applicable(node::Node{<:Optimization})
         end
     end
 
+
+    if convex_interpolation_is_applicable(node)
+        return false
+    end
+
+    if smooth_convex_interpolation_is_applicable(node)
+        return false
+    end
+
+    if smooth_strongly_convex_interpolation_is_applicable(node)
+        return false
+    end
+
+    if sector_bound_is_applicable(node)
+        return false
+    end
+
+
+
     return true
 end
 
@@ -68,7 +87,7 @@ function random_gram_transformation(node::Node{<:Optimization})
 
 
 
-    is_centered_leaf(x) = issym(x) && (symtype(x) <: RandomRCenteredComponent || symtype(x) <: RandomRCenteredComponent)
+    # is_centered_leaf(x) = issym(x) && (symtype(x) <: RandomRCenteredComponent || symtype(x) <: RandomRCenteredComponent)
 
     node = rewrite(node, [
         # By construction, this rule should only match on ~X and ~Y where is_centered_leaf is true

@@ -19,7 +19,7 @@ end
 
 # TODO this needs to be expanded to a type level thing, i.e there is {DeterministicField, RandomField} <: Field
 is_random(x::Any) = false
-is_random(x::Node) = symtype(x) <: RandomField || symtype(x) <: RandomVectorSpace
+is_random(x::Node) = symtype(x) <: RandomR || symtype(x) <: RandomRⁿ
 are_random(xs::Node...) = all(map(is_random, xs))
 
 is_deterministic(x::Any) = !is_random(x)
