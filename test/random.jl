@@ -357,7 +357,6 @@ end
         # E((X + Y)^2)
         # E(X^2 + 2 * X'*Y + Y^2)
         # E(X^2) + 2 * E(X'*Y) + E(Y^2)
-        # E(X)^2 + Var(X) ++ 2 * Cov(X, Y) +  + Var(Y)
         # E(X)^2 + 2 E(X)'*E(Y) + E(Y)^2 + Var(X) + 2 Cov(X, Y) + Var(Y)
         # 58.0 = 3.0 + 2 * 5.0 + 11.0 + 13.0 + 2 * 2.0 + 17.0
 
@@ -390,21 +389,37 @@ end
 
 @testitem "PEP stochastic gradient descent" begin
     @alg begin
-        α, μ, L ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
+        α, μ, L, v ∈ R, x, xs ∈ Rⁿ, f ∈ differentiable_functional(Rⁿ)
         ξ ∈ RandomRⁿ  
     end
 
     cμ_ξ = (E(ξ)^2 == 0.0)
     cdist_x = ((x - xs)^2 <= 1.0)
     cf = (f'(xs)^2 == 0.0) ∧ sector_bounded(f, μ, L)
-    cξ_1 = (E(ξ^2) <= 1.0)
+    cξ_1 = (Var(ξ) <= v)
 
     constraints = cμ_ξ ∧ cdist_x ∧ cf ∧ cξ_1
 
     x_n = x - α * (f'(x) + ξ)
     perf = E((x_n - xs)^2)
 
-    with_numerics(parameters = Dict(α => 0.1, μ => 1.0, L => 10.0)) do
-        @test evaluate(simplify(maximize(perf, constraints))) > 0.0
+
+    with_numerics(parameters = Dict(α => 0.1, v => 0.0, μ => 1.0, L => 10.0)) do
+        @test evaluate(simplify(maximize(perf, constraints))) ≈ 0.81 atol = 1e-5
     end
+
+    with_numerics(parameters = Dict(α => 0.1, v => 1.0, μ => 1.0, L => 10.0)) do
+        @test evaluate(simplify(maximize(perf, constraints))) ≈ 0.82 atol = 1e-5
+    end
+
+
+    with_numerics(parameters = Dict(α => 0.1, v => 2.0, μ => 1.0, L => 10.0)) do
+        @test evaluate(simplify(maximize(perf, constraints))) ≈ 0.83 atol = 1e-5
+    end
+
+
+    with_numerics(parameters = Dict(α => 0.1, v => 3.0, μ => 1.0, L => 10.0)) do
+        @test evaluate(simplify(maximize(perf, constraints))) ≈ 0.84 atol = 1e-5
+    end
+
 end
